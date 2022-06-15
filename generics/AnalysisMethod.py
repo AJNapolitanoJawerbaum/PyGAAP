@@ -27,6 +27,7 @@ class AnalysisMethod(ABC):
 		except:
 			self._variable_options = dict()	
 		self._global_parameters = self._global_parameters
+
 	@abstractmethod
 	def train(self, knownDocuments):
 		'''Train a model on the knownDocuments.'''
@@ -69,7 +70,7 @@ class CentroidDriver(AnalysisMethod):
 		return "Centroid Driver"
 
 	def displayDescription():
-		return "Computes one centroid per Author.\nCentroids are the average relitive frequency of events over all docuents provided.\ni=1 to n ΣfrequencyIn_i(event)."
+		return "Computes one centroid per Author.\nCentroids are the average relative frequency of events over all documents provided.\ni=1 to n ΣfrequencyIn_i(event)."
 
 class CrossEntropy(AnalysisMethod):
 	mode="author"
