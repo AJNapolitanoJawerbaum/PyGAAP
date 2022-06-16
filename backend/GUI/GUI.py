@@ -710,7 +710,7 @@ def displayAbout():
 	try:
 		About_page.lift()
 		return None
-	except (NameError, AttributeError):
+	except (NameError, AttributeError, TclError):
 		pass
 	About_page = Toplevel()
 	About_page.title("About PyGAAP")
@@ -742,7 +742,7 @@ def notepad():
 	if GUI_debug >= 3: print("notepad()")
 	try:
 		notepad_window.lift()
-	except (NameError, AttributeError):
+	except (NameError, AttributeError, TclError):
 		notepad_window = Toplevel()
 		notepad_window.title("Notes")
 		#notepad_window.geometry("600x500")

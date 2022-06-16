@@ -6,10 +6,10 @@ from Constants import version
 
 def main():
 	if len(sys.argv) >= 2:	
-		print("PyGAAP v" + version + "\nby David Berdik")
+		print("PyGAAP v" + version + "\nby David Berdik and Michael Fang")
 		cliMain()
 	else:
-		import backend.GUI
+		import backend.GUI.GUI
 
 if __name__=="__main__":
 	main()

@@ -191,44 +191,4 @@ class WithinWordNGram(EventDriver):
 			eventSet += [str(word[letterIndex] + "_" + str(letterIndex)) for letterIndex in range(len(word))]
 		return eventSet
 	
-class SpacyLemmatize(EventDriver):
-# class var.
-	_SpacyLemmatize_module_dict = {
-		"English": "en_core_web_sm",
-		"Chinese (GB2123)": "zh_core_web_sm",
-		"Japanese": "ja_core_news_sm",
-		# see https://spacy.io/usage/models
-		# for language module names.
-	}
-	# class var.
-	_SpacyLemmatize_lang_pipeline = None
 
-		
-	def displayName():
-		return "Lemmatize (Spacy)"
-
-	def displayDescription():
-		return "Lemmatize words using the Spacy module."
-	
-		
-	def setParams(self, params):
-		'''Accepts a list of parameters and assigns them to the appropriate variables.'''
-
-	
-	def createEventSet(self, procText):
-		"""Lemmatize using spacy"""
-
-		if EventDriver._spacy_lang_pipeline == None:
-			EventDriver._spacy_lang_pipeline = spacy.load(
-				self._SpacyLemmatize_module_dict.get(
-					self._global_parameters["language"],
-					"xx_ent_wiki_sm"
-				)
-			)
-		lem = [
-			token.lemma_ for
-			token in
-			EventDriver._spacy_lang_pipeline(procText)
-		]
-		#print(lem)
-		return lem
