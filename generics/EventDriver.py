@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from matplotlib.pyplot import eventplot
 from nltk import ngrams
 from nltk.tokenize import word_tokenize, sent_tokenize
-import spacy
+# import spacy
 from importlib import import_module
 
 external_modules = {}
@@ -153,9 +153,7 @@ class CharacterPositionEventDriver(EventDriver):
 		return "Converts delimited words into list of letters with their positions within the word.\nRecommended with the Cangjie canonicizer"
 
 
-class WithinWordNGram(EventDriver):
-	n = 2
-	delimiter = "<whitespace(s)>"
+class WithinWordNGram(EventDriver):	
 	_variable_options = {
 		"delimiter":
 		{
@@ -170,6 +168,8 @@ class WithinWordNGram(EventDriver):
 			"default": 0
 		}
 	}
+	delimiter = _variable_options["delimiter"]["options"][_variable_options["delimiter"]["default"]]
+	n = _variable_options["n"]["options"][_variable_options["n"]["default"]]
 	
 	def displayName():
 		return "Within-word n-gram [under construction]"

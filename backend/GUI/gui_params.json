@@ -1,0 +1,56 @@
+{
+	"icon": "./res/icon.png",
+	"topwindow_title": "PyGAAP (GUI)",
+
+	"styles": {
+		"JGAAP_blue": {
+		"accent_color_dark":"#7eedfc",
+		"accent_color_mid":"#c9f6fc",
+		"accent_color_light":"#e0f9fc",
+		"text":"#000000"
+		},
+		"PyGAAP_pink": {
+		"accent_color_dark": "#e0b5e5",
+		"accent_color_mid":"#f2e1f4",
+		"accent_color_light":"#fae9fe",
+		"text":"#000000"
+		}
+	},
+	"dpi": {
+		"comment": "small: regular DPI; large: 2x DPI.",
+		"small": {
+			"dpi_top_window_geometry": "1000x670",
+			"dpi_scrollbar_width": 16,
+			"dpi_option_menu_width": 10,
+			"dpi_language_dropdown_width": 18,
+			"dpi_process_window_geometry": "200x100",
+			"dpi_progress_bar_length": 200,
+			"dpi_about_page_geometry": "600x300",
+			"dpi_author_window_geometry": "550x340",
+			"dpi_treeview_entry_height": 1,
+			"dpi_process_window_geometry_finished": "700x900",
+			"dpi_description_box_border": 3,
+			"Treeview.rowheight": 20
+		},
+		"large": {
+			"dpi_top_window_geometry": "2000x1150",
+			"dpi_scrollbar_width": 28,
+			"dpi_option_menu_width": 10,
+			"dpi_language_dropdown_width": 18,
+			"dpi_process_window_geometry": "500x200",
+			"dpi_progress_bar_length": 400,
+			"dpi_about_page_geometry": "1200x600",
+			"dpi_author_window_geometry": "1170x590",
+			"dpi_treeview_entry_height": 2,
+			"dpi_process_window_geometry_finished": "1400x1100",
+			"dpi_description_box_border": 5,
+			"Treeview.rowheight": 35
+		}
+	},
+	"tabheight": 570,
+	"tabwidth": 1000,
+	"multiprocessing_limit_docs": 9999,
+	"multiprocessing_limit_analysis": 9999,
+	"aaac_problems_path": "./resources/aaac/"
+
+}

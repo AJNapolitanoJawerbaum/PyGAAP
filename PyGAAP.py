@@ -9,7 +9,10 @@ def main():
 		print("PyGAAP v" + version + "\nby David Berdik and Michael Fang")
 		cliMain()
 	else:
-		import backend.GUI.GUI
+		# import backend.GUI.GUI
+		from backend.GUI import GUI2
+		app = GUI2.PyGAAP_GUI()
+		app.run()
 
 if __name__=="__main__":
 	main()

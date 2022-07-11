@@ -1,0 +1,6 @@
+,./resources/aaac/problemH/Hsample01.txt,Correct: Author03
+,./resources/aaac/problemH/Hsample02.txt,Correct: Author01
+,./resources/aaac/problemH/Hsample03.txt,Correct: Author02
+Author01,./resources/aaac/problemH/Htrain01-01.txt,
+Author02,./resources/aaac/problemH/Htrain02-01.txt,
+Author03,./resources/aaac/problemH/Htrain03-01.txt,

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 class Document:
 	'''Document object'''
 	author = ""
@@ -20,3 +22,18 @@ class Document:
 			self.eventSet = eventSet
 		else:
 			self.eventSet += eventSet
+	
+	def read_self(self, encoding=None):
+		f = open(Path(self.filepath), "r")
+		if encoding == None:
+			try:
+				self.text = f.read()
+			except UnicodeError:
+				try: self.text = f.read(encoding="UTF-8")
+				except UnicodeError: self.text = f.read(encoding="ISO-8859-15")
+		else: self.text = f.read(encoding=encoding)
+		f.close()
+		return self.text
+	
+	def __repr__(self):
+		return " ".join([str(self.author), str(self.title), str(self.text[:10]), str(self.filepath)])

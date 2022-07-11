@@ -4,6 +4,8 @@ from generics.EventDriver import EventDriver
 from generics.AnalysisMethod import AnalysisMethod
 from generics.DistanceFunction import DistanceFunction
 
+# import spacy
+
 class API:
 	'''API class'''
 	canonicizers = dict()
@@ -15,11 +17,11 @@ class API:
 	test = 3
 
 	moduleTypeDict = {
-		"canonicizers": canonicizers,
-		"eventDrivers": eventDrivers,
-		"eventCulling": eventCulling,
-		"analysisMethods": analysisMethods,
-		"distanceFunctions": distanceFunctions,
+		# "canonicizers": canonicizers,
+		# "eventDrivers": eventDrivers,
+		# "eventCulling": eventCulling,
+		# "analysisMethods": analysisMethods,
+		# "distanceFunctions": distanceFunctions,
 
 		"Canonicizers": canonicizers,
 		"EventDrivers": eventDrivers,
@@ -27,11 +29,11 @@ class API:
 		"AnalysisMethods": analysisMethods,
 		"DistanceFunctions": distanceFunctions,
 
-		"Canonicizers": canonicizers,
-		"Event Drivers": eventDrivers,
-		"Event Culling": eventCulling,
-		"Analysis Methods": analysisMethods,
-		"Distance Functions": distanceFunctions
+		# "Canonicizers": canonicizers,
+		# "Event Drivers": eventDrivers,
+		# "Event Culling": eventCulling,
+		# "Analysis Methods": analysisMethods,
+		# "Distance Functions": distanceFunctions
 	}
 
 	# these are lists of modules (and their params) added to the processing queue.
@@ -50,6 +52,13 @@ class API:
 	# allow modules to pass info along the pipeline:
 	# e.g. if an event culler requires information on the text
 	# before it was converted to the feature set.
+
+
+	languages_available = ["English", "Arabic (ISO-8859-6)", "Chinese (GB2123)"]
+	default_language = 0
+
+	known_docs = [] # currently unused because known_docs is implemented in the GUI2 side.
+	unknown_docs: list = [] # list of "Documents" (backend.Document)
 
 	
 	def __init__(self, documents):
@@ -78,6 +87,11 @@ class API:
 		self.documents = documents
 
 		self.global_parameters = self.global_parameters
+
+		#self.known_docs = []
+		self.unknown_docs = []
+		# TODO priority very low: use dictionary implementation
+		# for unknown_docs.
 
 		
 	def runCanonicizer(self, canonicizerString):

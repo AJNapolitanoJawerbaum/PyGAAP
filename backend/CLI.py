@@ -1,6 +1,6 @@
 import argparse, os, sys
 
-from backend.API import API
+
 from backend.CSVIO import *
 from backend.Document import Document
 from pathlib import Path
@@ -10,6 +10,15 @@ gui = False
 
 def cliMain():
 	'''Main function for the PyGAAP CLI'''
+
+	print("Loading API...", end="")
+	# this import is moved here (inside CLI function) to delay loading the API
+	# i.e. let the CLI or GUI load the API instead of it being immediately loaded,
+	# because it may take a long time to load depending on the modules,
+	# and to also make the splash screen of the GUI work.
+	# The GUI splash screen appears while API is loading so the app doesn't appear unresponsive.
+	from backend.API import API
+	print("done")
 	args = _parse_args()
 	
 	# If a CSV file has been specified, process it.

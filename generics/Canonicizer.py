@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import re
 import numpy as np
 from sklearn.multiclass import OutputCodeClassifier
-import spacy
+# import spacy
 from importlib import import_module
 
 external_modules = {}
@@ -14,6 +14,14 @@ for mod in external_modules:
 class Canonicizer(ABC):
 	_index = 0
 	_global_parameters = dict()
+
+	def __init__(self):
+		try:
+			for variable in self._variable_options:
+				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
+		except:
+			self._variable_options = dict()
+		self._global_parameters = self._global_parameters
 
 	@abstractmethod
 	def process(self, procText):
@@ -111,6 +119,24 @@ class CangjieConvert(Canonicizer):
 	# The initializing of the lookup table depends on a hard-coded number of lines in the lookup table text file.
 	_lookupTable=np.empty_like(['abcde'], dtype="<U5", shape=(175135,))
 
+	_variable_options = {
+		"Language":
+		{
+			"options": ["Chinese", "Japanese"],
+			"type": "OptionMenu",
+			"default": 0
+		},
+		"Version":
+		{
+			"options": ["3", "5"],
+			"type": "OptionMenu",
+			"default": 1
+		}
+	}
+
+	Language = _variable_options["Language"]["options"][_variable_options["Language"]["default"]]
+	Version = _variable_options["Version"]["options"][_variable_options["Version"]["default"]]
+
 	def __init__(self):
 		tableFilename = "./extra/canonicizer_CangjieConverter/CangjieConvertTable.txt"
 		try:
@@ -163,41 +189,41 @@ class CangjieConvert(Canonicizer):
 
 
 	
-	class SpacyLemmatize(Canonicizer):
-		# class var.
-		_SpacyLemmatize_module_dict = {
-			"English": "en_core_web_sm",
-			"Chinese (GB2123)": "zh_core_web_sm",
-			"Japanese": "ja_core_news_sm",
-			# see https://spacy.io/usage/models
-			# for language module names.
-		}
-		# class var.
-		_SpacyLemmatize_lang_pipeline = None
+	# class SpacyLemmatize(Canonicizer):
+	# 	# class var.
+	# 	_SpacyLemmatize_module_dict = {
+	# 		"English": "en_core_web_sm",
+	# 		"Chinese (GB2123)": "zh_core_web_sm",
+	# 		"Japanese": "ja_core_news_sm",
+	# 		# see https://spacy.io/usage/models
+	# 		# for language module names.
+	# 	}
+	# 	# class var.
+	# 	_SpacyLemmatize_lang_pipeline = None
 
-		def __init__(self):
-			return
+	# 	def __init__(self):
+	# 		return
 			
-		def displayName():
-			return "Lemmatize (Spacy)"
+	# 	def displayName():
+	# 		return "Lemmatize (Spacy)"
 
-		def displayDescription():
-			return "Lemmatize words using the Spacy module."
+	# 	def displayDescription():
+	# 		return "Lemmatize words using the Spacy module."
 		
-		def process(self, procText):
-			"""Lemmatize using spacy"""
-			print(self._SpacyLemmatize_module_dict)
-			if Canonicizer._SpacyLemmatize_lang_pipeline == None:
-				Canonicizer._SpacyLemmatize_lang_pipeline = spacy.load(
-					self._SpacyLemmatize_module_dict.get(
-						self._global_parameters["language"],
-						"xx_ent_wiki_sm"
-					)
-				)
-			lem = [
-				token.lemma_ for
-				token in
-				Canonicizer._spacy_lang_pipeline(procText)
-			]
-			lemmatized = " ".join(lem)
-			return lemmatized
+	# 	def process(self, procText):
+	# 		"""Lemmatize using spacy"""
+	# 		print(self._SpacyLemmatize_module_dict)
+	# 		if Canonicizer._SpacyLemmatize_lang_pipeline == None:
+	# 			Canonicizer._SpacyLemmatize_lang_pipeline = spacy.load(
+	# 				self._SpacyLemmatize_module_dict.get(
+	# 					self._global_parameters["language"],
+	# 					"xx_ent_wiki_sm"
+	# 				)
+	# 			)
+	# 		lem = [
+	# 			token.lemma_ for
+	# 			token in
+	# 			Canonicizer._spacy_lang_pipeline(procText)
+	# 		]
+	# 		lemmatized = " ".join(lem)
+	# 		return lemmatized

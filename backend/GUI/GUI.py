@@ -29,8 +29,10 @@ from sys import platform
 
 # open a loading window so the app doesn't appear frozen.
 pipe_from, pipe_to = Pipe(duplex=True)
+print(platform)
 if platform != "win32":
 	p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
+	print('start process')
 	p.start()
 pipe_from.send("Loading API")
 
@@ -1106,8 +1108,9 @@ def load_save_docs(function: str,
 
 def load_AAAC_problems(problem: str):
 	# problem expects a letter string, ex: "A", "B", etc.
+	corpus = CSVIO.readCorpusCSV("./resources/aaac/problem%s/load%s.csv" % (problem, problem))
+	
 	...
-
 
 pipe_from.send("Loading GUI")
 
@@ -1194,7 +1197,7 @@ tabs.pack(pady = 1, padx = 5, expand = True, fill = "both")
 tabheight = 570
 tabwidth = 1000
 
-Tabs_names = [
+tabs_names = [
 	"Tab_Documents",
 	"Tab_Canonicizers",
 	"Tab_EventDrivers",
@@ -1202,20 +1205,20 @@ Tabs_names = [
 	"Tab_AnalysisMethods",
 	"Tab_ReviewProcess"
 ]
-Tabs_Frames = dict() # this stores the main Frame objects for all the tabs.
+tabs_frames = dict() # this stores the main Frame objects for all the tabs.
 
 #below is the tabs framework
-for t in Tabs_names:
-	Tabs_Frames[t] = Frame(tabs, height = tabheight, width = tabwidth)
-	Tabs_Frames[t].pack(fill = 'both', expand = True, anchor = NW)
+for t in tabs_names:
+	tabs_frames[t] = Frame(tabs, height = tabheight, width = tabwidth)
+	tabs_frames[t].pack(fill = 'both', expand = True, anchor = NW)
 
 
-tabs.add(Tabs_Frames["Tab_Documents"], text = "Documents")
-tabs.add(Tabs_Frames["Tab_Canonicizers"], text = "Canonicizers")
-tabs.add(Tabs_Frames["Tab_EventDrivers"], text = "Event Drivers")
-tabs.add(Tabs_Frames["Tab_EventCulling"], text = "Event Culling")
-tabs.add(Tabs_Frames["Tab_AnalysisMethods"], text = "Analysis Methods")
-tabs.add(Tabs_Frames["Tab_ReviewProcess"], text = "Review & Process")
+tabs.add(tabs_frames["Tab_Documents"], text = "Documents")
+tabs.add(tabs_frames["Tab_Canonicizers"], text = "Canonicizers")
+tabs.add(tabs_frames["Tab_EventDrivers"], text = "Event Drivers")
+tabs.add(tabs_frames["Tab_EventCulling"], text = "Event Culling")
+tabs.add(tabs_frames["Tab_AnalysisMethods"], text = "Analysis Methods")
+tabs.add(tabs_frames["Tab_ReviewProcess"], text = "Review & Process")
 #above is the tabs framework
 
 
@@ -1225,30 +1228,30 @@ tabs.add(Tabs_Frames["Tab_ReviewProcess"], text = "Review & Process")
 
 #####REVIEW & PROCESS TAB
 #basic frames structure
-Tab_ReviewProcess_Canonicizers = Frame(Tabs_Frames["Tab_ReviewProcess"])
+Tab_ReviewProcess_Canonicizers = Frame(tabs_frames["Tab_ReviewProcess"])
 Tab_ReviewProcess_Canonicizers.grid(
 	row = 0, column = 0, columnspan = 3, sticky = "wens", padx = 10, pady = 10
 )
 
-Tab_ReviewProcess_EventDrivers = Frame(Tabs_Frames["Tab_ReviewProcess"])
+Tab_ReviewProcess_EventDrivers = Frame(tabs_frames["Tab_ReviewProcess"])
 Tab_ReviewProcess_EventDrivers.grid(
 	row = 1, column = 0, sticky = "wens", padx = 10, pady = 10
 )
 
-Tab_ReviewProcess_EventCulling = Frame(Tabs_Frames["Tab_ReviewProcess"])
+Tab_ReviewProcess_EventCulling = Frame(tabs_frames["Tab_ReviewProcess"])
 Tab_ReviewProcess_EventCulling.grid(
 	row = 1, column = 1, sticky = "wens", padx = 10, pady = 10
 )
 
-Tab_ReviewProcess_AnalysisMethods = Frame(Tabs_Frames["Tab_ReviewProcess"])
+Tab_ReviewProcess_AnalysisMethods = Frame(tabs_frames["Tab_ReviewProcess"])
 Tab_ReviewProcess_AnalysisMethods.grid(
 	row = 1, column = 2, sticky = "wens", padx = 10, pady = 10
 )
 
 for n in range(3):
-	Tabs_Frames["Tab_ReviewProcess"].columnconfigure(n, weight = 1)
+	tabs_frames["Tab_ReviewProcess"].columnconfigure(n, weight = 1)
 for n in range(2):
-	Tabs_Frames["Tab_ReviewProcess"].rowconfigure(n, weight = 1)
+	tabs_frames["Tab_ReviewProcess"].rowconfigure(n, weight = 1)
 
 #RP = ReviewProcess
 #note: the buttons below (that redirect to corresponding tabs) have hard-coded tab numbers
@@ -1310,7 +1313,7 @@ Tab_RP_AnalysisMethods_Listbox_scrollbar = Scrollbar(
 	command = Tab_RP_AnalysisMethods_Listbox.yview)
 Tab_RP_AnalysisMethods_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
 Tab_RP_AnalysisMethods_Listbox.config(yscrollcommand = Tab_RP_AnalysisMethods_Listbox_scrollbar.set)
-Tab_RP_Process_Button = Button(Tabs_Frames["Tab_ReviewProcess"], text = "Process", width = 25)
+Tab_RP_Process_Button = Button(tabs_frames["Tab_ReviewProcess"], text = "Process", width = 25)
 
 # button command see after documents tab.
 
@@ -1327,17 +1330,17 @@ Tab_RP_Process_Button.bind("<Map>",
 ############### DOCUMENTS TAB ####################
 
 Tab_Documents_Language_label = Label(
-	Tabs_Frames["Tab_Documents"],text = "Language", font = ("helvetica", 15), anchor = 'nw'
+	tabs_frames["Tab_Documents"],text = "Language", font = ("helvetica", 15), anchor = 'nw'
 )
 Tab_Documents_Language_label.grid(row = 1, column = 0, sticky = 'NW', pady = (10, 5))
 
 for n in range(10):
 	if n == 5 or n == 8:
 		w = 1
-		Tabs_Frames["Tab_Documents"].columnconfigure(0, weight = 1)
+		tabs_frames["Tab_Documents"].columnconfigure(0, weight = 1)
 
 	else: w = 0
-	Tabs_Frames["Tab_Documents"].rowconfigure(n, weight = w)
+	tabs_frames["Tab_Documents"].rowconfigure(n, weight = w)
 
 
 # !!! to allow for per-document language settings,
@@ -1348,7 +1351,7 @@ analysisLanguage.set("English")
 #may need a lookup function for the options below
 analysisLanguageOptions = ["Arabic (ISO-8859-6)", "Chinese (GB2123)", "English"]
 Tab_Documents_language_dropdown = OptionMenu(
-	Tabs_Frames["Tab_Documents"], analysisLanguage, *analysisLanguageOptions
+	tabs_frames["Tab_Documents"], analysisLanguage, *analysisLanguageOptions
 )
 Tab_Documents_language_dropdown.config(width = dpi_language_dropdown_width)
 Tab_Documents_language_dropdown['anchor'] = 'nw'
@@ -1362,12 +1365,12 @@ analysisLanguage.trace_add("write",
 
 #documents-unknown authors
 Tab_Documents_UnknownAuthors_label =\
-	Label(Tabs_Frames["Tab_Documents"], text = "Unknown Authors", font = ("helvetica", 15), anchor = 'nw')
+	Label(tabs_frames["Tab_Documents"], text = "Unknown Authors", font = ("helvetica", 15), anchor = 'nw')
 Tab_Documents_UnknownAuthors_label.grid(row = 4, column = 0, sticky = "W", pady = (10, 5))
 
 
 Tab_Documents_UnknownAuthors_Frame =\
-	Frame(Tabs_Frames["Tab_Documents"])
+	Frame(tabs_frames["Tab_Documents"])
 Tab_Documents_UnknownAuthors_Frame.grid(row = 5, column = 0, sticky = "wnse")
 
 
@@ -1388,7 +1391,7 @@ Tab_Documents_UnknownAuthors_listscrollbar.config(
 Tab_Documents_UnknownAuthors_listbox.pack(side = LEFT, fill = BOTH, expand = True)
 Tab_Documents_UnknownAuthors_listscrollbar.pack(side = RIGHT, fill = BOTH, padx = (0, 30))
 
-Tab_Documents_doc_buttons = Frame(Tabs_Frames["Tab_Documents"])
+Tab_Documents_doc_buttons = Frame(tabs_frames["Tab_Documents"])
 Tab_Documents_doc_buttons.grid(row = 6, column = 0, sticky = "W")
 Tab_Documents_UnknownAuthors_AddDoc_Button = Button(
 	Tab_Documents_doc_buttons, text = "Add Document", width = "16",
@@ -1406,12 +1409,12 @@ Tab_Documents_UnknownAuthors_RmvDoc_Button.grid(row = 1, column = 2, sticky = "W
 
 #documents-known authors
 Tab_Documents_KnownAuthors_label = Label(
-	Tabs_Frames["Tab_Documents"], text = "Known Authors", font = ("helvetica", 15), anchor = 'nw'
+	tabs_frames["Tab_Documents"], text = "Known Authors", font = ("helvetica", 15), anchor = 'nw'
 )
 Tab_Documents_KnownAuthors_label.grid(row = 7, column = 0, sticky = "W", pady = (10, 5))
 
 
-Tab_Documents_KnownAuthors_Frame = Frame(Tabs_Frames["Tab_Documents"])
+Tab_Documents_KnownAuthors_Frame = Frame(tabs_frames["Tab_Documents"])
 Tab_Documents_KnownAuthors_Frame.grid(row = 8, column = 0, sticky = "wnse")
 
 
@@ -1428,7 +1431,7 @@ Tab_Documents_KnownAuthors_listbox.pack(side = LEFT, fill = BOTH, expand = True)
 Tab_Documents_KnownAuthors_listscroller.pack(side = RIGHT, fill = BOTH, padx = (0, 30))
 
 #These are known authors
-Tab_Documents_knownauth_buttons = Frame(Tabs_Frames["Tab_Documents"])
+Tab_Documents_knownauth_buttons = Frame(tabs_frames["Tab_Documents"])
 Tab_Documents_knownauth_buttons.grid(row = 9, column = 0, sticky = "W")
 Tab_Documents_KnownAuthors_AddAuth_Button = Button(
 	Tab_Documents_knownauth_buttons, text = "Add Author", width = "15",
@@ -1742,7 +1745,7 @@ generated_widgets = dict()
 
 CanonicizerFormat = StringVar()
 generated_widgets['Canonicizers'] = create_module_tab(
-	Tabs_Frames["Tab_Canonicizers"],
+	tabs_frames["Tab_Canonicizers"],
 	["Canonicizers"],
 	"Canonicizers",
 	canonicizers_format = CanonicizerFormat,
@@ -1750,7 +1753,7 @@ generated_widgets['Canonicizers'] = create_module_tab(
 
 Tab_EventDrivers_parameters_displayed = []
 generated_widgets['EventDrivers'] = create_module_tab(
-	Tabs_Frames["Tab_EventDrivers"],
+	tabs_frames["Tab_EventDrivers"],
 	["Event Drivers"],
 	"EventDrivers",
 	displayed_parameters = Tab_EventDrivers_parameters_displayed,
@@ -1758,7 +1761,7 @@ generated_widgets['EventDrivers'] = create_module_tab(
 
 Tab_EventCulling_parameters_displayed = []
 generated_widgets['EventCulling'] = create_module_tab(
-	Tabs_Frames["Tab_EventCulling"],
+	tabs_frames["Tab_EventCulling"],
 	["Event Culling"],
 	"EventCulling",
 	displayed_parameters = Tab_EventCulling_parameters_displayed,
@@ -1766,7 +1769,7 @@ generated_widgets['EventCulling'] = create_module_tab(
 
 Tab_AnalysisMethods_parameters_displayed = []
 generated_widgets['AnalysisMethods'] = create_module_tab(
-	Tabs_Frames["Tab_AnalysisMethods"],
+	tabs_frames["Tab_AnalysisMethods"],
 	["Analysis Methods",
 	"Distance Functions"],
 	"AnalysisMethods",

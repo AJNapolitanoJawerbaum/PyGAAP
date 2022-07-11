@@ -31,7 +31,7 @@ def receive_info(
 
 def splash(pto):
 	loading_window = Tk()
-	loading_window.geometry("300x200")
+	loading_window.geometry("400x200")
 	loading_window.title("Loading")
 	#loading_window.attributes('-type', 'splash')
 	Label(text="Starting PyGAAP").pack(pady=(30,5))

@@ -34,12 +34,13 @@ class EventCulling(ABC):
 
 
 class EmptyEventCuller(EventCulling):
-	test_param1=2
-	test_param2=14
-	test_param3="op1"
 	_variable_options={"test_param1": {"options": list(range(2, 8)), "default": 0, "type": "OptionMenu"},
 					   "test_param2": {"options": list(range(10, 15)), "default": 4, "type": "OptionMenu"},
 					   "test_param3": {"options": ["op1", "op2"], "default": 0, "type": "OptionMenu"}}
+
+	test_param1 = _variable_options["test_param1"]["options"][_variable_options["test_param1"]["default"]]
+	test_param2 = _variable_options["test_param2"]["options"][_variable_options["test_param2"]["default"]]
+	test_param3 = _variable_options["test_param3"]["options"][_variable_options["test_param3"]["default"]]
 	
 	def process(self, procText):
 		pass

@@ -30,4 +30,7 @@ def readDocument(documentPath):
 	try:
 		return pathlib.Path(documentPath).read_text()
 	except UnicodeError:
-		return pathlib.Path(documentPath).read_text(encoding="UTF-8")
+		try:
+			return pathlib.Path(documentPath).read_text(encoding="UTF-8")
+		except UnicodeError:
+			return pathlib.Path(documentPath).read_text(encoding="ISO-8859-15")

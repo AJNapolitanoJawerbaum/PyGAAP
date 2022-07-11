@@ -73,12 +73,12 @@ class CentroidDriver(AnalysisMethod):
 		return "Computes one centroid per Author.\nCentroids are the average relative frequency of events over all documents provided.\ni=1 to n ΣfrequencyIn_i(event)."
 
 class CrossEntropy(AnalysisMethod):
-	mode="author"
 	_NoDistanceFunction_ = True
 	_histograms = None
 	_histogramsNp = None
 	_variable_options = {"mode": {"default": 0, "type": "OptionMenu", "options": ["author", "document"]}}
 	_multiprocessing_score = 1
+	mode = _variable_options["mode"]["options"][_variable_options["mode"]["default"]]
 
 	def train(self, knownDocuments):
 		if self.mode == "author":
@@ -125,8 +125,8 @@ class CrossEntropy(AnalysisMethod):
 
 class exampleExternalAM(AnalysisMethod):
 	_NoDistanceFunction_ = True
-	var = 1
 	_variable_options = {"var": {"default": 0, "type": "OptionMenu", "options": [1, 3, 5, 6, 10, 12]}}
+	var = _variable_options["var"]["options"][_variable_options["var"]["default"]]
 
 	def __init__(self):
 		self._module = external_modules["extra.modules.analysis_method_example"].analysis_method_example()
