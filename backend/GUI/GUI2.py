@@ -28,27 +28,27 @@ from sys import exc_info
 from sys import platform
 from json import load as json_load
 from os import listdir as ls
+from time import sleep
 
 # local modules
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
 import util.MultiprocessLoading as MultiprocessLoading
 from backend.Document import Document
+from backend.GUI import GUI_run_experiment
 from backend import CSVIO
 import Constants
 
-if __name__ == "__main__":
-	# closely coupled modules
-	from GUI_unified_tabs import *
-else:
-	from backend.GUI.GUI_unified_tabs import *
 
+# closely coupled modules
+from backend.GUI.GUI_unified_tabs import *
 
+import util.MultiprocessLoading as MultiprocessLoading
 
 
 def todofunc():
 	"""Place-holder function for not-yet implemented features."""
 	print("To-do function")
-	return None
+	return
 
 class PyGAAP_GUI:
 
@@ -70,7 +70,7 @@ class PyGAAP_GUI:
 	tabs_frames = dict()
 
 	known_authors: list = []
-	# self.known_authors list format:
+	# self.backend_API.known_authors list format:
 	#   [
 	#	   [author, [file-directory, file-directory]],
 	#	   [author, [file-directory, file directory]]
@@ -111,14 +111,14 @@ class PyGAAP_GUI:
 	Tab_RP_EventCulling_Listbox: Listbox = None
 	Tab_RP_AnalysisMethods_Listbox: ttk.Treeview = None
 
+	progress_window: Toplevel = None
+	error_window: Toplevel = None
+
 
 
 	def __init__(self):
 		# no internal error handling because fatal error.
-		if __name__ == "__main__":
-			params = json_load(f:=open("./gui_params.json", "r"))
-		else:
-			params = json_load(f:=open("./backend/GUI/gui_params.json", "r"))
+		params = json_load(f:=open("./backend/GUI/gui_params.json", "r"))
 		self.gui_params = params
 		self.gui_params["styles"]["JGAAP_blue"]
 		self.backend_API = None
@@ -137,7 +137,7 @@ class PyGAAP_GUI:
 			"find_description": self.find_description,
 			"check_DF_listbox": self.check_DF_listbox,
 		}
-		return None
+		return
 
 	def switch_tabs(self, notebook, mode, tabID = 0):
 		"""
@@ -154,50 +154,97 @@ class PyGAAP_GUI:
 				notebook.select(tabID)
 		return
 
-	def run_pre_processing(self, doc: Document, dump_queue = None):
-		"""
-		Run pre-processing on a single document:
-		Canonicizers, event drivers, event cullers.
-		"""
-		# doc: the document passed in.
-		# dump_queue: when multi-processing,
-		# the shared queue to temporarily store the documents.
+	def show_error_window(self, error_text:str, title="Error"):
+		self.error_window = None
+		self.error_window = Toplevel()
+		self.error_window.geometry(self.dpi_setting["dpi_about_page_geometry"])
+		self.error_window.title(title)
 
-		for c in self.backend_API.modulesInUse["Canonicizers"]:
-			c._global_parameters = self.backend_API.global_parameters
-			doc.text = c.process(doc.text)
+		Label(self.error_window, text=error_text).pack(padx=30, pady=30)
+		return
+
+	def run_experiment(self):
+		if GUI_debug >= 3: print("run_experiment()")
+
+		# names of modules in use
+		module_names = {
+		"canonicizers_names": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
+		"event_drivers_names": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
+		"event_cullers_names": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
+		"am_df_names": [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"]
+						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
+		}
+
+		progress_report_here, progress_report_there = Pipe(duplex=True)
+		self.results_queue = Queue()
+		experiment = GUI_run_experiment.Experiment(
+			self.backend_API, module_names, self.dpi_setting, progress_report_there, self.results_queue
+		)
+
+		MultiprocessLoading.process_window(
+			self.dpi_setting["dpi_process_window_geometry"],
+			"determinate",
+			progress_report_here,
+			starting_text="Processing",
+			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
+			end_run=self.display_results
+		)
+
+
+		self.experiment_process = Process(target=experiment.run_experiment)
+		self.experiment_process.start()
+
+		return
+
+
+	def display_results(self):
+		"""Displays results in new window"""
+		# show process results
+
+		results_text = self.results_queue.get()
+
+		if results_text.strip() == "":
+			print("no results")
+			return
+
+		self.status_update("")
+		self.results_window = Toplevel()
+		self.results_window.title("Results")
+		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
 		
-		for e in self.backend_API.modulesInUse["EventDrivers"]:
-			e._global_parameters = self.backend_API.global_parameters
-			doc.setEventSet(e.createEventSet(doc.text), append=True)
+		self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
+
 		
-		if len(self.backend_API.modulesInUse["EventCulling"]) != 0:
-			raise NotImplementedError
-			#?._global_parameters = backend_API.global_parameters
-		
-		if dump_queue != None:
-			dump_queue.put(doc)
-		else:
-			return doc
-	def run_experiment(self,
+		# create space to display results, release focus of process window.
+		results_display = Text(self.results_window)
+		results_display.pack(fill = BOTH, expand = True, side = LEFT)
+		results_display.insert(END, results_text)
+		#results_display.config(state = DISABLED)
+
+		results_scrollbar = Scrollbar(self.results_window,
+									width = self.dpi_setting["dpi_scrollbar_width"],
+									command = results_display.yview)
+		results_display.config(yscrollcommand = results_scrollbar.set)
+		results_scrollbar.pack(side = LEFT, fill = BOTH)
+		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
+		self.results_window.title(str(datetime.now()))
+
+		self.change_style(self.results_window)
+
+		return
+
+
+	def process_check(
+			self,
 			check_listboxes: list,
 			check_labels: list,
 			process_button: Button,
-			click: bool = False):
-
-		"""
-		Process all input files with the parameters in all tabs.
-		input: unknown authors, known authors, all listboxes.
-		"""
-
-		# check_listboxes:
-		#   list of listboxes that shouldn't be empty.
-		# check_labels:
-		#   list of labels whose text colors need to be updated upon checking the listboxes.
-		if GUI_debug >= 3: print("run_experiment(click = %s)" %(click))
+			# click: bool = False
+		):
+		if GUI_debug >= 3: print("process_check()")
 		all_set = True
 		# first check if the listboxes in check_listboxes are empty. If empty
-		process_button.config(state = NORMAL, text = "Process", )
+		process_button.config(state = NORMAL, text = "Process")
 		for lb_index in range(len(check_listboxes)):
 			try: size = len(check_listboxes[lb_index].get_children())
 			except AttributeError: size = check_listboxes[lb_index].size()
@@ -215,135 +262,8 @@ class PyGAAP_GUI:
 			else: # if all is ready
 				check_labels[lb_index].config(fg = "black", activeforeground = "black")
 		process_button.config(fg = "black")
-		if not all_set or click == False:
-			return None
+		return
 
-
-		unknown_docs = self.backend_API.unknown_docs
-
-		# LOADING DOCUMENTS
-		canonicizers_names = list(self.Tab_RP_Canonicizers_Listbox.get(0, END))
-		event_drivers_names = list(self.Tab_RP_EventDrivers_Listbox.get(0, END))
-		event_cullers_names = list(self.Tab_RP_EventCulling_Listbox.get(0, END))
-		am_df_names = [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"]
-						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
-
-		print("names", canonicizers_names, event_drivers_names, event_cullers_names, am_df_names)
-
-
-
-		# gathering the known (corpus) documents
-		# only read documents here.
-		docs = []
-		for author in self.known_authors:
-			for authorDoc in author[1]:
-				docs.append(Document(author[0],
-					authorDoc.split("/")[-1],
-					readDocument(authorDoc), authorDoc))
-
-		for d in self.backend_API.unknown_docs:
-			d.text = readDocument(d.filepath)
-		docs += self.backend_API.unknown_docs
-
-		if GUI_debug >= 3:
-			print("Loading parameters")
-			print("docs: ", docs)
-		
-
-		self.backend_API.documents = docs
-		if GUI_debug >= 2: print(self.backend_API.modulesInUse)
-
-		if len(self.backend_API.documents) < self.gui_params["multiprocessing_limit_docs"]:
-			# only use multi-processing when the number of docs is large.
-			if GUI_debug >= 2: print("single-threading.")
-			processed_docs = []
-			for doc in self.backend_API.documents:
-				processed_docs.append(self.run_pre_processing(doc))
-			self.backend_API.documents = processed_docs
-
-		else:
-			# TODO 1 priority high:
-			# implement multi-processing for pre-processing.
-			raise NotImplementedError
-			if GUI_debug >= 2: print("multi-threading")
-			process_list = []
-			dump_queue = Queue()
-			for doc in self.backend_API.documents:
-				process_list.append(Process(target = run_pre_processing(doc, dump_queue)))
-				process_list[-1].start()
-			for proc in process_list:
-				proc.join()
-			self.backend_API.documents = []
-			while not dump_queue.empty():
-				doc_get = dump_queue.get()
-				self.backend_API.documents.append(doc_get)
-
-		# RUN ANALYSIS ON UNKNOWN DOCS
-		unknown_docs = [d for d in deepcopy(self.backend_API.documents) if (d.author == None or d.author == "")]
-		known_docs = [d for d in deepcopy(self.backend_API.documents) if (d.author != None and d.author != "")]
-		
-		# TODO 1 priority high:
-		# implement multi-processing for analysis methods.
-		# if $score < multiprocessing_limit_analysis:
-			
-		results = []
-		if GUI_debug >= 3: print("Running analysis methods")
-		for am_df_index in range(len(self.backend_API.modulesInUse["AnalysisMethods"])):
-			am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
-						self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
-			am_df_pair[0]._global_parameters = self.backend_API.global_parameters
-			if am_df_pair[1] != "NA":
-				am_df_pair[1]._global_parameters = self.backend_API.global_parameters
-
-			am_df_pair[0].setDistanceFunction(am_df_pair[1])
-			
-			# for each method: first train models on known docs
-			am_df_pair[0].train(known_docs)
-			# then for each unknown document, analyze and output results
-			
-			am_df = list(self.Tab_RP_AnalysisMethods_Listbox.get_children())
-			am_df = [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"] for j in am_df]
-			for d in unknown_docs:
-				doc_result = am_df_pair[0].analyze(d)
-				formatted_results = \
-					self.backend_API.prettyFormatResults(canonicizers_names,
-													event_drivers_names,
-													am_df_names[am_df_index][0],
-													am_df_names[am_df_index][1],
-													d,
-													doc_result)
-				results.append(formatted_results)
-		
-		results_text = ""
-		for r in results:
-			results_text += str(r + "\n")
-		
-		# show process results
-		
-		self.results_window = Toplevel()
-		self.results_window.title("Results")
-		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
-		
-		self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
-
-
-		# create space to display results, release focus of process window.
-		results_display = Text(self.results_window)
-		results_display.pack(fill = BOTH, expand = True, side = LEFT)
-		results_display.insert(END, results_text)
-		#results_display.config(state = DISABLED)
-
-		results_scrollbar = Scrollbar(self.results_window,
-									width = self.dpi_setting["dpi_scrollbar_width"],
-									command = results_display.yview)
-		results_display.config(yscrollcommand = results_scrollbar.set)
-		results_scrollbar.pack(side = LEFT, fill = BOTH)
-		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
-		self.results_window.title(str(datetime.now()))
-
-		self.change_style(self.results_window)
-
-		return None
 
 	def status_update(self, displayed_text="", ifsame=None):
 		"""
@@ -365,7 +285,7 @@ class PyGAAP_GUI:
 		else: # only change label if the text is the same as "ifsame"
 			if self.statusbar_label['text'] == ifsame:
 				self.statusbar_label.config(text = displayed_text)
-		return None
+		return
 
 
 	def notepad(self):
@@ -388,7 +308,7 @@ class PyGAAP_GUI:
 			self.notepad_window_save_button.pack(pady = (0, 12), padx = 100, fill = BOTH)
 			self.change_style(self.notepad_window)
 			self.notepad_window.mainloop()
-		return None
+		return
 
 	def notepad_Save(self, text, window):
 		"""
@@ -398,38 +318,38 @@ class PyGAAP_GUI:
 		self.notes_content = text
 		window.destroy()
 		if GUI_debug >= 3: print("notepad_Save()")
-		return None
+		return
 
 	def authors_list_updater(self, listbox):
-		"""This updates the ListBox from the self.known_authors python-list"""
+		"""This updates the ListBox from the self.backend_API.known_authors python-list"""
 		listbox.delete(0, END)
 		if GUI_debug >= 3: print("authors_list_updater()")
 		self.known_authors_list = []
-		for author_list_index in range(len(self.known_authors)):
-			listbox.insert(END, self.known_authors[author_list_index][0])
+		for author_list_index in range(len(self.backend_API.known_authors)):
+			listbox.insert(END, self.backend_API.known_authors[author_list_index][0])
 			listbox.itemconfig(END, 
 				background = self.gui_params["styles"][self.style_choice]["accent_color_light"],
 				selectbackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"])
 			self.known_authors_list += [author_list_index]
-			for document in self.known_authors[author_list_index][1]:
+			for document in self.backend_API.known_authors[author_list_index][1]:
 				listbox.insert(END, document)#Author's documents
 				listbox.itemconfig(END, background = "gray90", selectbackground = "gray77")
 				self.known_authors_list += [-1]
-		return None
+		return
 
 
 
 	def author_save(self, listbox: Listbox, author, documents_list, mode, window=None):
 		"""
-		This saves author when adding/editing to the self.known_authors list.
+		This saves author when adding/editing to the self.backend_API.known_authors list.
 		Then uses authors_list_updater to update the listbox
 		"""
 
 		#Listbox: the authors listbox.
 		#author: 
-		#	   "ADD MODE": the author's name entered in authorsList window
+		#	   "ADD MODE": the author's name entered in edit_known_authors window
 		#	   "EDIT MODE": [original author name, changed author name]
-		#documents_list: list of documents entered in the listbox in the authorsList window
+		#documents_list: list of documents entered in the listbox in the edit_known_authors window
 		#mode: add or edit
 
 		if GUI_debug >= 3:
@@ -440,60 +360,60 @@ class PyGAAP_GUI:
 					and (documents_list != None \
 					and len(documents_list) != 0):  
 				author_index = 0
-				while author_index < len(self.known_authors):
+				while author_index < len(self.backend_API.known_authors):
 					#check if author already exists
-					if self.known_authors[author_index][0] == author:
+					if self.backend_API.known_authors[author_index][0] == author:
 						#when author is already in the list, merge.
-						self.known_authors[author_index][1] = \
-							self.known_authors[author_index][1] \
+						self.backend_API.known_authors[author_index][1] = \
+							self.backend_API.known_authors[author_index][1] \
 							+ list([doc for doc in documents_list
-								if doc not in self.known_authors[author_index][1]])
+								if doc not in self.backend_API.known_authors[author_index][1]])
 						self.authors_list_updater(listbox)
 						if window != None: window.destroy()
-						return None
+						return
 					author_index += 1
-				self.known_authors += [[author, list(\
+				self.backend_API.known_authors += [[author, list(\
 									[file for file in documents_list if type(file) == str]
 									)]]
 									#no existing author found, add.
 				self.authors_list_updater(listbox)
 			if window != None: window.destroy()
-			return None
+			return
 		elif mode == 'edit':
 			if (author[1] != None \
 					and author[1].strip() != "") \
 					and (documents_list != None \
 					and len(documents_list) != 0):
 				author_index = 0
-				while author_index<len(self.known_authors):
-					if self.known_authors[author_index][0] == author[0]:
-						self.known_authors[author_index] = [author[1], documents_list]
+				while author_index<len(self.backend_API.known_authors):
+					if self.backend_API.known_authors[author_index][0] == author[0]:
+						self.backend_API.known_authors[author_index] = [author[1], documents_list]
 						self.authors_list_updater(listbox)
 						if window != None: window.destroy()
-						return None
+						return
 					author_index += 1
-				print("Bug: editing author:"
+				print("Bug: editing author: "
 					+ "list of authors and documents changed unexpectedly when saving")
-				return None
+				return
 		else:
 			print("Bug: unknown parameter passed to 'author_save' function: ",
 				str(mode))
 		if window != None: window.destroy()
-		return None
+		return
 
 
 
 
 
-	def authorsList(self, authorList, mode):
+	def edit_known_authors(self, authorList, mode):
 		"""Add, edit or remove authors
-		This updates the global self.known_authors list.
-		This opens a window to add/edit authors; does not open a window to remove authors
+		This opens a window to add/edit authors; does not open a window to remove authors.
+			calls author_save (which calls authorListUpdater) when adding/editing author,
+		This updates the global self.backend_API.known_authors list.
 		"""
 		#authorList: the listbox that displays known authors in the topwindow.
-		#authorList calls author_save (which calls authorListUpdater) when adding/editing author
-		#
-		if GUI_debug >= 3: print("authorsList(mode = %s)"%(mode))
+
+		if GUI_debug >= 3: print("edit_known_authors(mode = %s)"%(mode))
 		if mode == "add":
 			title = "Add Author"
 		elif mode == 'edit':
@@ -504,16 +424,16 @@ class PyGAAP_GUI:
 				if self.known_authors_list[selected] == -1:
 					self.status_update("Select the author instead of the document.")
 					print("edit author: select the author instead of the document")
-					return None
+					return
 				else:
 					author_index = self.known_authors_list[selected] #gets the index in the 2D list
-					insert_author = self.known_authors[author_index][0] #original author name
-					insert_docs = self.known_authors[author_index][1] #original list of documents
+					insert_author = self.backend_API.known_authors[author_index][0] #original author name
+					insert_docs = self.backend_API.known_authors[author_index][1] #original list of documents
 			except TclError:
 				self.status_update("No author selected.")
 				if GUI_debug > 0:
 					print("edit author: no author selected")
-				return None
+				return
 
 		elif mode == "remove":#remove author does not open a window
 			try:
@@ -522,45 +442,45 @@ class PyGAAP_GUI:
 				if self.known_authors_list[selected] == -1:
 					self.status_update("Select the author instead of the document.")
 					print("remove author: select the author instead of the document")
-					return None
+					return
 				else:
 					author_index = self.known_authors_list[selected]
-					#This gets the index in self.known_authors nested list
-					if author_index >= len(self.known_authors)-1:
-						self.known_authors = self.known_authors[:author_index]
+					#This gets the index in self.backend_API.known_authors nested list
+					if author_index >= len(self.backend_API.known_authors)-1:
+						self.backend_API.known_authors = self.backend_API.known_authors[:author_index]
 					else:
-						self.known_authors = self.known_authors[:author_index] \
-							+ self.known_authors[author_index + 1:]
+						self.backend_API.known_authors = self.backend_API.known_authors[:author_index] \
+							+ self.backend_API.known_authors[author_index + 1:]
 					self.authors_list_updater(authorList)
 
 			except (TclError, IndexError):
 				self.status_update("No author selected.")
 				if GUI_debug > 0:
 					print("remove author: nothing selected")
-				return None
-			return None
+				return
+			return
 		elif mode == "clear":
 			authorList.delete(0, END)
-			self.known_authors = []
+			self.backend_API.known_authors = []
 			self.known_authors_list = []
 			return
 		else:
 			assert mode == "add" or mode == "remove" or mode == "edit", \
-				"bug: Internal function 'authorsList' has an unknown mode parameter " \
+				"bug: Internal function 'edit_known_authors' has an unknown mode parameter " \
 				+ str(mode)
 			
-			return None
+			return
 
 		try:
 			self.author_window.lift()
-			return None
+			return
 		except (NameError, AttributeError, TclError):
 			pass
 		
 		self.author_window = Toplevel()
 		self.author_window.grab_set()#Disables main window when the add/edit author window appears
 		self.author_window.title(title)
-		self.author_window.geometry(self.dpi_setting["dpi_self.author_window_geometry"])
+		self.author_window.geometry(self.dpi_setting["dpi_author_window_geometry"])
 		
 		self.author_window.rowconfigure(1, weight = 1)
 		self.author_window.columnconfigure(1, weight = 1)
@@ -587,7 +507,7 @@ class PyGAAP_GUI:
 			command = lambda:self.file_add_remove("Add Document For Author", author_listbox, False, "add", self.author_window))
 		author_add_doc_button.grid(row = 0, column = 0)
 		author_remove_doc_button = Button(author_buttons_frame, text = "Remove Document",\
-			command = lambda:self.select_modules(None, [author_listbox], 'remove'))
+			command = lambda:self.file_add_remove(None, author_listbox, False, 'remove'))
 		author_remove_doc_button.grid(row = 0, column = 1)
 		author_buttons_frame.grid(row = 2, column = 1, sticky = 'NW')
 
@@ -617,13 +537,13 @@ class PyGAAP_GUI:
 		self.change_style(self.author_window)
 
 		self.author_window.mainloop()
-		return None
+		return
 
 	def load_aaac(self, problem: str):
 		"""Loads AAAC problems"""
-		# problem: character (A-M for the built-in test problems)
+		# problem: "problem" + capital character.
 		corpus_list = CSVIO.readCorpusCSV(self.gui_params["aaac_problems_path"]+'%s/load%s.csv' % (problem, problem[-1]))
-		if GUI_debug >= 3: print(corpus_list[:5])
+		if GUI_debug >= 3: print("problem %s" % problem)
 		unknown = [Document(x[0], x[2], "", x[1]) for x in corpus_list if x[0] == ""]
 		known = [Document(x[0], x[2], "", x[1]) for x in corpus_list if x[0] != ""] + [Document("", "", "", "")]
 
@@ -631,7 +551,7 @@ class PyGAAP_GUI:
 		for doc in unknown:
 			self._edit_unknown_docs("autoadd", add_list=unknown)
 
-		self.authorsList(self.Tab_Documents_KnownAuthors_listbox, "clear")
+		self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, "clear")
 
 		# add known docs
 		this_author = ""
@@ -743,12 +663,12 @@ class PyGAAP_GUI:
 		Tab_RP_Process_Button.bind("<Map>",
 			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
 			labels = [Tab_RP_EventDrivers_Button, Tab_RP_AnalysisMethods_Button],
-			button = Tab_RP_Process_Button:self.run_experiment(lb, labels, button))
+			#button = Tab_RP_Process_Button:self.run_experiment(lb, labels, button)
+			button = Tab_RP_Process_Button:self.process_check(lb, labels, button)
+		)
 		
 		Tab_RP_Process_Button.config(\
-			command = lambda lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_AnalysisMethods_Listbox],\
-				labels = [Tab_RP_EventDrivers_Button, Tab_RP_AnalysisMethods_Button],\
-					button = Tab_RP_Process_Button:self.run_experiment(lb, labels, button, True))
+			command = lambda:self.run_experiment())
 
 
 	def _documents_tab(self):
@@ -870,16 +790,16 @@ class PyGAAP_GUI:
 		Tab_Documents_knownauth_buttons.grid(row = 9, column = 0, sticky = "W")
 		Tab_Documents_KnownAuthors_AddAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Add Author", width = "15",
-			command = lambda:self.authorsList(self.Tab_Documents_KnownAuthors_listbox, 'add'))
+			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, 'add'))
 		Tab_Documents_KnownAuthors_EditAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Edit Author", width = "15",
-			command = lambda:self.authorsList(self.Tab_Documents_KnownAuthors_listbox, 'edit'))
+			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, 'edit'))
 		Tab_Documents_KnownAuthors_RmvAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Remove Author", width = "15",
-			command = lambda:self.authorsList(self.Tab_Documents_KnownAuthors_listbox, "remove"))
+			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, "remove"))
 		Tab_Documents_KnownAuthors_ClrAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Clear All", width = "15",
-			command = lambda:self.authorsList(self.Tab_Documents_KnownAuthors_listbox, "clear"))
+			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, "clear"))
 
 		Tab_Documents_KnownAuthors_AddAuth_Button.grid(row=1, column=1, sticky="W")
 		Tab_Documents_KnownAuthors_EditAuth_Button.grid(row=1, column=2, sticky="W")
@@ -887,7 +807,11 @@ class PyGAAP_GUI:
 		Tab_Documents_KnownAuthors_ClrAuth_Button.grid(row=1, column=4, sticky="W")
 
 	def _unified_tabs(self):
-				
+		"""
+		This is different from backend.GUI.GUI_unified_tabs.
+		This calls the GUI_unified_tabs with parameters for each tab and saves the widget objects
+		in self.generated_widgets.
+		"""
 		self.generated_widgets = dict()
 
 		CanonicizerFormat = StringVar()
@@ -980,7 +904,7 @@ class PyGAAP_GUI:
 		if GUI_debug >= 3: print("displayAbout()")
 		try:
 			self.about_page.lift()
-			return None
+			return
 		except (NameError, AttributeError, TclError):
 			pass
 		self.about_page = Toplevel()
@@ -1029,7 +953,7 @@ class PyGAAP_GUI:
 						if GUI_debug > 0:
 							print("Add document: file already in list")
 						lift_window.lift()
-						return None
+						return
 				if filename != None and filename != "" and len(filename) > 0:
 					for file in filename:
 						listbox_operate.insert(END, file)
@@ -1068,9 +992,13 @@ class PyGAAP_GUI:
 		else: return filename
 
 	def _docs_to_string_list(self):
+		# return {
+		# 	"unknown": [str(doc.filepath) for doc in self.backend_API.unknown_docs],
+		# 	"known": [str(doc.filepath) for doc in self.backend_API.known_authors]
+		# }
 		return {
 			"unknown": [str(doc.filepath) for doc in self.backend_API.unknown_docs],
-			"known": [str(doc.filepath) for doc in self.backend_API.known_docs]
+			"known": [doc for auth in self.backend_API.known_authors for doc in auth]
 		}
 
 	def _edit_unknown_docs(self, mode, **options):
@@ -1161,9 +1089,7 @@ class PyGAAP_GUI:
 			
 			error_text = "An error occurred while loading the modules:\n\n"
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
-			error_text += "\n\nDevelopers: you can reload the modules by going to the "\
-				+ "Canonicizers tab, pressing the right ctrl key, and clicking the "\
-				+ "\"Reload all modules\" button."
+			error_text += "\n\nDevelopers: Reload modules by going to \"developers\" -> \"Reload all modules\""
 			error_text_field.insert(END, error_text)
 			error_window.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
@@ -1199,7 +1125,7 @@ class PyGAAP_GUI:
 			self.backend_API.modulesInUse[module_type].clear()
 			if module_type == "AnalysisMethods":
 				self.backend_API.modulesInUse["DistanceFunctions"].clear()
-			return None
+			return
 
 		elif function == "remove":
 			if GUI_debug > 1: print("select_modules: remove")
@@ -1218,13 +1144,13 @@ class PyGAAP_GUI:
 			except (ValueError, AssertionError, TclError):
 				if GUI_debug > 0: print("remove from list: nothing selected or empty list.")
 				self.status_update("Nothing selected.")
-				return None
+				return
 			if type(Listbox_operate[0]) == Listbox:
 					self.backend_API.modulesInUse[module_type].pop(removed[0])
 			else:
 				self.backend_API.modulesInUse[module_type].pop(removed_index)
 				self.backend_API.modulesInUse["DistanceFunctions"].pop(removed_index)
-			return None
+			return
 
 		elif function == "add":
 			if GUI_debug > 1: print("select_modules: add")
@@ -1263,7 +1189,13 @@ class PyGAAP_GUI:
 			except TclError:
 				self.status_update("Nothing selected or missing selection.")
 				if GUI_debug > 0: print("add to list: nothing selected")
-				return None
+				return
+			except TypeError:
+				self.show_error_window(
+					"Something went wrong while adding the module.\n\n"
+					+ "\n\n".join([str(x) for x in exc_info()[:2]])
+				)
+				return
 
 			for listbox_member in Listbox_operate:
 				if type(Listbox_operate[0]) == Listbox:
@@ -1278,7 +1210,7 @@ class PyGAAP_GUI:
 			self.status_update("Bug: all escaped: 'select_modules(function = %s).'"%(function))
 			raise ValueError("Bug: all escaped: 'select_modules(function = %s).'"%(function))
 
-		return None
+		return
 
 
 	def check_DF_listbox(self, lbAv, lbOp: Listbox):
@@ -1331,13 +1263,13 @@ class PyGAAP_GUI:
 			this_df_module_name = listbox.item(listbox.selection())["values"][1]
 			# this is the way to retrieve treeview selection names
 			
-		else: return None
+		else: return
 		
 		for params in displayed_params:
 			params.destroy()
 		displayed_params.clear()
 		if clear == True:
-			return None
+			return
 		
 		
 		# currently only support OptionMenu variables
@@ -1428,7 +1360,7 @@ class PyGAAP_GUI:
 
 		param_frame.columnconfigure(0, weight = 1)
 		param_frame.columnconfigure(1, weight = 3)
-		return None
+		return
 
 	def find_description(self,
 						desc: Text,
@@ -1436,9 +1368,6 @@ class PyGAAP_GUI:
 						API_dict: dict):
 
 		"""find description of a module."""
-
-		# TODO 3 low priority:
-		#   retrieve desc from individual instances instead of from the API dict.
 
 		# desc: the tkinter Text object to display the description.
 		# listbox: the Listbox or Treeview object to get the selection from
@@ -1474,7 +1403,7 @@ class PyGAAP_GUI:
 		desc.delete(1.0, END)
 		desc.insert(END, description_string)
 		desc.config(state = DISABLED)
-		return None
+		return
 
 	def set_parameters(self, stringvar, module, variable_name):
 		"""sets parameters whenever the widget is touched."""
@@ -1484,7 +1413,7 @@ class PyGAAP_GUI:
 
 		value_to = stringvar.get()
 
-		try:
+		try: # to identify numbers
 			value_to = float(value_to)
 			# if value is a number, try converting to a number.
 			if abs(int(value_to) - value_to) < 0.0000001:
@@ -1492,7 +1421,7 @@ class PyGAAP_GUI:
 		except ValueError:
 			pass
 		setattr(module, variable_name, value_to)
-		return None
+		return
 
 	def set_API_global_parameters(self, parameter, stringvar):
 		"""Wrapper for backend_API's global parameter setter"""
@@ -1501,7 +1430,7 @@ class PyGAAP_GUI:
 
 
 	def gui(self):
-
+		"""This arranges the elements of the GUI. Calls helpers for some tasks."""
 		#create window
 		topwindow = Tk()
 		self.topwindow = topwindow
@@ -1596,7 +1525,8 @@ class PyGAAP_GUI:
 		menu_AAAC_problems = Menu(menu_file, tearoff = 0)
 		
 		for problem in ls(self.gui_params["aaac_problems_path"]):
-			menu_AAAC_problems.add_command(label="Problem "+problem[-1], command=lambda p=problem:self.load_aaac(p))
+			if "problem" in problem and problem[7] in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+				menu_AAAC_problems.add_command(label="Problem "+problem[-1], command=lambda p=problem:self.load_aaac(p))
 
 		menu_file.add_cascade(
 			label = "AAAC Problems", menu = menu_AAAC_problems,
@@ -1623,6 +1553,7 @@ class PyGAAP_GUI:
 
 		menu_dev = Menu(menubar, tearoff=0)
 		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
+		menu_dev.add_command(label="Show process content", command=self.show_process_content)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
 
 		topwindow.config(menu = menubar)
@@ -1652,10 +1583,11 @@ class PyGAAP_GUI:
 		self.tabs.add(self.tabs_frames["Tab_AnalysisMethods"], text = "Analysis Methods")
 		self.tabs.add(self.tabs_frames["Tab_ReviewProcess"], text = "Review & Process")
 
-		# add review & process tab.
+		# add various tabs
 		self._review_process_tab(self.tabs)
 		self._documents_tab()
 		self._unified_tabs()
+
 		self._load_modules_to_GUI(True)
 		self._bottom_frame()
 		self.change_style(self.topwindow)
@@ -1663,7 +1595,7 @@ class PyGAAP_GUI:
 	def change_style(self, parent_widget):
 		"""This changes the colors of the widgets."""
 		if GUI_debug >= 4: print("change_style(parent_widget = %s)"%(parent_widget))
-		if len(parent_widget.winfo_children()) == 0: return None
+		if len(parent_widget.winfo_children()) == 0: return
 		for widget in parent_widget.winfo_children():
 			if isinstance(widget, Button) and "excludestyle" not in widget.__dict__:
 				widget.configure(
@@ -1705,6 +1637,11 @@ class PyGAAP_GUI:
 		self.change_style(self.topwindow)
 
 	def reload_modules(self):
+		"""
+		This removes the backend modules (+external modules) and then re-imports them.
+		!!! It does not reload the libraries that the modules import.
+		e.g. SpaCy, NLTK are NOT reloaded.
+		"""
 		for module_type in [
 			"generics.AnalysisMethod", "generics.Canonicizer", "generics.DistanceFunction",
 			"generics.EventCulling", "generics.EventDriver"
@@ -1713,11 +1650,25 @@ class PyGAAP_GUI:
 				sys_modules.pop(external_module)
 			sys_modules.pop(module_type)
 		sys_modules.pop("backend.API")
+		sys_modules.pop("util.MultiprocessLoading")
 
+		import util.MultiprocessLoading as MultiprocessLoading
 		from backend.API import API
-		backend_API = API("place-holder")
+		self.backend_API = API("place-holder")
 		self._load_modules_to_GUI()
 
+	def show_process_content(self):
+		print("self.backend_API.unknown_docs\n" + str(self.backend_API.unknown_docs))
+		print("self.backend_API.known_authors\n" + str(self.backend_API.known_authors))
+		print("modules\n" + str(self.backend_API.modulesInUse))
+		return
+
+
+	def test_run(self):
+		"""This loads everything but without starting the mainloop or splash screen."""
+		from backend.API import API
+		self.backend_API = API("place-holder")
+		self.gui()
 
 	def run(self):
 		# open a loading window so the app doesn't appear frozen.
@@ -1735,7 +1686,9 @@ class PyGAAP_GUI:
 		###############################
 		pipe_from.send("Starting GUI")
 		self.gui()
-		pipe_from.send(0)
+		pipe_from.send(-1)
+		pipe_from.close()
+		self.load_aaac("problemM")
 		self.topwindow.mainloop()
 
 

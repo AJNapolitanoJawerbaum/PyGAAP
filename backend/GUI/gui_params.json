@@ -28,7 +28,7 @@
 			"dpi_about_page_geometry": "600x300",
 			"dpi_author_window_geometry": "550x340",
 			"dpi_treeview_entry_height": 1,
-			"dpi_process_window_geometry_finished": "700x900",
+			"dpi_process_window_geometry_finished": "1200x900",
 			"dpi_description_box_border": 3,
 			"Treeview.rowheight": 20
 		},
@@ -42,7 +42,7 @@
 			"dpi_about_page_geometry": "1200x600",
 			"dpi_author_window_geometry": "1170x590",
 			"dpi_treeview_entry_height": 2,
-			"dpi_process_window_geometry_finished": "1400x1100",
+			"dpi_process_window_geometry_finished": "1900x1100",
 			"dpi_description_box_border": 5,
 			"Treeview.rowheight": 35
 		}

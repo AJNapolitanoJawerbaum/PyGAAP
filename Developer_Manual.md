@@ -1,10 +1,12 @@
 PyGAAP is the Python port of JGAAP, Java Graphical Authorship Attribution Program by Patrick Juola et al.\
 See https://evllabs.github.io/JGAAP/
 
+```Updated: 2022.07.14```
+
 # PyGAAP Developer Manual
 
 # Table of contents
-1. [Key differences from JGAAP](#key_differences)
+1. [Differences from JGAAP](#differences)
 2. [Widget structures](#structures)
    1. [Outline of tkinter widgets](#Outline_of_tkinter_widgets)
    2. [Function Calls](#nested_funcs)
@@ -14,7 +16,7 @@ See https://evllabs.github.io/JGAAP/
    2. [Class functions](#class_functions)
    3. [Reload modules while PyGAAP is running](#live_reload)
 
-# Key differences from JGAAP <a name="key-differences"></a>
+# Differences from JGAAP <a name="differences"></a>
 ## Module parameters
 1. Unlike JGAAP, PyGAAP does not (currently) use dedicated classes for module parameters. See [Class variables](#class_variables).
 
@@ -75,7 +77,7 @@ Notepad()
 ├── -# NotepadWindow_SaveButton
    ├── -NotepadWindow_SaveButton -> Notepad_Save(text)
 
-authorsList(.., mode)                                 #called when a button in [Tab_Documents_knownauth_buttons] is pressed. The mode distinguishes the buttons.
+edit_known_authors(.., mode)                            #called when a button in [Tab_Documents_knownauth_buttons] is pressed. The mode distinguishes the buttons.
 ├── -# AuthorAddDocButton
 │    ├── -addFile()                                     # opens OS's file browser
 |
@@ -94,12 +96,13 @@ authorsList(.., mode)                                 #called when a button in [
 
 
 # Adding a new module <a name="new_mod"></a>
-Each module is a class in or imported to the file containing modules of the same type. These types are canonicizers (```Canonicizer.py```), event drivers (```EventDriver.py```), event cullers (```EventCulling.py```), analysis methods (```AnalysisMethod.py```), and distance functions (```DistanceFunction.py```). Add package dependencies and their version numbers to ```./requirements.txt```, if applicable.
+Each module is a class in or imported to the file containing modules of the same type. These types are canonicizers (```Canonicizer.py```), event drivers (```EventDriver.py```), event cullers (```EventCulling.py```), analysis methods (```AnalysisMethod.py```), and distance functions (```DistanceFunction.py```). If a module is not in one of those py files (i.e. imported into them), it is an "external module". For the purpose of this manual, external modules do not include libraries or files not directly called by the API (e.g. sklearn).
+Add package dependencies and their version numbers to ```./requirements.txt```, if applicable.
 
 ## <span style="color:#aaeeff">Class variables</span> <a name="class_variables"></a>
 Class variables are declared within the class definition.
 
-### <span style="color:#aaeeff">User parameters for Event Drivers, Event Culling and Analysis Methods
+### <span style="color:#aaeeff">User parameters
 Each user parameter is a class variable exposed to the GUI. These variables must also have corresponding entries in ```_variable_options```, and their names cannot begin with a "```_```".
 Conversely, to hide a class variable from the GUI, prefix the name with a "```_```".
 
@@ -110,8 +113,8 @@ Example:
 
 
 ### <span style="color:#aaeeff">Class variables for Analysis Methods
-- ```_NoDistanceFunction_``` (boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's okay to omit this variable if it would be set to ```False```.
-- ```_multiprocessing_score``` (integer) the "time-consumingness" of an analysis method. Default is 1 (or if omitted). The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long.
+- ```_NoDistanceFunction_``` (boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's ```False``` by default or if omitted.
+- ```_multiprocessing_score``` (integer, *not yet implemented*) the "time-consumingness" of an analysis method. It's 1 by default or if omitted. The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long.
 
 ## <span style="color:#aaeeff"> Class initialization</span> <a name="class_init"></a>
 The `__init__()` method for module classes contains initialization for required parameters. These are handled in the abstract (base) class at the top of the generic module files (`~/generics/...`). If a separate init method is needed for a module, the init function for the abstract class should be called as well.
@@ -138,9 +141,10 @@ Functions by types of module:
 
 ## <span style="color:#aaeeff"> Reload modules while PyGAAP is running</span> <a name="live_reload"></a>
 
-To reload all modules while PyGAAP is running, switch to the ```Canonicizers``` tab, press the **right ctrl key**, and click ```Reload all modules``` that appears on the right.\
+To reload all modules while PyGAAP is running, go to "Developer" $\rightarrow$ "Reload all modules".\
 There will be a confirmation in the status bar or an error message window.
-> ❗ Reloading will remove all selected modules.
+> ❗ Reloading will remove all selected modules.\
+> ❗ This does not reload libraries that the modules may import, e.g. SpaCy.
 
 
 # Abbreviations, Initialisms, and Acronyms

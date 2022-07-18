@@ -1,8 +1,4 @@
-from generics.Canonicizer import Canonicizer
-from generics.EventCulling import EventCulling
-from generics.EventDriver import EventDriver
-from generics.AnalysisMethod import AnalysisMethod
-from generics.DistanceFunction import DistanceFunction
+
 
 # import spacy
 
@@ -14,7 +10,6 @@ class API:
 	distanceFunctions = dict()
 	eventCulling = dict()
 	documents = []
-	test = 3
 
 	moduleTypeDict = {
 		# "canonicizers": canonicizers,
@@ -39,7 +34,7 @@ class API:
 	# these are lists of modules (and their params) added to the processing queue.
 	# lists may contain multiple instances of the same module.
 	# ! This currently only works for the GUI.
-	modulesInUse={
+	modulesInUse = {
 		"Canonicizers": [],
 		"EventDrivers": [],
 		"EventCulling": [],
@@ -57,11 +52,19 @@ class API:
 	languages_available = ["English", "Arabic (ISO-8859-6)", "Chinese (GB2123)"]
 	default_language = 0
 
-	known_docs = [] # currently unused because known_docs is implemented in the GUI2 side.
-	unknown_docs: list = [] # list of "Documents" (backend.Document)
+	known_authors: list = [] # list used in GUI2 to keep track of known documents. LIST OF STRINGS
+	unknown_docs: list = [] # list of unknown documents "Documents" (backend.Document). LIST OF DOCUMENTS
 
-	
+
 	def __init__(self, documents):
+
+		# delay importing modules to creation of API instance
+		from generics.Canonicizer import Canonicizer
+		from generics.EventCulling import EventCulling
+		from generics.EventDriver import EventDriver
+		from generics.AnalysisMethod import AnalysisMethod
+		from generics.DistanceFunction import DistanceFunction
+
 		'''Build dictionaries of all the different parameters we can choose from.'''
 		# Populate dictionary of canonicizers.
 		for cls in Canonicizer.__subclasses__():

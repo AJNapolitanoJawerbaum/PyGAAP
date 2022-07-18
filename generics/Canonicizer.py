@@ -138,6 +138,9 @@ class CangjieConvert(Canonicizer):
 	Version = _variable_options["Version"]["options"][_variable_options["Version"]["default"]]
 
 	def __init__(self):
+		Language = self._variable_options["Language"]["options"][self._variable_options["Language"]["default"]]
+		Version = self._variable_options["Version"]["options"][self._variable_options["Version"]["default"]]
+
 		tableFilename = "./extra/canonicizer_CangjieConverter/CangjieConvertTable.txt"
 		try:
 			lookupTableFile = open(tableFilename)
@@ -227,3 +230,23 @@ class CangjieConvert(Canonicizer):
 	# 		]
 	# 		lemmatized = " ".join(lem)
 	# 		return lemmatized
+
+class Nothing(Canonicizer):
+	
+	Segment = 10
+
+	_variable_options = {
+		"Segment": {
+			"options": ["10", "50", "full"],
+			"type": "OptionMenu",
+			"default": 0
+		}
+	}
+	def displayDescription():
+		return "Prints received file to terminal"
+	
+	def displayName():
+		return "_Nothing"
+
+	def process(self, text):
+		print(text)

@@ -1023,7 +1023,7 @@ def authorsList(authorList, mode):
 		command = lambda:file_add_remove("Add Document For Author", author_listbox, False, "add", author_window))
 	author_add_doc_button.grid(row = 0, column = 0)
 	author_remove_doc_button = Button(author_buttons_frame, text = "Remove Document",\
-		command = lambda:select_modules(None, [author_listbox], 'remove'))
+		command = lambda:file_add_remove(None, author_listbox, False, 'remove'))
 	author_remove_doc_button.grid(row = 0, column = 1)
 	author_buttons_frame.grid(row = 2, column = 1, sticky = 'NW')
 
@@ -1949,7 +1949,7 @@ if platform != "win32":
 	pass
 	#p.join()
 pipe_from.send("Starting GUI")
-pipe_from.send(0)
+pipe_from.send(-1)
 
 #starts app
 topwindow.mainloop()
