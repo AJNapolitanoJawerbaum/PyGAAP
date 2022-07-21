@@ -14,6 +14,7 @@ class Document:
 		self.title = title
 		self.text = text
 		self.filepath = filepath
+		self.eventSet = []
 		
 	def setEventSet(self, eventSet, **options):
 		'''Sets the eventSet list value.'''
@@ -36,4 +37,5 @@ class Document:
 		return self.text
 	
 	def __repr__(self):
-		return " ".join([str(self.author), str(self.title), str(self.text[:10]), str(self.filepath)])
+		return '<Auth: "%s", Title: "%s", Text sample: |%s|, Event sample: %s, Path: %s>' % \
+			(str(self.author), str(self.title), str(self.text[:10]), str(self.eventSet[:10]), str(self.filepath))

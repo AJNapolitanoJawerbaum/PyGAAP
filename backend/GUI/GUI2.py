@@ -86,6 +86,7 @@ class PyGAAP_GUI:
 	list_of_functions: dict = {}
 
 	# list of dynamically displayed parameters
+	Tab_Canonicizers_parameters_displayed = []
 	Tab_EventDrivers_parameters_displayed: list = []
 	Tab_EventCulling_parameters_displayed: list = []
 	Tab_AnalysisMethods_parameters_displayed: list = []
@@ -1658,8 +1659,10 @@ class PyGAAP_GUI:
 		self._load_modules_to_GUI()
 
 	def show_process_content(self):
-		print("self.backend_API.unknown_docs\n" + str(self.backend_API.unknown_docs))
-		print("self.backend_API.known_authors\n" + str(self.backend_API.known_authors))
+		print("self.backend_API.unknown_docs:\n")
+		[print(str(d)) for d in self.backend_API.unknown_docs]
+		print("self.backend_API.known_authors:\n")
+		[print(str(d)) for d in self.backend_API.known_authors]
 		print("modules\n" + str(self.backend_API.modulesInUse))
 		return
 
@@ -1688,7 +1691,7 @@ class PyGAAP_GUI:
 		self.gui()
 		pipe_from.send(-1)
 		pipe_from.close()
-		self.load_aaac("problemM")
+		#self.load_aaac("problemM")
 		self.topwindow.mainloop()
 
 

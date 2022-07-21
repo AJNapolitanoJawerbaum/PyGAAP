@@ -191,6 +191,16 @@ class CangjieConvert(Canonicizer):
 		return "Cangjie-convert"
 
 
+class StripTabs(Canonicizer):
+	def process(self, text):
+		return "".join([x for x in text if x!="\t"])
+	
+	def displayDescription():
+		return 'Strip tab characters "\\t".'
+	
+	def displayName():
+		return "Strip Tabs"
+
 	
 	# class SpacyLemmatize(Canonicizer):
 	# 	# class var.
@@ -249,4 +259,7 @@ class Nothing(Canonicizer):
 		return "_Nothing"
 
 	def process(self, text):
-		print(text)
+		if self.Segment == "full":
+			print(text)
+		else:
+			print(text[int(self.Segment)])

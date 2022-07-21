@@ -13,6 +13,7 @@
 from multiprocessing import Process, Queue, Pipe, Pool	
 from tkinter import *
 from copy import deepcopy
+from copy import copy as shallowcopy
 
 import datetime
 from json import load as json_load
@@ -62,7 +63,9 @@ class Experiment:
 		
 		for e in self.backend_API.modulesInUse["EventDrivers"]:
 			e._global_parameters = self.backend_API.global_parameters
-			doc.setEventSet(e.createEventSet(doc.text), append=True)
+			event_set = e.createEventSet(doc.text)
+			doc.setEventSet(event_set, append=True)
+			#print("evset----------------", doc.eventSet[:15])
 		
 		if len(self.backend_API.modulesInUse["EventCulling"]) != 0:
 			raise NotImplementedError
@@ -86,28 +89,28 @@ class Experiment:
 		# above is the code to change the color/available status of the "process" button.
 		# below is the actual processing.
 
-		unknown_docs = self.backend_API.unknown_docs
-
 		# LOADING DOCUMENTS
 
-		# gathering the known (corpus) documents
+		# gathering the documents for pre-processing
 		# read documents here (at the last minute)
 		docs = []
 		for author in self.backend_API.known_authors:
 			for authorDoc in author[1]:
 				docs.append(Document(author[0],
 					authorDoc.split("/")[-1],
-					readDocument(authorDoc), authorDoc))
+					"", authorDoc))
 
-		for d in self.backend_API.unknown_docs:
-			d.text = readDocument(d.filepath)
+		# make copies for use in processing.
+		# This is much faster than deepcopying after reading the files,
+		# especially for long files.
+		known_docs = shallowcopy(docs)
 		docs += self.backend_API.unknown_docs
+		unknown_docs = self.backend_API.unknown_docs
 
-		if GUI_debug >= 3: print("Loading parameters")
-		
+		for d in docs: d.text = readDocument(d.filepath)
 		self.backend_API.documents = docs
-		if GUI_debug >= 2: print(self.backend_API.modulesInUse)
 
+		# PRE-PROCESSING
 		if len(self.backend_API.documents) < self.gui_params["multiprocessing_limit_docs"]:
 			# only use multi-processing when the number of docs is large.
 			if GUI_debug >= 2: print("single-threading.")
@@ -116,7 +119,8 @@ class Experiment:
 			total_num_docs = len(self.backend_API.documents)
 			for doc_ind in range(total_num_docs):
 				self.pipe_here.send(int((doc_ind/total_num_docs)*100))
-				processed_docs.append(self.run_pre_processing(self.backend_API.documents[doc_ind]))
+				pre_processed_doc = self.run_pre_processing(self.backend_API.documents[doc_ind])
+				processed_docs.append(pre_processed_doc)
 			self.backend_API.documents = processed_docs
 
 		else:
@@ -137,15 +141,9 @@ class Experiment:
 				self.backend_API.documents.append(doc_get)
 
 		# RUN ANALYSIS ON UNKNOWN DOCS
-		unknown_docs = [d for d in deepcopy(self.backend_API.documents)
-			if (d.author == None or d.author == "")]
-		known_docs = [d for d in deepcopy(self.backend_API.documents)
-			if (d.author != None and d.author != "")]
-
 		# TODO 1 priority high:
 		# implement multi-processing for analysis methods.
 		# if $score < multiprocessing_limit_analysis:
-
 
 		self.pipe_here.send(0)
 
@@ -177,9 +175,9 @@ class Experiment:
 			for d_index in range(len(unknown_docs)):
 
 				d = unknown_docs[d_index]
+				if d.author != "": continue
 
 				self.pipe_here.send(int(100*d_index/len(unknown_docs)))
-				if GUI_debug >= 3: print("d", end="")
 				doc_result = am_df_pair[0].analyze(d)
 				formatted_results = \
 					self.backend_API.prettyFormatResults(self.module_names["canonicizers_names"],
