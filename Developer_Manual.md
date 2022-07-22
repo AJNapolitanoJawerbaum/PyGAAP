@@ -96,9 +96,14 @@ edit_known_authors(.., mode)                            #called when a button in
 
 
 # Adding a new module <a name="new_mod"></a>
-Each module is a class in or imported to the file containing modules of the same type. These types are canonicizers (```Canonicizer.py```), event drivers (```EventDriver.py```), event cullers (```EventCulling.py```), analysis methods (```AnalysisMethod.py```), and distance functions (```DistanceFunction.py```). If a module is not in one of those py files (i.e. imported into them), it is an "external module". For the purpose of this manual, external modules do not include libraries or files not directly called by the API (e.g. sklearn).
-Add package dependencies and their version numbers to ```./requirements.txt```, if applicable.\
-As a readability consideration, it's recommended that the files for external modules be prefixed with the following:\
+Add new modules to ```./generics/modules``` for the API to pick up while loading. Always add a line to import the generic type from ```~/generics```. For example, for a set of analysis methods:
+
+```
+from generics.AnalysisMethod import *
+```
+
+Add package dependencies and their version numbers to ```~/requirements.txt```, if applicable.\
+As a readability consideration, it's recommended that the files in ```~/generics/modules``` be prefixed with the following:\
 ```cc``` for canonicizers\
 ```ed``` for event drivers\
 ```ec``` for event cullers\
@@ -147,7 +152,7 @@ Functions by types of module:
 
 ## <span style="color:#aaeeff"> Reload modules while PyGAAP is running</span> <a name="live_reload"></a>
 
-To reload all modules while PyGAAP is running, go to "Developer" $\rightarrow$ "Reload all modules".\
+To reload all modules while PyGAAP is running, go to the top menu bar: "Developer" $\rightarrow$ "Reload all modules".\
 There will be a confirmation in the status bar or an error message window.
 > ❗ Reloading will remove all selected modules.\
 > ❗ This does not reload libraries that the modules may import, e.g. SpaCy.

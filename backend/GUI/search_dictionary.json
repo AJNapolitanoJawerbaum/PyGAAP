@@ -1,0 +1,15 @@
+{
+    "neural": ["neuro", "voted multi-layer perceptrons", "voted multi layer perceptrons", "nn", "weka"],
+    "support vector machine": ["svm"],
+    "svm": ["support vector machine"],
+    "n-gram": ["ngrams", "n grams", "n-grams"],
+    "ngram": ["ngrams", "n grams", "n-grams"],
+    "n gram": ["ngrams", "n grams", "n-grams"],
+    "bayes": ["weka", "naive bayes"],
+    "part-of-speech": ["pos", "part of speech", "part-of-speech"],
+    "part of speech": ["pos", "part of speech", "part-of-speech"],
+    "cangjie": ["chinese", "japanese", "hanzi", "kanji", "hangol"],
+    "decision tree": ["weka"],
+    "cross": ["x"],
+    "cross entropy": ["xentropy", "x entropy"]
+}

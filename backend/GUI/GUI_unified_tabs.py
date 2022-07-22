@@ -80,6 +80,11 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		objects["available_listboxes"][-1][0].grid(row = counter, column = 0, sticky = "swen")
 
 		objects["available_frame"].rowconfigure(counter, weight = 1)
+		objects["available_frame"].rowconfigure(counter + 1, weight = 0)
+
+		# add a search box.
+		objects["search_entry"] = Entry(objects["available_frame"])
+		objects["search_entry"].grid(row = counter + 1, sticky = "swen")
 
 		objects["available_listboxes"][-1].append(
 			Label(objects["available_listboxes"][-1][0], text = name, font = ("Helvetica", 15))
@@ -142,6 +147,9 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 	Label(objects["buttons_frame"], text = "", height = 2).pack()
 	# empty label to create space above buttons
 	counter = 0
+
+
+
 
 	if parameters_content == "Canonicizers":
 		extra.get("canonicizers_format")

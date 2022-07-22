@@ -34,13 +34,13 @@ from time import sleep
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
 import util.MultiprocessLoading as MultiprocessLoading
 from backend.Document import Document
-from backend.GUI import GUI_run_experiment
 from backend import CSVIO
 import Constants
 
 
 # closely coupled modules
-from backend.GUI.GUI_unified_tabs import *
+from backend.GUI import GUI_unified_tabs
+from backend.GUI import GUI_run_experiment
 
 import util.MultiprocessLoading as MultiprocessLoading
 
@@ -81,6 +81,11 @@ class PyGAAP_GUI:
 	# format: [0, -1, -1. -1, 1, -1, ..., 2, -1, ..., 3, -1, ...]
 	#   -1 = not author; 
 	#   >= 0: author index.
+
+	# tkinter StringVars.
+	# need to save because need tkinter to detect changes
+	search_entry_query = dict()
+	search_dictionary = dict()
 
 	# list of functions
 	list_of_functions: dict = {}
@@ -124,6 +129,12 @@ class PyGAAP_GUI:
 		self.gui_params["styles"]["JGAAP_blue"]
 		self.backend_API = None
 		f.close()
+
+		try:
+			self.search_dictionary = json_load(f:=open("./backend/GUI/search_dictionary.json", "r"))
+		except FileNotFoundError:
+			self.search_dictionary = dict()
+			print("Search dictionary not found.")
 
 		try:
 			self.icon = open(self.gui_params["icon"], "r")
@@ -818,7 +829,7 @@ class PyGAAP_GUI:
 		CanonicizerFormat = StringVar()
 		# TODO move implementation of canonicizer file format to the API
 		self.Tab_Canonicizers_parameters_displayed = []
-		self.generated_widgets['Canonicizers'] = create_module_tab(
+		self.generated_widgets['Canonicizers'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_Canonicizers"],
 			["Canonicizers"],
 			"Canonicizers",
@@ -831,7 +842,7 @@ class PyGAAP_GUI:
 			dpi_setting=self.dpi_setting)
 
 		self.Tab_EventDrivers_parameters_displayed = []
-		self.generated_widgets['EventDrivers'] = create_module_tab(
+		self.generated_widgets['EventDrivers'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_EventDrivers"],
 			["Event Drivers"],
 			"EventDrivers",
@@ -843,7 +854,7 @@ class PyGAAP_GUI:
 			dpi_setting=self.dpi_setting)
 
 		self.Tab_EventCulling_parameters_displayed = []
-		self.generated_widgets['EventCulling'] = create_module_tab(
+		self.generated_widgets['EventCulling'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_EventCulling"],
 			["Event Culling"],
 			"EventCulling",
@@ -855,7 +866,7 @@ class PyGAAP_GUI:
 			dpi_setting=self.dpi_setting)
 
 		self.Tab_AnalysisMethods_parameters_displayed = []
-		self.generated_widgets['AnalysisMethods'] = create_module_tab(
+		self.generated_widgets['AnalysisMethods'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_AnalysisMethods"],
 			["Analysis Methods",
 			"Distance Functions"],
@@ -866,6 +877,33 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+
+		for mtype in ['Canonicizers', "EventDrivers", "EventCulling"]:
+			self.search_entry_query[mtype] = StringVar()
+			self.generated_widgets[mtype]['search_entry']\
+				.configure(textvariable=self.search_entry_query[mtype])
+			self.generated_widgets[mtype]['search_entry'].bind('<Control-A>',
+				lambda event: self.generated_widgets[mtype]['search_entry'].select_range(0, END))
+			self.search_entry_query[mtype].trace_add(
+				"write", callback=lambda v1, v2, v3,
+				entry=self.generated_widgets[mtype]['search_entry'],
+				lb=self.generated_widgets[mtype]["available_listboxes"][0][2],
+				search_from=list(self.backend_API.moduleTypeDict[mtype].keys()):\
+				self.search_modules(entry, lb, search_from)
+			)
+
+		self.search_entry_query["AnalysisMethods"] = StringVar()
+		self.generated_widgets["AnalysisMethods"]['search_entry']\
+			.configure(textvariable=self.search_entry_query["AnalysisMethods"])
+		self.generated_widgets["AnalysisMethods"]['search_entry'].bind('<Control-A>',
+			lambda event: self.generated_widgets["AnalysisMethods"]['search_entry'].select_range(0, END))
+		self.search_entry_query["AnalysisMethods"].trace_add(
+			"write", callback=lambda v1, v2, v3,
+			entry=self.generated_widgets["AnalysisMethods"]['search_entry'],
+			lb=self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2],
+			search_from=list(self.backend_API.moduleTypeDict["DistanceFunctions"].keys()):\
+			self.search_modules(entry, lb, search_from)
+		)
 
 	#ABOVE ARE THE CONFIGS FOR EACH TAB
 	def _bottom_frame(self):
@@ -1098,7 +1136,38 @@ class PyGAAP_GUI:
 			return
 		#######
 
-					
+	def intelligent_search(self, query, item):
+		"""
+		This expands search terms to itself along with common substitutions.
+		e.g. it expands "neural network" to "neural network" and "perceptron".
+		Inspired by Cinnamon's (DE) search function that shows "LibreOffice calc"
+		when queried with "excel".
+		"""
+		expanded_terms = [item]
+		for dict_item_in in self.search_dictionary:
+			if dict_item_in in item:
+				expanded_terms += self.search_dictionary[dict_item_in]
+
+		for t in expanded_terms:
+			if query in t:
+				return True
+		return False
+ 
+	def search_modules(self, search_entry, listbox, search_from):
+		"""
+		Alter what's displayed in the listbox from search query.
+		If entry is empty, display all as usual.
+		"""
+
+		query = search_entry.get().lower() # string
+		retrieve = {x.lower():x for x in search_from}
+		candidates = [retrieve[item] for item in list(retrieve.keys()) if
+			self.intelligent_search(query, item)]
+		candidates.sort()
+		listbox.delete(0, END)
+		for c in candidates:
+			listbox.insert(END, c)
+		return
 
 	
 	def select_modules(self, listbox_available: Listbox,
@@ -1210,7 +1279,6 @@ class PyGAAP_GUI:
 		else:
 			self.status_update("Bug: all escaped: 'select_modules(function = %s).'"%(function))
 			raise ValueError("Bug: all escaped: 'select_modules(function = %s).'"%(function))
-
 		return
 
 
@@ -1644,20 +1712,35 @@ class PyGAAP_GUI:
 		!!! It does not reload the libraries that the modules import.
 		e.g. SpaCy, NLTK are NOT reloaded.
 		"""
-		for module_type in [
-			"generics.AnalysisMethod", "generics.Canonicizer", "generics.DistanceFunction",
-			"generics.EventCulling", "generics.EventDriver"
-		]:
-			for external_module in sys_modules[module_type].external_modules:
-				sys_modules.pop(external_module)
-			sys_modules.pop(module_type)
-		sys_modules.pop("backend.API")
-		sys_modules.pop("util.MultiprocessLoading")
+		# for module_type in [
+		# 	"generics.AnalysisMethod", "generics.Canonicizer", "generics.DistanceFunction",
+		# 	"generics.EventCulling", "generics.EventDriver"
+		# ]:
+			# for external_module in sys_modules[module_type].external_modules:
+			# 	sys_modules.pop(external_module)
+			# sys_modules.pop(module_type)
+		sys_modules_pop = [m for m in sys_modules if (
+				"generics.modules" in m or "GUI_unified_tabs" in m or "GUI_run_experiment" in m or
+				"AnalysisMethod" in m or "Canonicizer" in m or "DistanceFunction" in m or
+				"EventCulling" in m or "EventDriver" in m or
+				"MultiprocessLoading" in m or "API" in m
+			)
+		]
+		for m in sys_modules_pop: sys_modules.pop(m)
+		# sys_modules.pop("backend.API")
+
+		del self.backend_API
+		del self.generated_widgets
 
 		import util.MultiprocessLoading as MultiprocessLoading
+		from backend.GUI import GUI_unified_tabs
+		from backend.GUI import GUI_run_experiment
 		from backend.API import API
+
 		self.backend_API = API("place-holder")
+		self._unified_tabs()
 		self._load_modules_to_GUI()
+		self.change_style(self.topwindow)
 
 	def show_process_content(self):
 		print("self.backend_API.unknown_docs:\n")

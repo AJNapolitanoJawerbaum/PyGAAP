@@ -1,6 +1,6 @@
 {
 	"icon": "./res/icon.png",
-	"topwindow_title": "PyGAAP (GUI)",
+	"topwindow_title": "PyGAAP (GUI alpha)",
 
 	"styles": {
 		"JGAAP_blue": {

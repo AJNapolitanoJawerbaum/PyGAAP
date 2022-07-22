@@ -34,12 +34,12 @@ class Experiment:
 
 	def __init__(self, api, module_names: dict, dpi_setting, pipe_here=None, q:Queue=None):
 		"""
-		Copies API (So the main process can modify the original)
+		Copies API in a different process
 		receives an end of a pipe to send info back to main process.
 		"""
 		self.gui_params = json_load(f:=open("./backend/GUI/gui_params.json", "r"))
 		f.close()
-		self.backend_API = deepcopy(api)
+		self.backend_API = shallowcopy(api)
 		self.pipe_here = pipe_here
 		self.module_names = module_names
 		self.dpi_setting = dpi_setting

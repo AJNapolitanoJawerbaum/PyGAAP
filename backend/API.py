@@ -1,9 +1,10 @@
-
-
 # import spacy
+from importlib import import_module
+from os import listdir as ls
 
 class API:
 	'''API class'''
+	modules = []
 	canonicizers = dict()
 	eventDrivers = dict()
 	analysisMethods = dict()
@@ -12,23 +13,11 @@ class API:
 	documents = []
 
 	moduleTypeDict = {
-		# "canonicizers": canonicizers,
-		# "eventDrivers": eventDrivers,
-		# "eventCulling": eventCulling,
-		# "analysisMethods": analysisMethods,
-		# "distanceFunctions": distanceFunctions,
-
 		"Canonicizers": canonicizers,
 		"EventDrivers": eventDrivers,
 		"EventCulling": eventCulling,
 		"AnalysisMethods": analysisMethods,
 		"DistanceFunctions": distanceFunctions,
-
-		# "Canonicizers": canonicizers,
-		# "Event Drivers": eventDrivers,
-		# "Event Culling": eventCulling,
-		# "Analysis Methods": analysisMethods,
-		# "Distance Functions": distanceFunctions
 	}
 
 	# these are lists of modules (and their params) added to the processing queue.
@@ -64,6 +53,11 @@ class API:
 		from generics.EventDriver import EventDriver
 		from generics.AnalysisMethod import AnalysisMethod
 		from generics.DistanceFunction import DistanceFunction
+
+		self.modules = []
+		for item in ls("./generics/modules/"):
+			if item[-3:] == ".py":
+				self.modules.append(import_module("generics.modules.%s" % (item[:-3])))
 
 		'''Build dictionaries of all the different parameters we can choose from.'''
 		# Populate dictionary of canonicizers.
