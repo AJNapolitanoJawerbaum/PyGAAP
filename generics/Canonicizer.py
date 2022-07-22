@@ -134,8 +134,6 @@ class CangjieConvert(Canonicizer):
 		}
 	}
 
-	Language = _variable_options["Language"]["options"][_variable_options["Language"]["default"]]
-	Version = _variable_options["Version"]["options"][_variable_options["Version"]["default"]]
 
 	def __init__(self):
 		Language = self._variable_options["Language"]["options"][self._variable_options["Language"]["default"]]

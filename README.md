@@ -8,7 +8,7 @@ PyGAAP currently contains only a small subset of features from JGAAP and most fe
 * PyGAAP's GUI is not yet feature-complete
 * PyGAAP does not yet support multi-threading
 * PyGAAP does not yet provide extensive logging
-* PyGAAP does not yet support feature set culling
+* PyGAAP does not yet support feature set culling for the command line
 
 ## How to Contribute
 To contribute to PyGAAP, simply fork the repository, create a new branch, make your desired changes, and submit a pull request. While adding a new module, you may find the [developer manual](/Developer_Manual.md) useful. Additionally, please consider opening an issue on this repository with an explanation of your planned contribution so that we may track who is working on what.

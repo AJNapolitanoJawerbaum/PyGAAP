@@ -65,7 +65,6 @@ class Experiment:
 			e._global_parameters = self.backend_API.global_parameters
 			event_set = e.createEventSet(doc.text)
 			doc.setEventSet(event_set, append=True)
-			#print("evset----------------", doc.eventSet[:15])
 		
 		for ec in self.backend_API.modulesInUse["EventCulling"]:
 			ec._global_parameters = self.backend_API.global_parameters

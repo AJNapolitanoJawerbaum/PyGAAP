@@ -103,14 +103,15 @@ class API:
 		for doc in self.documents:
 			doc.text = canonicizer.process(doc.text)
 			
-	def runEventDriver(self, eventDriverString):
+	def runEventDriver(self, eventDriverString, **options):
 		'''Runs the event driver specified by the string against all documents.'''
 		eventDriver = self.eventDrivers.get(eventDriverString.split('|')[0])()
 		eventDriver.setParams(self._buildParamList(eventDriverString))
+		append = options.get("append", False)
 		for doc in self.documents:
-			doc.setEventSet(eventDriver.createEventSet(doc.text))
+			doc.setEventSet(eventDriver.createEventSet(doc.text), append=append)
 	
-	def runEventCulling(self):
+	def runEventCuller(self):
 		raise NotImplementedError
 			
 	def runAnalysis(self, analysisMethodString, distanceFunctionString):

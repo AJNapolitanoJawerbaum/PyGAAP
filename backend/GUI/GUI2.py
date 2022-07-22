@@ -1321,7 +1321,8 @@ class PyGAAP_GUI:
 						value = str(this_df_module._variable_options[parameter_i]["options"]\
 							[this_df_module._variable_options[parameter_i]["default"]]))
 					)
-				displayed_params.append(Label(param_frame, text = parameter_i))
+				displayed_param_name = this_module._variable_options[parameter_i].get("displayed_name", parameter_i)
+				displayed_params.append(Label(param_frame, text = displayed_param_name))
 				displayed_params[-1].grid(row = i + 1 + rowshift, column = 0)
 
 				if this_module._variable_options[parameter_i]["type"] == 'Entry':

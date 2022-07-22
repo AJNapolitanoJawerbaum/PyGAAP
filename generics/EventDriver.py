@@ -192,3 +192,27 @@ class WithinWordNGram(EventDriver):
 		return eventSet
 	
 
+class KSkipNGramCharacterEventDriver(EventDriver):
+	_variable_options = {
+		"k": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Skips (k)"},
+		"n": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 0, "displayed_name": "n-gram length (n)"}
+	}
+	k = 1
+	n = 1
+
+	def setParams(self, params):
+		self.k = params[0]
+		self.n = params[1]
+
+	def displayDescription():
+		return "n-gram extracted from text that only has every k characters from the original text."
+
+	def displayName():
+		return "K-skip Character N-gram"
+
+	def createEventSet(self, text):
+		text = "".join([text[i] for i in range(len(text)) if i%(self.k + 1) == 0])
+		nltkRawOutput = list(ngrams(text, self.n))
+		formattedOutput = [''.join(val) for val in nltkRawOutput]
+		return formattedOutput
+
