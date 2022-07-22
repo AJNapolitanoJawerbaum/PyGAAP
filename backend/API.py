@@ -133,7 +133,7 @@ class API:
 		analysis.train(knownDocs)
 		return unknownDoc, analysis.analyze(unknownDoc)
 		
-	def prettyFormatResults(self, canonicizers, eventDrivers, analysisMethod, distanceFunc, unknownDoc, results):
+	def prettyFormatResults(self, canonicizers, eventDrivers, eventCullers, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.
 		formattedResults = str(unknownDoc.title) + ' ' + str(unknownDoc.filepath) + "\nCanonicizers:\n"
@@ -141,9 +141,13 @@ class API:
 			formattedResults += '\t' + canonicizer + '\n'
 		if type(eventDrivers) == list:
 			for eventDriver in eventDrivers:
-				formattedResults += '\t' + eventDriver + '\n'
+				formattedResults += "Event Drivers:\n\t" + eventDriver + '\n'
 		else:
 			formattedResults += "Event Driver:\n\t" + eventDrivers + '\n'
+
+		for eventCuller in eventCullers:
+			formattedResults += "Event Culler:\n\t" + eventCuller + '\n'
+
 		formattedResults += "Analysis Method:\n\t" + analysisMethod + " with " + distanceFunc + '\n'
 		
 		# Sort the dictionary in ascending order by distance values and build the results listing.

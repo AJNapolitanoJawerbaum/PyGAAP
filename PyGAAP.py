@@ -10,7 +10,7 @@ def main():
 		cliMain()
 	else:
 		# import backend.GUI.GUI
-		from .backend.GUI import GUI2
+		from backend.GUI import GUI2
 		app = GUI2.PyGAAP_GUI()
 		app.run()
 

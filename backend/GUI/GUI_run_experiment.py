@@ -67,9 +67,9 @@ class Experiment:
 			doc.setEventSet(event_set, append=True)
 			#print("evset----------------", doc.eventSet[:15])
 		
-		if len(self.backend_API.modulesInUse["EventCulling"]) != 0:
-			raise NotImplementedError
-			#?._global_parameters = self.backend_API.global_parameters
+		for ec in self.backend_API.modulesInUse["EventCulling"]:
+			ec._global_parameters = self.backend_API.global_parameters
+			doc.setEventSet(ec.process(doc.eventSet))
 		return doc
 
 	def run_experiment(self):
@@ -182,6 +182,7 @@ class Experiment:
 				formatted_results = \
 					self.backend_API.prettyFormatResults(self.module_names["canonicizers_names"],
 													self.module_names["event_drivers_names"],
+													self.module_names["event_cullers_names"],
 													self.module_names["am_df_names"][am_df_index][0],
 													self.module_names["am_df_names"][am_df_index][1],
 													d,

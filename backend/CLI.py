@@ -54,8 +54,9 @@ def cliMain():
 			api.runEventDriver(eventDriver)
 			
 			# Run the analysis and get the results in a formatted string.
+			# TODO implement event culling for the CLI
 			unknownDoc, results = api.runAnalysis(analysisMethod, distanceFunc)
-			formattedResults = api.prettyFormatResults(canonicizers, eventDriver, analysisMethod, distanceFunc, unknownDoc, results)
+			formattedResults = api.prettyFormatResults(canonicizers, eventDriver, "", analysisMethod, distanceFunc, unknownDoc, results)
 			
 			# Create the directories that the results will be stored in.
 			outPath = os.path.join(Path.cwd(), "tmp", '&'.join(canonicizers).replace('|', '_').replace(':', '_'), eventDriver.replace('|', '_').replace(':', '_'), analysisMethod + '-' + distanceFunc)

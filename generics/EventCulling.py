@@ -19,7 +19,7 @@ class EventCulling(ABC):
 			self._variable_options = dict()
 
 	@abstractmethod
-	def process(self, procText):
+	def process(self, eventSet):
 		'''To be determined'''
 		pass
 		
@@ -33,20 +33,21 @@ class EventCulling(ABC):
 		'''Returns the display description for the event culler.'''
 
 
-class EmptyEventCuller(EventCulling):
-	_variable_options={"test_param1": {"options": list(range(2, 8)), "default": 0, "type": "OptionMenu"},
-					   "test_param2": {"options": list(range(10, 15)), "default": 4, "type": "OptionMenu"},
-					   "test_param3": {"options": ["op1", "op2"], "default": 0, "type": "OptionMenu"}}
+class N_Occurrences(EventCulling):
+	_variable_options = {"Frequency": {"options": list(range(1, 5)), "default": 0, "type": "OptionMenu"}}
 
-	test_param1 = _variable_options["test_param1"]["options"][_variable_options["test_param1"]["default"]]
-	test_param2 = _variable_options["test_param2"]["options"][_variable_options["test_param2"]["default"]]
-	test_param3 = _variable_options["test_param3"]["options"][_variable_options["test_param3"]["default"]]
+	Frequency = _variable_options["Frequency"]["options"][_variable_options["Frequency"]["default"]]
 	
-	def process(self, procText):
-		pass
+	def process(self, eventSet: list):
+		freq = dict()
+		for e in eventSet:
+			if freq.get(e) == None: freq[e] = 1
+			else: freq[e] += 1
+		new_events = [ev for ev in eventSet if (freq.get(ev)!=None and freq.get(ev) > 1)]
+		return new_events
 
 	def displayName():
-		return "Test event culler"
+		return "N occurrences"
 
 	def displayDescription():
-		return "An empty event culler class."
+		return "Remove features that are encountered N or fewer times."

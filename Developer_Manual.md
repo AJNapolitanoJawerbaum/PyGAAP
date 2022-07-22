@@ -97,7 +97,13 @@ edit_known_authors(.., mode)                            #called when a button in
 
 # Adding a new module <a name="new_mod"></a>
 Each module is a class in or imported to the file containing modules of the same type. These types are canonicizers (```Canonicizer.py```), event drivers (```EventDriver.py```), event cullers (```EventCulling.py```), analysis methods (```AnalysisMethod.py```), and distance functions (```DistanceFunction.py```). If a module is not in one of those py files (i.e. imported into them), it is an "external module". For the purpose of this manual, external modules do not include libraries or files not directly called by the API (e.g. sklearn).
-Add package dependencies and their version numbers to ```./requirements.txt```, if applicable.
+Add package dependencies and their version numbers to ```./requirements.txt```, if applicable.\
+As a readability consideration, it's recommended that the files for external modules be prefixed with the following:\
+```cc``` for canonicizers\
+```ed``` for event drivers\
+```ec``` for event cullers\
+```am``` for analysis methods\
+```df``` for distance functions.
 
 ## <span style="color:#aaeeff">Class variables</span> <a name="class_variables"></a>
 Class variables are declared within the class definition.
