@@ -127,7 +127,7 @@ numpy.array -> analysis & distance functions -> dict.
 1. The text string is read from file and saved to Document.text. The canonicizers process the text & save it back into (overwrite) Document.text.
 2. Event drivers read from Document.text and convert it into a list of strings. This is saved into Document.eventSet.
 3. Event cullers read from Document.eventSet, process the list, and save it back into (overwrite) Document.eventSet
-4. Number converters read from Document.eventSet and convert the list into a NumPy array. The NumPy arrays are the numerical representations of the documents and are saved into Document.numbers. (1D array) At the same time, two aggregate NumPy arrays (2D) containing data from the known document set (training data) and the unknown document set (testing data) are passed to the next steps. Number converters returning these aggregate arrays is optional but recommended because it may increase performance by vectorizing the representations.
+4. Number converters read from Document.eventSet and convert the list into a NumPy array. The NumPy arrays are the numerical representations of the documents and are saved into Document.numbers. (1D array) At the same time, two aggregate NumPy arrays (2D) containing data from the known document set (training data) and the unknown document set (testing data) are passed to the next steps. Number converters returning these aggregate arrays is optional but recommended because it may help analysis increase performance by vectorizing the representations.
 5. The analysis modules receives the *entire* set of unknown documents, and optionally the aggregate testing data, and performs classification. It's up to the developer to decide whether to process them all at once or one-by-one. The result is a list of dictionaries where each dictionary has the scores for each candidate author.
 
 ## <span style="color:#aaeeff">Class variables</span> <a name="class_variables"></a>
@@ -138,14 +138,14 @@ Each user parameter is a class variable exposed to the GUI. These variables must
 Conversely, to hide a class variable from the GUI, prefix the name with a "```_```".
 
 - `_global_parameters` API parameters to be passed to all modules, like `language`.
-- ```_variable_options``` (dictionary) lists the options, GUI type, and the default values of variables. The variables' names are the keys and their attributes are dicts. Each dict for a variable must have ```"options"``` for range of available choices, ```"type"``` for the GUI widget type (currently only ```OptionMenu``` is supported), and ```"default"``` for the default value _**as an index of the ```"options"``` list**_ (for the example below, the default corresponds to ```0```, which picks the item with ```0``` index in the ```"options"``` list as the default value, i.e. the default **value** is ```3```).\
+- ```_variable_options``` (dictionary) lists the options, GUI type, and the default values of variables. The variables' names are the keys and their attributes are dicts. Each dict for a variable must have ```"options"``` for range of available choices, ```"type"``` for the GUI widget type (currently only ```OptionMenu``` is supported), and ```"default"``` for the default value _**as an index of the ```"options"``` list**_ (for the example below, the default is ```0```, which picks the item with ```0``` index in the ```"options"``` list as the default value, i.e. the default **value** for the variable is ```3```). Optionally, add a display name if different from the variable name.\
 Example:
-```{"variable_1": {"options": list(range(3, 10)), "type": OptionMenu, "default": 0}}```
+```{"variable_1": {"options": list(range(3, 10)), "type": OptionMenu, "default": 0, "displayed_name": "The First Variable"}}```
 
 
 ### <span style="color:#aaeeff">Class variables for Analysis Methods
-- ```_NoDistanceFunction_``` (boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's ```False``` by default or if omitted.
-- ```_multiprocessing_score``` (integer, *not yet implemented*) the "time-consumingness" of an analysis method. It's 1 by default or if omitted. The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long.
+- ```_NoDistanceFunction_``` (boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's ```False``` if omitted.
+<!-- - ```_multiprocessing_score``` (integer, *not yet implemented*) the "time-consumingness" of an analysis method. It's 1 by default or if omitted. The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long. -->
 
 ## <span style="color:#aaeeff"> Class initialization</span> <a name="class_init"></a>
 The `__init__()` method for module classes contains initialization for required parameters. These are handled in the abstract (base) class at the top of the generic module files (`~/generics/...`). If a separate init method is needed for a module, the init function for the abstract class should be called as well.
@@ -164,7 +164,9 @@ Functions by types of module:
    - ```CreateEventSet()``` (String → List)
    - ```setParams()```
 - Event cullers:
-   - to be determined
+   - ```process()``` (List → List)
+- Number Converters:
+   - ```convert``` (List → NumPy.array)
 - Analysis methods:
    - ```train()```
    - ```analyze()```

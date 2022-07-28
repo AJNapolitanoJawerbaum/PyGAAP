@@ -25,7 +25,7 @@ from backend.Document import Document
 #from generics.NumberConverter import NumberConverter
 
 
-GUI_debug = 3
+GUI_debug = 0
 
 class Experiment:
 
@@ -159,7 +159,7 @@ class Experiment:
 
 			all_data = nc.convert(known_docs + unknown_docs)
 			known_docs_numbers_aggregate = all_data[:len(known_docs)]
-			unknown_docs_numbers_aggregate = all_data[len(known_docs)]
+			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
 			del all_data
 
 			if GUI_debug >= 3: print("Running analysis methods")

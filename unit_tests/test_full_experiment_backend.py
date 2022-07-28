@@ -30,11 +30,11 @@ mod_names = {
     "event_drivers_names": ["Character NGrams"],
     "event_cullers_names": [],
     "number_converters_names": ["Frequency"],
-    "am_df_names": [["Centroid Driver", "Histogram Distance"]]
+    "am_df_names": [["K-Nearest Neighbors", "Histogram Distance"]]
 }
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Character NGrams"]())
 api.modulesInUse["NumberConverters"].append(api.numberConverters["Frequency"]())
-api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
+api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["K-Nearest Neighbors"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
 
 

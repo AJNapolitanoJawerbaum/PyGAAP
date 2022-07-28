@@ -42,11 +42,10 @@ def dicts_to_array(events: list, **options) -> np.ndarray:
 
 def auth_list_to_labels(auth_list, **options):
 	"""
-	Convert list of authors to training data and labels.
-	Training data extracted from Document.eventSet
-	The labels are numerical.
-	Returns train data in np.ndarray, labals in np.ndarray,
-	and a dict to retrieve categories from the numerical labels.
+	Convert list of authors to training data and training labels.\n
+	Training data extracted from Document.eventSet\n
+	The labels are numerical.\n
+	Return labals in a 2D, vertical np.ndarray, and a dict to retrieve categories/class/author from the numerical labels.
 	"""
 	labels_to_categories = dict() # retrieve original category names from numerical labels.
 	categories_to_labels = dict()
