@@ -10,12 +10,14 @@ class API:
 	analysisMethods = dict()
 	distanceFunctions = dict()
 	eventCulling = dict()
+	numberConverters = dict()
 	documents = []
 
 	moduleTypeDict = {
 		"Canonicizers": canonicizers,
 		"EventDrivers": eventDrivers,
 		"EventCulling": eventCulling,
+		"NumberConverters": numberConverters,
 		"AnalysisMethods": analysisMethods,
 		"DistanceFunctions": distanceFunctions,
 	}
@@ -27,6 +29,7 @@ class API:
 		"Canonicizers": [],
 		"EventDrivers": [],
 		"EventCulling": [],
+		"NumberConverters": [],
 		"AnalysisMethods": [],
 		"DistanceFunctions": []
 	}
@@ -51,8 +54,10 @@ class API:
 		from generics.Canonicizer import Canonicizer
 		from generics.EventCulling import EventCulling
 		from generics.EventDriver import EventDriver
+		from generics.NumberConverter import NumberConverter
 		from generics.AnalysisMethod import AnalysisMethod
 		from generics.DistanceFunction import DistanceFunction
+
 
 		self.modules = []
 		for item in ls("./generics/modules/"):
@@ -71,6 +76,9 @@ class API:
 		# Populate dictionary of event culling.
 		for cls in EventCulling.__subclasses__():
 			self.eventCulling[cls.displayName()] = cls
+
+		for cls in NumberConverter.__subclasses__():
+			self.numberConverters[cls.displayName()] = cls
 		
 		# Populate dictionary of analysis methods.
 		for cls in AnalysisMethod.__subclasses__():
@@ -85,11 +93,17 @@ class API:
 
 		self.global_parameters = self.global_parameters
 
-		#self.known_docs = []
-		self.unknown_docs = []
-		# TODO priority very low: use dictionary implementation
-		# for unknown_docs.
+		# self.known_authors: list = []
+		# self.unknown_docs: list = []
 
+
+	def show_process_content(self):
+		print("Unknown_docs:\n")
+		[print(str(d)) for d in self.unknown_docs]
+		print("Kknown_authors:\n")
+		[print(str(d)) for d in self.known_authors]
+		print("Modules-in-use\n" + str(self.modulesInUse))
+		return
 		
 	def runCanonicizer(self, canonicizerString):
 		'''Runs the canonicizer specified by the string against all documents.'''
@@ -106,6 +120,9 @@ class API:
 			doc.setEventSet(eventDriver.createEventSet(doc.text), append=append)
 	
 	def runEventCuller(self):
+		raise NotImplementedError
+
+	def runNumberConverter(self):
 		raise NotImplementedError
 			
 	def runAnalysis(self, analysisMethodString, distanceFunctionString):
@@ -128,7 +145,7 @@ class API:
 		analysis.train(knownDocs)
 		return unknownDoc, analysis.analyze(unknownDoc)
 		
-	def prettyFormatResults(self, canonicizers, eventDrivers, eventCullers, analysisMethod, distanceFunc, unknownDoc, results):
+	def prettyFormatResults(self, canonicizers, eventDrivers, eventCullers, numberConverters, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.
 		formattedResults = str(unknownDoc.title) + ' ' + str(unknownDoc.filepath) + "\nCanonicizers:\n"
@@ -142,6 +159,9 @@ class API:
 
 		for eventCuller in eventCullers:
 			formattedResults += "Event Culler:\n\t" + eventCuller + '\n'
+
+		for numberConverter in numberConverters:
+			formattedResults += "Number Converter:\n\t" + numberConverter + '\n'
 
 		formattedResults += "Analysis Method:\n\t" + analysisMethod + " with " + distanceFunc + '\n'
 		

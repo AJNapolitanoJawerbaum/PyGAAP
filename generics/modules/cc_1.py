@@ -21,10 +21,12 @@ class CangjieConvert(Canonicizer):
 		}
 	}
 
+	Language = None
+	Version = None
 
 	def __init__(self):
-		Language = self._variable_options["Language"]["options"][self._variable_options["Language"]["default"]]
-		Version = self._variable_options["Version"]["options"][self._variable_options["Version"]["default"]]
+		self.Language = self._variable_options["Language"]["options"][self._variable_options["Language"]["default"]]
+		self.Version = self._variable_options["Version"]["options"][self._variable_options["Version"]["default"]]
 
 		tableFilename = "./extra/canonicizer_CangjieConverter/CangjieConvertTable.txt"
 		try:

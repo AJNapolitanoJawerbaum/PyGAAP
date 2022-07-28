@@ -14,7 +14,10 @@ class DistanceFunction(ABC):
 		self._global_parameters = self._global_parameters
 	@abstractmethod
 	def distance(self, unknownHistogram, knownHistogram):
-		'''Input is the unknown and known histograms and output is the resulting distance calculation.'''
+		'''
+		Input is the unknown and known histograms and output is the resulting distance calculation.
+		"knownHistogram" can be a per-author histogram or per-document histogram.
+		'''
 		pass
 		
 	def displayName():
@@ -24,33 +27,33 @@ class DistanceFunction(ABC):
 	def displayDescription():
 		pass
 
-class BhattacharyyaDistance(DistanceFunction):
-	def distance(self, unknownHistogram, knownHistogram):
-		return distances.bhattacharyya(unknownHistogram, knownHistogram)
+# class BhattacharyyaDistanceO(DistanceFunction):
+# 	def distance(self, unknownHistogram, knownHistogram):
+# 		return distances.bhattacharyya(unknownHistogram, knownHistogram)
 		
-	def displayName():
-		return "Bhattacharyya Distance"
+# 	def displayName():
+# 		return "Bhattacharyya Distance*"
 		
-class ChiSquareDistance(DistanceFunction):
-	def distance(self, unknownHistogram, knownHistogram):
-		return distances.chi_square(unknownHistogram, knownHistogram)
+# class ChiSquareDistanceO(DistanceFunction):
+# 	def distance(self, unknownHistogram, knownHistogram):
+# 		return distances.chi_square(unknownHistogram, knownHistogram)
 		
-	def displayName():
-		return "Chi Square Distance"
+# 	def displayName():
+# 		return "Chi Square Distance*"
 		
-class CosineDistance(DistanceFunction):
-	def distance(self, unknownHistogram, knownHistogram):
-		return distances.cosine(unknownHistogram, knownHistogram)
+# class CosineDistanceO(DistanceFunction):
+# 	def distance(self, unknownHistogram, knownHistogram):
+# 		return distances.cosine(unknownHistogram, knownHistogram)
 		
-	def displayName():
-		return "Cosine Distance"
+# 	def displayName():
+# 		return "Cosine Distance*"
 		
-class HistogramDistance(DistanceFunction):
-	def distance(self, unknownHistogram, knownHistogram):
-		return distances.euclidean(unknownHistogram, knownHistogram)
+# class HistogramDistanceO(DistanceFunction):
+# 	def distance(self, unknownHistogram, knownHistogram):
+# 		return distances.euclidean(unknownHistogram, knownHistogram)
 		
-	def displayName():
-		return "Euclidean/Histogram Distance"
+# 	def displayName():
+# 		return "Euclidean/Histogram Distance*"
 	
-	def displayDescription():
-		return "Computes Euclidean distance."
+# 	def displayDescription():
+# 		return "Computes Euclidean distance."

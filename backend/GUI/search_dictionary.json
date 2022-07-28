@@ -11,5 +11,10 @@
     "cangjie": ["chinese", "japanese", "hanzi", "kanji", "hangol"],
     "decision tree": ["weka"],
     "cross": ["x"],
-    "cross entropy": ["xentropy", "x entropy"]
+    "cross entropy": ["xentropy", "x entropy"],
+    "histogram": ["frequency", "frequencies"],
+    "frequency": ["histogram", "histograms"],
+    "cosine distance": ["cosine similarity"],
+    "histogram distance": ["euclidean"],
+    "euclidean distance": ["histogram distance"]
 }

@@ -11,6 +11,7 @@ See https://evllabs.github.io/JGAAP/
    1. [Outline of tkinter widgets](#Outline_of_tkinter_widgets)
    2. [Function Calls](#nested_funcs)
 3. [Adding a new module](#new_mod)
+   1. [The analysis process](#analysis_process)
    1. [Classs variables](#class_variables)
    1. [Class initialization](#class_init)
    2. [Class functions](#class_functions)
@@ -107,13 +108,32 @@ As a readability consideration, it's recommended that the files in ```~/generics
 ```cc``` for canonicizers\
 ```ed``` for event drivers\
 ```ec``` for event cullers\
+```nc``` for number converters\
 ```am``` for analysis methods\
 ```df``` for distance functions.
+
+## <span style="color:#aaeeff">The analysis Process</span> <a name="analysis_process"></a>
+
+### <span style="color:#aaeeff">Data types</span>
+Note: these are not necessarily the return types.
+```
+String -> canonicizers -> String
+String -> event drivers -> list of strings
+list of strings -> event culling -> list of strings
+list of strings -> number converters -> numpy.array
+numpy.array -> analysis & distance functions -> dict.
+```
+### <span style="color:#aaeeff">The process</span>
+1. The text string is read from file and saved to Document.text. The canonicizers process the text & save it back into (overwrite) Document.text.
+2. Event drivers read from Document.text and convert it into a list of strings. This is saved into Document.eventSet.
+3. Event cullers read from Document.eventSet, process the list, and save it back into (overwrite) Document.eventSet
+4. Number converters read from Document.eventSet and convert the list into a NumPy array. The NumPy arrays are the numerical representations of the documents and are saved into Document.numbers. (1D array) At the same time, two aggregate NumPy arrays (2D) containing data from the known document set (training data) and the unknown document set (testing data) are passed to the next steps. Number converters returning these aggregate arrays is optional but recommended because it may increase performance by vectorizing the representations.
+5. The analysis modules receives the *entire* set of unknown documents, and optionally the aggregate testing data, and performs classification. It's up to the developer to decide whether to process them all at once or one-by-one. The result is a list of dictionaries where each dictionary has the scores for each candidate author.
 
 ## <span style="color:#aaeeff">Class variables</span> <a name="class_variables"></a>
 Class variables are declared within the class definition.
 
-### <span style="color:#aaeeff">User parameters
+### <span style="color:#aaeeff">User parameters</span>
 Each user parameter is a class variable exposed to the GUI. These variables must also have corresponding entries in ```_variable_options```, and their names cannot begin with a "```_```".
 Conversely, to hide a class variable from the GUI, prefix the name with a "```_```".
 

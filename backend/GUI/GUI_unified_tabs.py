@@ -262,7 +262,8 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		API_dict = {
 			"Canonicizers": backend_API.canonicizers,
 			"EventDrivers": backend_API.eventDrivers,
-			"EventCulling": backend_API.eventCulling
+			"EventCulling": backend_API.eventCulling,
+			"NumberConverters": backend_API.numberConverters
 		}
 		for f in objects["available_listboxes"]:
 			f[2].bind("<<ListboxSelect>>",

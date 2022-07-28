@@ -29,6 +29,8 @@ from sys import platform
 from json import load as json_load
 from os import listdir as ls
 from time import sleep
+from pathlib import Path
+from os import getcwd
 
 # local modules
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
@@ -64,6 +66,7 @@ class PyGAAP_GUI:
 		"Tab_Canonicizers",
 		"Tab_EventDrivers",
 		"Tab_EventCulling",
+		"Tab_NumberConverters",
 		"Tab_AnalysisMethods",
 		"Tab_ReviewProcess"
 	]
@@ -124,14 +127,14 @@ class PyGAAP_GUI:
 
 	def __init__(self):
 		# no internal error handling because fatal error.
-		params = json_load(f:=open("./backend/GUI/gui_params.json", "r"))
+		params = json_load(f:=open(Path("./backend/GUI/gui_params.json"), "r"))
 		self.gui_params = params
 		self.gui_params["styles"]["JGAAP_blue"]
 		self.backend_API = None
 		f.close()
 
 		try:
-			self.search_dictionary = json_load(f:=open("./backend/GUI/search_dictionary.json", "r"))
+			self.search_dictionary = json_load(f:=open(Path("./backend/GUI/search_dictionary.json"), "r"))
 		except FileNotFoundError:
 			self.search_dictionary = dict()
 			print("Search dictionary not found.")
@@ -158,11 +161,11 @@ class PyGAAP_GUI:
 		# contains hard-coded limits of tabIDs.
 		if GUI_debug >= 3: print("self.switch_tabs(mode = %s)" %(mode))
 		if mode == "next":
-			notebook.select(min((notebook.index(notebook.select()) + 1), 5))
+			notebook.select(min((notebook.index(notebook.select()) + 1), 6))
 		elif mode == "previous":
 			notebook.select(max((notebook.index(notebook.select()) - 1), 0))
 		elif mode == "choose":
-			if tabID >= 0 and tabID <= 5:
+			if tabID >= 0 and tabID <= 6:
 				notebook.select(tabID)
 		return
 
@@ -183,6 +186,7 @@ class PyGAAP_GUI:
 		"canonicizers_names": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
 		"event_drivers_names": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
 		"event_cullers_names": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
+		"number_converters_names": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
 		"am_df_names": [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"]
 						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
 		}
@@ -190,7 +194,8 @@ class PyGAAP_GUI:
 		progress_report_here, progress_report_there = Pipe(duplex=True)
 		self.results_queue = Queue()
 		experiment = GUI_run_experiment.Experiment(
-			self.backend_API, module_names, self.dpi_setting, progress_report_there, self.results_queue
+			self.backend_API, module_names, progress_report_there, self.results_queue,
+			dpi=self.dpi_setting
 		)
 
 		MultiprocessLoading.process_window(
@@ -264,7 +269,6 @@ class PyGAAP_GUI:
 				check_labels[lb_index].config(
 					fg = "#e24444",
 					activeforeground = "#e24444")
-				all_set = False
 				process_button.config(
 					fg = "#333333",
 					state = DISABLED,
@@ -412,9 +416,6 @@ class PyGAAP_GUI:
 				str(mode))
 		if window != None: window.destroy()
 		return
-
-
-
 
 
 	def edit_known_authors(self, authorList, mode):
@@ -583,22 +584,27 @@ class PyGAAP_GUI:
 		#basic frames structure
 		Tab_ReviewProcess_Canonicizers = Frame(self.tabs_frames["Tab_ReviewProcess"])
 		Tab_ReviewProcess_Canonicizers.grid(
-			row = 0, column = 0, columnspan = 3, sticky = "wens", padx = 10, pady = 10
+			row = 0, column = 0, sticky = "wens", padx = 10, pady = 10
 		)
 
 		Tab_ReviewProcess_EventDrivers = Frame(self.tabs_frames["Tab_ReviewProcess"])
 		Tab_ReviewProcess_EventDrivers.grid(
-			row = 1, column = 0, sticky = "wens", padx = 10, pady = 10
+			row = 0, column = 1, sticky = "wens", padx = 10, pady = 10
 		)
 
 		Tab_ReviewProcess_EventCulling = Frame(self.tabs_frames["Tab_ReviewProcess"])
 		Tab_ReviewProcess_EventCulling.grid(
-			row = 1, column = 1, sticky = "wens", padx = 10, pady = 10
+			row = 0, column = 2, sticky = "wens", padx = 10, pady = 10
+		)
+		
+		Tab_ReviewProcess_NumberConverters = Frame(self.tabs_frames["Tab_ReviewProcess"])
+		Tab_ReviewProcess_NumberConverters.grid(
+			row = 1, column = 0, sticky = "wens", padx = 10, pady = 10
 		)
 
 		Tab_ReviewProcess_AnalysisMethods = Frame(self.tabs_frames["Tab_ReviewProcess"])
 		Tab_ReviewProcess_AnalysisMethods.grid(
-			row = 1, column = 2, sticky = "wens", padx = 10, pady = 10
+			row = 1, column = 1, sticky = "wens", padx = 10, pady = 10
 		)
 
 		for n in range(3):
@@ -606,6 +612,7 @@ class PyGAAP_GUI:
 		for n in range(2):
 			self.tabs_frames["Tab_ReviewProcess"].rowconfigure(n, weight = 1)
 
+		# TODO condense RP tab generation.
 		#RP = ReviewProcess
 		#note: the buttons below (that redirect to corresponding tabs) have hard-coded tab numbers
 		Tab_RP_Canonicizers_Button = Button(
@@ -648,9 +655,24 @@ class PyGAAP_GUI:
 			command = self.Tab_RP_EventCulling_Listbox.yview)
 		self.Tab_RP_EventCulling_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
 		self.Tab_RP_EventCulling_Listbox.config(yscrollcommand = self.Tab_RP_EventCulling_Listbox_scrollbar.set)
+
+		Tab_RP_NumberConverters_Button = Button(
+			Tab_ReviewProcess_NumberConverters, text = "Number Converters",font = ("helvetica", 16), relief = FLAT,
+			command = lambda:self.switch_tabs(tabs, "choose", 4))
+		Tab_RP_NumberConverters_Button.pack(anchor = "n")
+		Tab_RP_NumberConverters_Button.excludestyle = True
+
+		self.Tab_RP_NumberConverters_Listbox = Listbox(Tab_ReviewProcess_NumberConverters)
+		self.Tab_RP_NumberConverters_Listbox.pack(side = LEFT, expand = True, fill = BOTH)
+		self.Tab_RP_NumberConverters_Listbox_scrollbar = Scrollbar(
+			Tab_ReviewProcess_NumberConverters, width = self.dpi_setting["dpi_scrollbar_width"],
+			command = self.Tab_RP_NumberConverters_Listbox.yview)
+		self.Tab_RP_NumberConverters_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
+		self.Tab_RP_NumberConverters_Listbox.config(yscrollcommand = self.Tab_RP_NumberConverters_Listbox_scrollbar.set)
+
 		Tab_RP_AnalysisMethods_Button = Button(
 			Tab_ReviewProcess_AnalysisMethods, text = "Analysis Methods",font = ("helvetica", 16), relief = FLAT,
-			command = lambda:self.switch_tabs(tabs, "choose", 4))
+			command = lambda:self.switch_tabs(tabs, "choose", 5))
 		Tab_RP_AnalysisMethods_Button.pack(anchor = "n")
 		Tab_RP_AnalysisMethods_Button.excludestyle = True
 
@@ -673,8 +695,8 @@ class PyGAAP_GUI:
 		Tab_RP_Process_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 5, padx = 20)
 
 		Tab_RP_Process_Button.bind("<Map>",
-			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
-			labels = [Tab_RP_EventDrivers_Button, Tab_RP_AnalysisMethods_Button],
+			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_NumberConverters_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
+			labels = [Tab_RP_EventDrivers_Button, Tab_RP_NumberConverters_Button, Tab_RP_AnalysisMethods_Button],
 			#button = Tab_RP_Process_Button:self.run_experiment(lb, labels, button)
 			button = Tab_RP_Process_Button:self.process_check(lb, labels, button)
 		)
@@ -865,6 +887,18 @@ class PyGAAP_GUI:
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
 
+		self.Tab_NumberConverters_parameters_displayed = []
+		self.generated_widgets['NumberConverters'] = GUI_unified_tabs.create_module_tab(
+			self.tabs_frames["Tab_NumberConverters"],
+			["Number Converters"],
+			"NumberConverters",
+			displayed_parameters = self.Tab_NumberConverters_parameters_displayed,
+			RP_listbox = self.Tab_RP_NumberConverters_Listbox,
+			list_of_functions=self.list_of_functions,
+			backend_API=self.backend_API,
+			topwindow=self.topwindow,
+			dpi_setting=self.dpi_setting)
+
 		self.Tab_AnalysisMethods_parameters_displayed = []
 		self.generated_widgets['AnalysisMethods'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_AnalysisMethods"],
@@ -878,7 +912,7 @@ class PyGAAP_GUI:
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
 
-		for mtype in ['Canonicizers', "EventDrivers", "EventCulling"]:
+		for mtype in ['Canonicizers', "EventDrivers", "EventCulling", "NumberConverters", "AnalysisMethods"]:
 			self.search_entry_query[mtype] = StringVar()
 			self.generated_widgets[mtype]['search_entry']\
 				.configure(textvariable=self.search_entry_query[mtype])
@@ -892,7 +926,7 @@ class PyGAAP_GUI:
 				self.search_modules(entry, lb, search_from)
 			)
 
-		self.search_entry_query["AnalysisMethods"] = StringVar()
+		self.search_entry_query["DistanceFunctions"] = StringVar()
 		self.generated_widgets["AnalysisMethods"]['search_entry']\
 			.configure(textvariable=self.search_entry_query["AnalysisMethods"])
 		self.generated_widgets["AnalysisMethods"]['search_entry'].bind('<Control-A>',
@@ -916,7 +950,7 @@ class PyGAAP_GUI:
 		for c in range(6):
 			bottomframe.columnconfigure(c, weight = 10)
 
-		finish_button = Button(bottomframe, text = "Finish & Review", command = lambda:self.switch_tabs(self.tabs, "choose", 5))
+		finish_button = Button(bottomframe, text = "Finish & Review", command = lambda:self.switch_tabs(self.tabs, "choose", 6))
 		#note: this button has a hard-coded tab number
 		previous_button = Button(bottomframe, text = "<< Previous", command = lambda:self.switch_tabs(self.tabs, "previous"))
 		next_button = Button(bottomframe, text = "Next >>", command = lambda:self.switch_tabs(self.tabs, "next"))
@@ -1089,10 +1123,13 @@ class PyGAAP_GUI:
 
 		# first clear everthing in listboxes.
 		# the "DistanceFunctions" Treeview is in the "AnalysisMethods" tkinter frame.
-		for module_type in ["Canonicizers", "EventDrivers", "EventCulling"]:
+		for module_type in ["Canonicizers", "EventDrivers", "EventCulling", "NumberConverters"]:
 			self.generated_widgets[module_type]["available_listboxes"][0][2].delete(0, END)
 			self.generated_widgets[module_type]["selected_listboxes"][0][2].delete(0, END)
-		for listbox in [self.Tab_RP_Canonicizers_Listbox, self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_EventCulling_Listbox]:
+		for listbox in [self.Tab_RP_Canonicizers_Listbox,
+						self.Tab_RP_EventDrivers_Listbox,
+						self.Tab_RP_EventCulling_Listbox,
+						self.Tab_RP_NumberConverters_Listbox]:
 			listbox.delete(0, END)
 
 		self.Tab_RP_AnalysisMethods_Listbox.delete(*self.Tab_RP_AnalysisMethods_Listbox.get_children())
@@ -1115,6 +1152,8 @@ class PyGAAP_GUI:
 				self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2].insert(END, distancefunc)
 			for culling in sorted(list(self.backend_API.eventCulling.keys())):
 				self.generated_widgets["EventCulling"]["available_listboxes"][0][2].insert(END, culling)
+			for converter in sorted(list(self.backend_API.numberConverters.keys())):
+				self.generated_widgets["NumberConverters"]["available_listboxes"][0][2].insert(END, converter)
 			for method in sorted(list(self.backend_API.analysisMethods.keys())):
 				self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][2].insert(END, method)
 			if startup == False: self.status_update("Modules reloaded")
@@ -1311,7 +1350,7 @@ class PyGAAP_GUI:
 		# clear: True if function only used to clear displayed parameters.
 		if GUI_debug >= 3:
 			print("find_parameters(clear = %s), displayed_params list length: %s."
-			%(len(displayed_params), clear))
+			%(clear, len(displayed_params)))
 
 
 		module_type = options.get("module_type")
@@ -1482,14 +1521,14 @@ class PyGAAP_GUI:
 			%(module, variable_name))
 
 		value_to = stringvar.get()
-
-		try: # to identify numbers
-			value_to = float(value_to)
-			# if value is a number, try converting to a number.
-			if abs(int(value_to) - value_to) < 0.0000001:
-				value_to = int(value_to)
-		except ValueError:
-			pass
+		if type(value_to) != bool:
+			try: # to identify numbers
+				value_to = float(value_to)
+				# if value is a number, try converting to a number.
+				if abs(int(value_to) - value_to) < 0.0000001:
+					value_to = int(value_to)
+			except ValueError:
+				pass
 		setattr(module, variable_name, value_to)
 		return
 
@@ -1623,7 +1662,7 @@ class PyGAAP_GUI:
 
 		menu_dev = Menu(menubar, tearoff=0)
 		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
-		menu_dev.add_command(label="Show process content", command=self.show_process_content)
+		menu_dev.add_command(label="Show process content", command=self.backend_API.show_process_content)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
 
 		topwindow.config(menu = menubar)
@@ -1650,6 +1689,7 @@ class PyGAAP_GUI:
 		self.tabs.add(self.tabs_frames["Tab_Canonicizers"], text = "Canonicizers")
 		self.tabs.add(self.tabs_frames["Tab_EventDrivers"], text = "Event Drivers")
 		self.tabs.add(self.tabs_frames["Tab_EventCulling"], text = "Event Culling")
+		self.tabs.add(self.tabs_frames["Tab_NumberConverters"], text = "Number Converters")
 		self.tabs.add(self.tabs_frames["Tab_AnalysisMethods"], text = "Analysis Methods")
 		self.tabs.add(self.tabs_frames["Tab_ReviewProcess"], text = "Review & Process")
 
@@ -1741,15 +1781,6 @@ class PyGAAP_GUI:
 		self._unified_tabs()
 		self._load_modules_to_GUI()
 		self.change_style(self.topwindow)
-
-	def show_process_content(self):
-		print("self.backend_API.unknown_docs:\n")
-		[print(str(d)) for d in self.backend_API.unknown_docs]
-		print("self.backend_API.known_authors:\n")
-		[print(str(d)) for d in self.backend_API.known_authors]
-		print("modules\n" + str(self.backend_API.modulesInUse))
-		return
-
 
 	def test_run(self):
 		"""This loads everything but without starting the mainloop or splash screen."""

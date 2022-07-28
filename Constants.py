@@ -1,3 +1,3 @@
 # PyGAAP Constants
-version = "1.0.0 alpha 1"
-versiondate = "2022.07.22"
+version = "1.0.0 alpha 2"
+versiondate = "2022.07.28"

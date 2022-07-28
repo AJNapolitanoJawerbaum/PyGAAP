@@ -11,28 +11,28 @@
 
 
 from multiprocessing import Process, Queue, Pipe, Pool	
-from tkinter import *
 from copy import deepcopy
 from copy import copy as shallowcopy
 
 import datetime
 from json import load as json_load
 
-from backend import API
+#from backend import API
 
 
 from backend.CSVIO import readDocument
 from backend.Document import Document
+#from generics.NumberConverter import NumberConverter
 
 
-GUI_debug = 0
+GUI_debug = 3
 
 class Experiment:
 
 	backend_API = None
 	module_names: dict = {}
 
-	def __init__(self, api, module_names: dict, dpi_setting, pipe_here=None, q:Queue=None):
+	def __init__(self, api, module_names: dict, pipe_here=None, q:Queue=None, **options):
 		"""
 		Copies API in a different process
 		receives an end of a pipe to send info back to main process.
@@ -42,7 +42,7 @@ class Experiment:
 		self.backend_API = shallowcopy(api)
 		self.pipe_here = pipe_here
 		self.module_names = module_names
-		self.dpi_setting = dpi_setting
+		#self.dpi_setting = options.get("dpi")
 		self.q = q
 
 	def run_pre_processing(
@@ -56,7 +56,6 @@ class Experiment:
 		# doc: the document passed in.
 		# dump_queue: when multi-processing,
 		# the shared queue to temporarily store the documents.
-
 		for c in self.backend_API.modulesInUse["Canonicizers"]:
 			c._global_parameters = self.backend_API.global_parameters
 			doc.text = c.process(doc.text)
@@ -71,13 +70,13 @@ class Experiment:
 			doc.setEventSet(ec.process(doc.eventSet))
 		return doc
 
-	def run_experiment(self):
+	def run_experiment(self, **options):
 
 		"""
 		Process all input files with the parameters in all tabs.
 		input: unknown authors, known authors, all listboxes.
 		"""
-
+		return_results = options.get("return_results", False)
 		# check_listboxes:
 		#   list of listboxes that shouldn't be empty.
 		# check_labels:
@@ -117,7 +116,7 @@ class Experiment:
 			processed_docs = []
 			total_num_docs = len(self.backend_API.documents)
 			for doc_ind in range(total_num_docs):
-				self.pipe_here.send(int((doc_ind/total_num_docs)*100))
+				if self.pipe_here != None: self.pipe_here.send(int((doc_ind/total_num_docs)*100))
 				pre_processed_doc = self.run_pre_processing(self.backend_API.documents[doc_ind])
 				processed_docs.append(pre_processed_doc)
 			self.backend_API.documents = processed_docs
@@ -144,57 +143,76 @@ class Experiment:
 		# implement multi-processing for analysis methods.
 		# if $score < multiprocessing_limit_analysis:
 
-		self.pipe_here.send(0)
+		if self.pipe_here != None: self.pipe_here.send(0)
+
+		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
+		
 
 		results = []
-		if GUI_debug >= 3: print("Running analysis methods")
-		number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
-		for am_df_index in range(number_of_classifiers):
-			#if GUI_debug >= 3: print("a")
 
-			am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
-						self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
-			am_df_pair[0]._global_parameters = self.backend_API.global_parameters
-			if am_df_pair[1] != "NA":
-				am_df_pair[1]._global_parameters = self.backend_API.global_parameters
+		for nc in self.backend_API.modulesInUse["NumberConverters"]:
+			"""
+			Only one number converter used for one analysis method
+			This means for N number converters and M methods, there will be (N x M) analyses.
+			"""
+			nc._global_parameters = self.backend_API.global_parameters
 
-			am_df_names_display = self.module_names["am_df_names"][am_df_index]
-			if am_df_names_display[1] == "NA": am_df_names_display = am_df_names_display[0]
-			else: am_df_names_display = am_df_names_display[0] + ', ' + am_df_names_display[1]
-			self.pipe_here.send("Training - %s" % str(am_df_names_display))
+			all_data = nc.convert(known_docs + unknown_docs)
+			known_docs_numbers_aggregate = all_data[:len(known_docs)]
+			unknown_docs_numbers_aggregate = all_data[len(known_docs)]
+			del all_data
 
-			am_df_pair[0].setDistanceFunction(am_df_pair[1])
-			
-			# for each method: first train models on known docs
-			am_df_pair[0].train(known_docs)
-			# then for each unknown document, analyze and output results
-			
-			self.pipe_here.send("Analyzing - %s" % am_df_names_display)
+			if GUI_debug >= 3: print("Running analysis methods")
+			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
+			for am_df_index in range(number_of_classifiers):
+				#if GUI_debug >= 3: print("a")
 
-			for d_index in range(len(unknown_docs)):
+				am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
+							self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
+				am_df_pair[0]._global_parameters = self.backend_API.global_parameters
+				if am_df_pair[1] != "NA":
+					am_df_pair[1]._global_parameters = self.backend_API.global_parameters
 
-				d = unknown_docs[d_index]
-				if d.author != "": continue
+				am_df_names_display = self.module_names["am_df_names"][am_df_index]
+				if am_df_names_display[1] == "NA": am_df_names_display = am_df_names_display[0]
+				else: am_df_names_display = am_df_names_display[0] + ', ' + am_df_names_display[1]
+				if self.pipe_here != None: self.pipe_here.send("Training - %s" % str(am_df_names_display))
 
-				self.pipe_here.send(int(100*d_index/len(unknown_docs)))
-				doc_result = am_df_pair[0].analyze(d)
-				formatted_results = \
-					self.backend_API.prettyFormatResults(self.module_names["canonicizers_names"],
-													self.module_names["event_drivers_names"],
-													self.module_names["event_cullers_names"],
-													self.module_names["am_df_names"][am_df_index][0],
-													self.module_names["am_df_names"][am_df_index][1],
-													d,
-													doc_result)
-				results.append(formatted_results)
-		
-		
+				am_df_pair[0].setDistanceFunction(am_df_pair[1])
+				
+				# for each method: first train models on known docs
+				am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
+				# then for each unknown document, analyze and output results
+				
+				if self.pipe_here != None: self.pipe_here.send("Analyzing - %s" % am_df_names_display)
+
+				doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
+
+				for d_index in range(len(unknown_docs)):
+
+					formatted_results = \
+						self.backend_API.prettyFormatResults(
+							self.module_names["canonicizers_names"],
+							self.module_names["event_drivers_names"],
+							self.module_names["event_cullers_names"],
+							self.module_names["number_converters_names"],
+							self.module_names["am_df_names"][am_df_index][0],
+							self.module_names["am_df_names"][am_df_index][1],
+							unknown_docs[d_index],
+							doc_results[d_index]
+						)
+					results.append(formatted_results)
+
+		print("finished")
 		results_text = ""
 		for r in results:
 			results_text += str(r + "\n")
 
-		self.pipe_here.send(-1)
+		if self.pipe_here != None: self.pipe_here.send(-1)
 		
-		self.q.put(results_text)
-		return 0
+		if self.q != None:
+			self.q.put(results_text)
+			return 0
+		if return_results:
+			return results_text
 
