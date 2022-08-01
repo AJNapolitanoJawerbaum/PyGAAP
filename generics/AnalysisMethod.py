@@ -17,13 +17,18 @@ class AnalysisMethod(ABC):
 	_variable_options = dict()
 	_global_parameters = dict()
 	
-	def __init__(self):
+	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except:
 			self._variable_options = dict()	
 		self._global_parameters = self._global_parameters
+		try: self.after_init(**options)
+		except (AttributeError, NameError): pass
+
+	def after_init(self, **options):
+		pass
 
 	@abstractmethod
 	def train(self, knownDocuments, **options):
@@ -46,11 +51,35 @@ class AnalysisMethod(ABC):
 		pass
 
 	def get_train_data(self, known_docs):
+		"""
+		Aggregate training data into a single matrix,
+		designed to take parameters from document list input of train.
+		"""
 		train_data = tuple([d.numbers for d in known_docs])
 		train_data = np.array(train_data)
 		return train_data
+
 	def get_test_data(self, unknown_docs):
+		"""
+		Aggregate test data into a single matrix,
+		designed to take parameters from document list input of analyze.
+		"""
 		return np.array([d.numbers for d in unknown_docs])
+	
+	def get_results_dict_from_matrix(self, scores):
+		"""
+		returns the dictionary results per class from a scores matrix whose
+		rows are test samples and whose columns are the known classes.
+		"""
+		if type(scores) != list:
+			scores = scores.tolist()
+		results = list()
+		for doc in scores:
+			doc_result = dict()
+			for auth_index in range(len(doc)):
+				doc_result[self._labels_to_categories[auth_index]] = doc[auth_index]
+			results.append(doc_result)
+		return results
 
 	def setDistanceFunction(self, distance):
 		'''Sets the distance function to be used by the analysis driver.'''
@@ -109,12 +138,7 @@ class CentroidDriver(AnalysisMethod):
 		if unknown_data is None:
 			unknown_data = self.get_test_data(unknown_docs)
 		doc_by_author = self._distance.distance(unknown_data, self._mean_per_author)
-		results = list()
-		for doc in doc_by_author:
-			doc_result = dict()
-			for auth_index in range(len(doc)):
-				doc_result[self._labels_to_categories[auth_index]] = doc[auth_index]
-			results.append(doc_result)
+		results = self.get_results_dict_from_matrix(doc_by_author)
 		return results
 
 	def displayName():
@@ -158,7 +182,7 @@ class KNearestNeighbor(AnalysisMethod):
 		with the most votes from the K-nerest neighbors is assigned.
 		Votes always out-rank the distance: this is ensured by calculating the votes
 		and the distances separately, scaling the distances (per-doc on analysis) to [0, 0.5],
-		and calculating the final author score using ```max_vote - 1 x vote_rank + tie_breaking_distance.````\n
+		and calculating the final author score using ```max_vote - votes + tie_breaking_distance.````\n
 		Since the tie-breaker never exceeds 0.5, it will only affect ranking if two classes receive
 		the same number of votes.
 		"""
@@ -179,7 +203,7 @@ class KNearestNeighbor(AnalysisMethod):
 				doc_list = [[len(doc_dict[a]), sum(doc_dict[a])/len(doc_dict[a]), a] for a in doc_dict]
 			elif self.tie_breaker == "minimum":
 							# votes				closest score
-				doc_list = [[len(doc_dict[a]), min(doc_list[a]), a] for a in doc_dict]
+				doc_list = [[len(doc_dict[a]), min(doc_dict[a]), a] for a in doc_dict]
 			doc_list.sort(); doc_list.reverse()
 			max_vote = doc_list[0][0]
 			doc_list = {self._labels_to_categories[auth[2]]:max_vote-auth[0]+auth[1]/(2*max([a[1] for a in doc_list])) for auth in doc_list}

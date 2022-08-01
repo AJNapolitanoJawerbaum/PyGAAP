@@ -2,6 +2,8 @@
     "neural": ["neuro", "voted multi-layer perceptrons", "voted multi layer perceptrons", "nn", "weka"],
     "support vector machine": ["svm"],
     "svm": ["support vector machine"],
+    "sklearn": ["sci-kit learn", "sci kit learn", "scikit-learn", "scikit learn"],
+    "scikit-learn": ["sklearn", "sci-kit learn", "sci kit learn", "scikit learn"],
     "n-gram": ["ngrams", "n grams", "n-grams"],
     "ngram": ["ngrams", "n grams", "n-grams"],
     "n gram": ["ngrams", "n grams", "n-grams"],
@@ -16,5 +18,7 @@
     "frequency": ["histogram", "histograms"],
     "cosine distance": ["cosine similarity"],
     "histogram distance": ["euclidean"],
-    "euclidean distance": ["histogram distance"]
+    "euclidean distance": ["histogram distance"],
+    "jensen-shannon distance": ["information radius", "js divergence", "js", "jensen-shannon"],
+    "k-nearest neighbors": ["knn", "k nearest"]
 }

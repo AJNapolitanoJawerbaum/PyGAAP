@@ -6,13 +6,18 @@ class Canonicizer(ABC):
 	_index = 0
 	_global_parameters = dict()
 
-	def __init__(self):
+	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
+		try: self.after_init(**options)
+		except (AttributeError, NameError): pass
+
+	def after_init(self, **options):
+		pass
 
 	@abstractmethod
 	def process(self, procText):

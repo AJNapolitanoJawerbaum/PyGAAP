@@ -5,12 +5,18 @@ from importlib import import_module
 # An abstract Event Culling class.
 class EventCulling(ABC):
 
-	def __init__(self):
+	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except:
 			self._variable_options = dict()
+
+		try: self.after_init(**options)
+		except (AttributeError, NameError): pass
+
+	def after_init(self, **options):
+		pass
 
 	@abstractmethod
 	def process(self, eventSet):

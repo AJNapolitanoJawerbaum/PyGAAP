@@ -24,7 +24,7 @@ class CangjieConvert(Canonicizer):
 	Language = None
 	Version = None
 
-	def __init__(self):
+	def after_init(self):
 		self.Language = self._variable_options["Language"]["options"][self._variable_options["Language"]["default"]]
 		self.Version = self._variable_options["Version"]["options"][self._variable_options["Version"]["default"]]
 

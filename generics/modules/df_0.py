@@ -10,7 +10,7 @@ class CosineDistance(DistanceFunction):
 		return doc_by_author_distance
 
 	def displayDescription():
-		return "Computes cosine distance/similarity\n[UNVERIFIED]"
+		return "Computes cosine distance/similarity"
 
 	def displayName():
 		return "Cosine Distance"
@@ -23,7 +23,7 @@ class HistogramDistance(DistanceFunction):
 		return doc_by_author
 
 	def displayDescription():
-		return "Computes Euclidean/Histogram distance\n[UNVERIFIED]"
+		return "Computes Euclidean/Histogram distance"
 
 	def displayName():
 		return "Histogram Distance"

@@ -203,7 +203,6 @@ class Experiment:
 						)
 					results.append(formatted_results)
 
-		print("finished")
 		results_text = ""
 		for r in results:
 			results_text += str(r + "\n")

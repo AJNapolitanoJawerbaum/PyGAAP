@@ -30,12 +30,12 @@ mod_names = {
     "event_drivers_names": ["Character NGrams"],
     "event_cullers_names": [],
     "number_converters_names": ["Frequency"],
-    "am_df_names": [["K-Nearest Neighbors", "Histogram Distance"]]
+    "am_df_names": [["Centroid Driver", "Jensen-Shannon Distance"]]
 }
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Character NGrams"]())
 api.modulesInUse["NumberConverters"].append(api.numberConverters["Frequency"]())
-api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["K-Nearest Neighbors"]())
-api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
+api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
+api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Jensen-Shannon Distance"]())
 
 
 exp = GUI_run_experiment.Experiment(api, mod_names)
