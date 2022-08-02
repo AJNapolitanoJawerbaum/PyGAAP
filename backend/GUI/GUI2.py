@@ -336,26 +336,26 @@ class PyGAAP_GUI:
 		if GUI_debug >= 3: print("notepad_Save()")
 		return
 
-	def authors_list_updater(self, listbox):
+	def authors_list_updater(self):
 		"""This updates the ListBox from the self.backend_API.known_authors python-list"""
-		listbox.delete(0, END)
+		self.Tab_Documents_KnownAuthors_listbox.delete(0, END)
 		if GUI_debug >= 3: print("authors_list_updater()")
 		self.known_authors_list = []
 		for author_list_index in range(len(self.backend_API.known_authors)):
-			listbox.insert(END, self.backend_API.known_authors[author_list_index][0])
-			listbox.itemconfig(END, 
+			self.Tab_Documents_KnownAuthors_listbox.insert(END, self.backend_API.known_authors[author_list_index][0])
+			self.Tab_Documents_KnownAuthors_listbox.itemconfig(END, 
 				background = self.gui_params["styles"][self.style_choice]["accent_color_light"],
 				selectbackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"])
 			self.known_authors_list += [author_list_index]
 			for document in self.backend_API.known_authors[author_list_index][1]:
-				listbox.insert(END, document)#Author's documents
-				listbox.itemconfig(END, background = "gray90", selectbackground = "gray77")
+				self.Tab_Documents_KnownAuthors_listbox.insert(END, document)#Author's documents
+				self.Tab_Documents_KnownAuthors_listbox.itemconfig(END, background = "gray90", selectbackground = "gray77")
 				self.known_authors_list += [-1]
 		return
 
 
 
-	def author_save(self, listbox: Listbox, author, documents_list, mode, window=None):
+	def author_save(self, author, documents_list, mode, window=None):
 		"""
 		This saves author when adding/editing to the self.backend_API.known_authors list.
 		Then uses authors_list_updater to update the listbox
@@ -384,7 +384,7 @@ class PyGAAP_GUI:
 							self.backend_API.known_authors[author_index][1] \
 							+ list([doc for doc in documents_list
 								if doc not in self.backend_API.known_authors[author_index][1]])
-						self.authors_list_updater(listbox)
+						self.authors_list_updater()
 						if window != None: window.destroy()
 						return
 					author_index += 1
@@ -392,7 +392,7 @@ class PyGAAP_GUI:
 									[file for file in documents_list if type(file) == str]
 									)]]
 									#no existing author found, add.
-				self.authors_list_updater(listbox)
+				self.authors_list_updater()
 			if window != None: window.destroy()
 			return
 		elif mode == 'edit':
@@ -404,7 +404,7 @@ class PyGAAP_GUI:
 				while author_index<len(self.backend_API.known_authors):
 					if self.backend_API.known_authors[author_index][0] == author[0]:
 						self.backend_API.known_authors[author_index] = [author[1], documents_list]
-						self.authors_list_updater(listbox)
+						self.authors_list_updater()
 						if window != None: window.destroy()
 						return
 					author_index += 1
@@ -418,7 +418,7 @@ class PyGAAP_GUI:
 		return
 
 
-	def edit_known_authors(self, authorList, mode):
+	def edit_known_authors(self, mode):
 		"""Add, edit or remove authors
 		This opens a window to add/edit authors; does not open a window to remove authors.
 			calls author_save (which calls authorListUpdater) when adding/editing author,
@@ -431,9 +431,9 @@ class PyGAAP_GUI:
 			title = "Add Author"
 		elif mode == 'edit':
 			try:
-				authorList.get(authorList.curselection())
+				self.Tab_Documents_KnownAuthors_listbox.get(self.Tab_Documents_KnownAuthors_listbox.curselection())
 				title = "Edit Author"
-				selected = int(authorList.curselection()[0])
+				selected = int(self.Tab_Documents_KnownAuthors_listbox.curselection()[0])
 				if self.known_authors_list[selected] == -1:
 					self.status_update("Select the author instead of the document.")
 					print("edit author: select the author instead of the document")
@@ -450,7 +450,7 @@ class PyGAAP_GUI:
 
 		elif mode == "remove":#remove author does not open a window
 			try:
-				selected = int(authorList.curselection()[0])
+				selected = int(self.Tab_Documents_KnownAuthors_listbox.curselection()[0])
 				#this gets the listbox selection index
 				if self.known_authors_list[selected] == -1:
 					self.status_update("Select the author instead of the document.")
@@ -464,7 +464,7 @@ class PyGAAP_GUI:
 					else:
 						self.backend_API.known_authors = self.backend_API.known_authors[:author_index] \
 							+ self.backend_API.known_authors[author_index + 1:]
-					self.authors_list_updater(authorList)
+					self.authors_list_updater()
 
 			except (TclError, IndexError):
 				self.status_update("No author selected.")
@@ -473,7 +473,7 @@ class PyGAAP_GUI:
 				return
 			return
 		elif mode == "clear":
-			authorList.delete(0, END)
+			self.Tab_Documents_KnownAuthors_listbox.delete(0, END)
 			self.backend_API.known_authors = []
 			self.known_authors_list = []
 			return
@@ -529,15 +529,13 @@ class PyGAAP_GUI:
 		author_ok_button = Button(author_bottom_buttons_frame, text = "OK",)
 		if mode == "add":
 			author_ok_button.configure(command
-			= lambda:self.author_save(authorList,
-									author_name_entry.get(),
+			= lambda:self.author_save(author_name_entry.get(),
 									author_listbox.get(0, END),
 									mode,
 									self.author_window))
 		elif mode == "edit":
 			author_ok_button.configure(command
-			= lambda:self.author_save(authorList,
-									[insert_author, author_name_entry.get()],
+			= lambda:self.author_save([insert_author, author_name_entry.get()],
 									author_listbox.get(0, END),
 									mode,
 									self.author_window))
@@ -551,33 +549,76 @@ class PyGAAP_GUI:
 
 		self.author_window.mainloop()
 		return
+	
+	def load_save_csv(self, function, autoload_corpus_filepath=None):
+		"""Batch load or save corpus csv"""
+		if "load" in function:
+			if "autoload" in function:
+				filename = autoload_corpus_filepath
+				assert filename != None, "load_save_csv() autoload corpus cannot be empty"
+			elif function == "load" or function == "load_clear":
+				filename = askopenfilename(
+					filetypes = (("Comma separated values", "*.csv"), ("Text File", "*.txt"), ("All Files", "*.*")),
+					title = "Load corpus csv", multiple = False
+				)
+			corpus_list = readCorpusCSV(filename)
+			if len(corpus_list) == 0: return
+			if "clear" in function:
+				self._edit_unknown_docs("clear")
+				self.edit_known_authors("clear")
+			unknown = [Document(x[0], x[2], "", x[1]) for x in corpus_list if x[0] == ""]
+			known = [Document(x[0], x[2], "", x[1]) for x in corpus_list if x[0] != ""] + [Document("", "", "", "")]
+			# add unknown docs
+
+			if function == "autoload":
+				self._edit_unknown_docs("clear_autoadd", add_list=unknown)
+			else:
+				self._edit_unknown_docs("autoadd", add_list=unknown)
+
+			# add known docs
+			this_author = ""
+			this_author_list = []
+			for doc in known:
+				if doc.author != this_author:
+					if this_author != "":
+						self.author_save(this_author, this_author_list, "add")
+					this_author = doc.author
+					this_author_list = [doc.filepath]
+				else:
+					this_author_list.append(doc.filepath)
+			return
+
+		elif function == "save":
+			filename = asksaveasfilename(
+				filetypes = (("Comma separated values", "*.csv"), ("Text File", "*.txt"), ("All Files", "*.*")),
+				title = "Save document list to corpus csv"
+			)
+			if len(filename) == 0: return
+			with open(filename, "w+") as write_to:
+				for doc in self.backend_API.unknown_docs:
+					filepath = doc.filepath
+					if filepath[0] == ".": filepath = getcwd() + filepath[1:]
+					elif filepath[0] != "/": filepath = getcwd() + filepath
+					write_to.write(","+filepath+","+doc.author+"\n")
+				for auth_list in self.backend_API.known_authors:
+					for doc in auth_list[1]:
+						filepath = doc
+						if filepath[0] == ".": filepath = getcwd() + filepath[1:]
+						elif filepath[0] != "/": filepath = getcwd() + filepath
+						write_to.write(auth_list[0]+","+filepath+","+doc.split("/")[-1]+"\n")
+			return
+
+
+		else: raise ValueError("Unknown parameter for GUI.load_save_csv:", function)
 
 	def load_aaac(self, problem: str):
 		"""Loads AAAC problems"""
 		# problem: "problem" + capital character.
-		corpus_list = CSVIO.readCorpusCSV(self.gui_params["aaac_problems_path"]+'%s/load%s.csv' % (problem, problem[-1]))
+		corpus_file_path = self.gui_params["aaac_problems_path"]+'%s/load%s.csv' % (problem, problem[-1])
+		# corpus_list = CSVIO.readCorpusCSV(corpus_file_path)
 		if GUI_debug >= 3: print("problem %s" % problem)
-		unknown = [Document(x[0], x[2], "", x[1]) for x in corpus_list if x[0] == ""]
-		known = [Document(x[0], x[2], "", x[1]) for x in corpus_list if x[0] != ""] + [Document("", "", "", "")]
-
-		# add unknown docs
-		for doc in unknown:
-			self._edit_unknown_docs("autoadd", add_list=unknown)
-
-		self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, "clear")
-
-		# add known docs
-		this_author = ""
-		this_author_list = []
-		for doc in known:
-			if doc.author != this_author:
-				if this_author != "":
-					self.author_save(self.Tab_Documents_KnownAuthors_listbox, this_author, this_author_list, "add")
-				this_author = doc.author
-				this_author_list = [doc.filepath]
-			else:
-				this_author_list.append(doc.filepath)
-
+		self.load_save_csv("autoloadclear", corpus_file_path)
+		return
 
 	def _review_process_tab(self, tabs):
 		#####REVIEW & PROCESS TAB
@@ -824,16 +865,16 @@ class PyGAAP_GUI:
 		Tab_Documents_knownauth_buttons.grid(row = 9, column = 0, sticky = "W")
 		Tab_Documents_KnownAuthors_AddAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Add Author", width = "15",
-			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, 'add'))
+			command = lambda:self.edit_known_authors('add'))
 		Tab_Documents_KnownAuthors_EditAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Edit Author", width = "15",
-			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, 'edit'))
+			command = lambda:self.edit_known_authors('edit'))
 		Tab_Documents_KnownAuthors_RmvAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Remove Author", width = "15",
-			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, "remove"))
+			command = lambda:self.edit_known_authors("remove"))
 		Tab_Documents_KnownAuthors_ClrAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "Clear All", width = "15",
-			command = lambda:self.edit_known_authors(self.Tab_Documents_KnownAuthors_listbox, "clear"))
+			command = lambda:self.edit_known_authors("clear"))
 
 		Tab_Documents_KnownAuthors_AddAuth_Button.grid(row=1, column=1, sticky="W")
 		Tab_Documents_KnownAuthors_EditAuth_Button.grid(row=1, column=2, sticky="W")
@@ -1042,27 +1083,6 @@ class PyGAAP_GUI:
 				self.status_update("Nothing selected")
 				return
 
-	def file_dialog(self,
-			window_title: str,
-			allow_duplicates: bool,
-			file_types: list=(("Text File", "*.txt"), ("All Files", "*.*")),
-			lift_window = None) -> tuple:
-		"""Universal add file function to bring up the explorer window"""
-		# window_title is the title of the window,
-		# may change depending on what kind of files are added
-		# listbox_operate is the listbox object to operate on
-		# allow_duplicates is whether the listbox allows duplicates.
-		# if listbox does not allow duplicates,
-		# item won't be added to the listbox and this prints a message to the terminal.
-		# lift_window is the window to go back to focus when the file browser closes
-		if GUI_debug >= 3: print("file_dialog(allow_duplicates = %s)", allow_duplicates)
-		elif GUI_debug >= 1: print("file_dialog")
-		filename = askopenfilename(
-			filetypes=file_types,
-			title=window_title, multiple=allow_duplicates
-		)
-		if type(filename) == str: return (filename,)
-		else: return filename
 
 	def _docs_to_string_list(self):
 		# return {
@@ -1104,14 +1124,18 @@ class PyGAAP_GUI:
 					after_choose -= 1
 				self.Tab_Documents_UnknownAuthors_listbox.select_set(max(after_choose, 0))
 		elif mode == "add":
-			add_list = self.file_dialog("Add Unknown Document(s)", True)
+			add_list = askopenfilename(
+				filetypes=(("Text File", "*.txt"), ("All Files", "*.*")),
+				title="Add Unknown Document(s)", multiple=True
+			)
+			if type(add_list) == str: add_list = (add_list,)
 			for item in add_list:
 				# do not read documents and save content to Document.text. Read only when processing.
 				self.backend_API.unknown_docs.append(Document("", item.split("/")[-1], "", item))
 				self.Tab_Documents_UnknownAuthors_listbox.insert(END, item)
 
-		elif mode == "autoadd":
-			self._edit_unknown_docs("clear")
+		elif "autoadd" in mode:
+			if "clear" in mode: self._edit_unknown_docs("clear")
 			add_list = options.get("add_list")
 			for item in add_list:
 				self.backend_API.unknown_docs.append(item)
@@ -1432,7 +1456,8 @@ class PyGAAP_GUI:
 				displayed_params.append(Label(param_frame, text = displayed_param_name))
 				displayed_params[-1].grid(row = i + 1 + rowshift, column = 0)
 
-				if this_module._variable_options[parameter_i]["type"] == 'Entry':
+				menu_type = this_module._variable_options[parameter_i].get("type", "OptionMenu")
+				if menu_type == 'Entry':
 					raise NotImplementedError
 					# TODO 2 priority low:
 					# implement text entry for parameters.
@@ -1441,7 +1466,7 @@ class PyGAAP_GUI:
 						0, str(parameter_i['options'][parameter_i])
 					)
 					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
-				elif this_module._variable_options[parameter_i]["type"] == 'OptionMenu':
+				elif menu_type == "OptionMenu":
 					displayed_params.append(
 						OptionMenu(
 							param_frame, 
@@ -1600,34 +1625,22 @@ class PyGAAP_GUI:
 		#tkinter menu building goes from bottom to top / leaves to root
 		menu_batch_documents = Menu(menu_file, tearoff = 0)#batch documents menu
 		menu_batch_documents.add_command(
-			label = "Save Documents",
+			label = "Save corpus csv",
 			command = lambda function = "save":
-			self.load_save_docs(
-				function,
-				self.Tab_Documents_UnknownAuthors_listbox,
-				self.Tab_Documents_KnownAuthors_listbox
-			)
+			self.load_save_csv(function)
 		)
 		menu_batch_documents.add_command(
-			label="Load Documents",
+			label="Load corpus csv",
 			command=lambda function = "load":
-				self.load_save_docs(
-					function,
-					self.Tab_Documents_UnknownAuthors_listbox,
-					self.Tab_Documents_KnownAuthors_listbox
-				)
+				self.load_save_csv(function)
 		)
 		menu_batch_documents.add_command(
-			label="Clear and load Documents",
+			label="Clear and load corpus csv",
 			command=lambda function = "load_clear":
-				self.load_save_docs(
-					function,
-					self.Tab_Documents_UnknownAuthors_listbox,
-					self.Tab_Documents_KnownAuthors_listbox
-				)
+				self.load_save_csv(function)
 		)
 		menu_file.add_cascade(
-			label = "Batch Documents ***", menu = menu_batch_documents,
+			label = "Batch Documents", menu = menu_batch_documents,
 			underline = 0
 		)
 

@@ -1,5 +1,6 @@
 {
     "neural": ["neuro", "voted multi-layer perceptrons", "voted multi layer perceptrons", "nn", "weka"],
+    "multi-layer perceptron": ["neuro", "neural networks", "multi layer perceptrons", "nn", "weka"],
     "support vector machine": ["svm"],
     "svm": ["support vector machine"],
     "sklearn": ["sci-kit learn", "sci kit learn", "scikit-learn", "scikit learn"],

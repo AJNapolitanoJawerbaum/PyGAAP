@@ -1,2 +1,0 @@
-from generics.AnalysisMethod import *
-

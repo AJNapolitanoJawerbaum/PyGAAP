@@ -11,10 +11,10 @@ from backend.Document import Document
 from generics.modules.nc_0 import Frequency
 from generics.EventDriver import CharacterNGramEventDriver as ngram
 from generics.AnalysisMethod import CentroidDriver as centroid
-from generics.modules.am_sklearn import SVM_from_sklearn as svm
+from generics.modules.am_sklearn import Naive_bayes_sklearn as nb
 from generics.modules.df_0 import HistogramDistance as euclidean
 
-corpus = CSVIO.readCorpusCSV("./resources/aaac/problemI/loadI.csv")
+corpus = CSVIO.readCorpusCSV("./resources/aaac/problemC/loadC.csv")
 
 unknown_docs = []
 api_known_auths = []
@@ -55,7 +55,7 @@ known_docs_numbers_aggregate = all_data[:len(known_docs)]
 unknown_docs_numbers_aggregate = all_data[len(known_docs):]
 del all_data
 
-am = svm()
+am = nb()
 df = euclidean()
 
 am.setDistanceFunction(df)

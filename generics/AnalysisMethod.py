@@ -31,12 +31,12 @@ class AnalysisMethod(ABC):
 		pass
 
 	@abstractmethod
-	def train(self, knownDocuments, **options):
+	def train(self, train, train_data=None, **options):
 		'''Train a model on the knownDocuments.'''
 		pass
 		
 	@abstractmethod
-	def analyze(self, unknownDocuments):
+	def analyze(self, test, test_data=None, **options):
 		'''Analyze unknownDocument'''
 		pass
 
@@ -167,7 +167,7 @@ class KNearestNeighbor(AnalysisMethod):
 		return "This finds the K nearest documents in the feature space and assigns the class with most docs among them.\n" +\
 			"Tie breakers:\n\taverage: the category with the smallest average\n\tminimum: category of the closest document among the ties."
 
-	def train(self, known_docs, train_data=None):
+	def train(self, known_docs, train_data=None, **options):
 		self._train_labels, self._labels_to_categories =\
 			pn.auth_list_to_labels([d.author for d in known_docs])
 		if train_data is None:
@@ -175,7 +175,7 @@ class KNearestNeighbor(AnalysisMethod):
 
 		self._document_embeddings = train_data
 
-	def analyze(self, unknown_docs, unknown_data=None):
+	def analyze(self, unknown_docs, unknown_data=None, **options):
 		"""
 		K-nearest neighbor analysis implementation:\n
 		This uses the usual algorithm for K-NN, where the class/category/author

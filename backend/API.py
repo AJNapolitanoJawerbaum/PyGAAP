@@ -100,7 +100,7 @@ class API:
 	def show_process_content(self):
 		print("Unknown_docs:\n")
 		[print(str(d)) for d in self.unknown_docs]
-		print("Kknown_authors:\n")
+		print("Known_authors:\n")
 		[print(str(d)) for d in self.known_authors]
 		print("Modules-in-use\n" + str(self.modulesInUse))
 		return

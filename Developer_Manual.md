@@ -115,13 +115,32 @@ As a readability consideration, it's recommended that the files in ```~/generics
 ## <span style="color:#aaeeff">The analysis Process</span> <a name="analysis_process"></a>
 
 ### <span style="color:#aaeeff">Data types</span>
-Note: these are not necessarily the return types.
+These are the expected input and output types.
 ```
-String -> canonicizers -> String
-String -> event drivers -> list of strings
-list of strings -> event culling -> list of strings
-list of strings -> number converters -> numpy.array
-numpy.array -> analysis & distance functions -> dict.
+Canonicizers (pre-processors)
+   String -> String
+   save to Document.text, returning is not required
+
+Event drivers (feature extractors)
+   String (Document.text) -> list of strings
+   save to Document.eventSet, return is not requied
+
+Event cullers (feature filtering/culling)
+   list of strings (Document.eventSet) -> list of strings
+   save to Document.eventSet, return is not required
+
+Number converters (text embedders)
+   list of strings (Document.eventSet) -> numpy.array (1D)
+   save to Document.numbers, returning a 2D numpy.array is recommended, with shape (known categories, unknown categories)
+
+Distance functions
+   numpy.array (1D or 2D) -> numpy.array (2D), shape (known categories, unknown categories)
+   must return
+
+analysis methods
+   numpy.array (Document.numbers) -> list[dict[string:float]]
+   list of dicts whose keys are authors and values, scores for each unknown category where a lower score is higher ranked.
+   must return
 ```
 ### <span style="color:#aaeeff">The process</span>
 1. The text string is read from file and saved to Document.text. The canonicizers process the text & save it back into (overwrite) Document.text.
@@ -148,7 +167,7 @@ Example:
 <!-- - ```_multiprocessing_score``` (integer, *not yet implemented*) the "time-consumingness" of an analysis method. It's 1 by default or if omitted. The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long. -->
 
 ## <span style="color:#aaeeff"> Class initialization</span> <a name="class_init"></a>
-The `__init__()` method for module classes contains initialization for required parameters. These are handled in the abstract (base) class at the top of the generic module files (`~/generics/...`). If a separate init method is needed for a module, the init function for the abstract class should be called as well.
+The `__init__()` method for module classes contains initialization for required parameters. These are handled in the abstract (base) class at the top of the generic module files (`~/generics/...`). Use an ```after_init(**options)``` function if there are extra steps for a module right after initialization. It takes key-word arguments passed into ```__init__()```.
 
 ## <span style="color:#aaeeff"> Class functions</span> <a name="class_functions"></a>
 - All modules are required to have ```displayName()``` and ```displayDescription()```.

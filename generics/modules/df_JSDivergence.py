@@ -16,7 +16,8 @@ class JSDistance(DistanceFunction):
 			unknown_split * np.log2(unknown_split/reference_distribution)))
 		kl_unknown_to_reference = np.sum(single_term_kl_unknown_to_reference, axis=2)
 
-		single_term_kl_known_to_reference = np.where(known==0, 0,
+		single_term_kl_known_to_reference = \
+			np.where(known==0, 0,
 			np.where(reference_distribution==0, 0,
 			known * np.log2(known/reference_distribution)))
 		kl_known_to_reference = np.sum(single_term_kl_known_to_reference, axis=2)
