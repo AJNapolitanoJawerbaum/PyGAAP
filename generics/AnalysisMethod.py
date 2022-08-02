@@ -1,40 +1,42 @@
 from abc import ABC, abstractmethod, abstractproperty
-import math
 
 import backend.Histograms as histograms
-from importlib import import_module
+from backend import PrepareNumbers as pn
+import numpy as np
 
-from extra.modules.analysis_method_example import analysis_method_example
-
-external_modules = {
-	"extra.modules.analysis_method_example": None,
-	"extra.modules.am_sklearn_naive_bayes": None,
-}
-# external imports must use "backend.import_external"
-for mod in external_modules:
-	external_modules[mod] = import_module(mod)
 
 # An abstract AnalysisMethod class.
 class AnalysisMethod(ABC):
+	
+	'''
+	The analysis method takes the known docs to train and predicts the labels of the unknown docs.
+	It must be able to take one or a mix of dictinoaries, numpy arrays or scipy sparse arrays as training data.
+	It calls backend.PrepareNumbers to make everything the same format.
+	'''
 	distance = None
 	_variable_options = dict()
 	_global_parameters = dict()
 	
-	def __init__(self):
+	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except:
 			self._variable_options = dict()	
 		self._global_parameters = self._global_parameters
+		try: self.after_init(**options)
+		except (AttributeError, NameError): pass
+
+	def after_init(self, **options):
+		pass
 
 	@abstractmethod
-	def train(self, knownDocuments):
+	def train(self, train, train_data=None, **options):
 		'''Train a model on the knownDocuments.'''
 		pass
 		
 	@abstractmethod
-	def analyze(self, unknownDocument):
+	def analyze(self, test, test_data=None, **options):
 		'''Analyze unknownDocument'''
 		pass
 
@@ -47,129 +49,163 @@ class AnalysisMethod(ABC):
 	def displayDescription():
 		'''Returns the description of the method.'''
 		pass
-		
+
+	def get_train_data(self, known_docs):
+		"""
+		Aggregate training data into a single matrix,
+		designed to take parameters from document list input of train.
+		"""
+		train_data = tuple([d.numbers for d in known_docs])
+		train_data = np.array(train_data)
+		return train_data
+
+	def get_test_data(self, unknown_docs):
+		"""
+		Aggregate test data into a single matrix,
+		designed to take parameters from document list input of analyze.
+		"""
+		return np.array([d.numbers for d in unknown_docs])
+	
+	def get_results_dict_from_matrix(self, scores):
+		"""
+		returns the dictionary results per class from a scores matrix whose
+		rows are test samples and whose columns are the known classes.
+		"""
+		if type(scores) != list:
+			scores = scores.tolist()
+		results = list()
+		for doc in scores:
+			doc_result = dict()
+			for auth_index in range(len(doc)):
+				doc_result[self._labels_to_categories[auth_index]] = doc[auth_index]
+			results.append(doc_result)
+		return results
+
 	def setDistanceFunction(self, distance):
 		'''Sets the distance function to be used by the analysis driver.'''
-		self.distance = distance
+		self._distance = distance
+
+# class CentroidDriver_original(AnalysisMethod):
+# 	_authorHistograms = None
+	
+# 	def train(self, knownDocuments):
+# 		'''Get a mean normalized histogram for each known author.'''
+# 		self._authorHistograms = histograms.generateKnownDocsMeanHistograms(histograms.generateKnownDocsNormalizedHistogramSet(knownDocuments))
+
+# 	def analyze(self, unknownDocuments):
+# 		'''Compare a normalized histogram of unknownDocument against the normalized known document histograms and return a dictionary of distances.'''
+# 		docs_results = list()
+# 		for d in unknownDocuments:
+# 			results = dict()
+# 			for author, knownHist in self._authorHistograms.items():
+# 				results[author] = self.distance.distance(histograms.normalizeHistogram(histograms.generateAbsoluteHistogram(d)), knownHist)
+# 			docs_results.append(results)
+# 		return docs_results
+	
+# 	def displayName():
+# 		return "Centroid Driver*"
+
+# 	def displayDescription():
+# 		return "Computes one centroid per Author.\nCentroids are the average relative frequency of events over all documents provided.\ni=1 to n ΣfrequencyIn_i(event)."
 
 class CentroidDriver(AnalysisMethod):
-	_authorHistograms = None
-	
-	def train(self, knownDocuments):
-		'''Get a mean normalized histogram for each known author.'''
-		self._authorHistograms = histograms.generateKnownDocsMeanHistograms(histograms.generateKnownDocsNormalizedHistogramSet(knownDocuments))
-		
-	def analyze(self, unknownDocument):
-		'''Compare a normalized histogram of unknownDocument against the normalized known document histograms and return a dictionary of distances.'''
-		results = dict()
-		for author, knownHist in self._authorHistograms.items():
-			results[author] = self.distance.distance(histograms.normalizeHistogram(histograms.generateAbsoluteHistogram(unknownDocument)), knownHist)
+	"""The version of centroid driver that pairs with the number converters"""
+
+	_labels_to_categories = dict()
+	_mean_per_author = dict()
+	_means_labels = None
+	_distance = None
+
+	def train(self, known_docs, train_data=None):
+
+		train_labels, self._labels_to_categories =\
+			pn.auth_list_to_labels([d.author for d in known_docs])
+		if train_data is None:
+			# using "is" instead of "==" because numpy overloads "=="
+			# as element-wise comparison
+
+			# If none: did not use a vectorized number converter.
+			# in this case, the representations are set in the texts,
+			# no single matrix consisting of representation of all files were passed in.
+			# need to recombine representations of the texts.
+			train_data = self.get_train_data(known_docs)
+		self._mean_per_author, self._means_labels =\
+			pn.find_mean_per_author(train_data, train_labels)
+		return
+
+	def analyze(self, unknown_docs, unknown_data=None):
+		"""Get distance."""
+		if unknown_data is None:
+			unknown_data = self.get_test_data(unknown_docs)
+		doc_by_author = self._distance.distance(unknown_data, self._mean_per_author)
+		results = self.get_results_dict_from_matrix(doc_by_author)
 		return results
-	
+
 	def displayName():
 		return "Centroid Driver"
 
 	def displayDescription():
-		return "Computes one centroid per Author.\nCentroids are the average relative frequency of events over all documents provided.\ni=1 to n ΣfrequencyIn_i(event)."
+		return "[VECTORIZED]\nComputes one centroid per Author.\n" +\
+			"Centroids are the average relative frequency of events over all documents provided.\n" +\
+			"i=1 to n ΣfrequencyIn_i(event)."
 
-class CrossEntropy(AnalysisMethod):
-	mode="author"
-	_NoDistanceFunction_ = True
-	_histograms = None
-	_histogramsNp = None
-	_variable_options = {"mode": {"default": 0, "type": "OptionMenu", "options": ["author", "document"]}}
-	_multiprocessing_score = 1
-
-	def train(self, knownDocuments):
-		if self.mode == "author":
-			# authors -> mean histograms
-			self._histograms = histograms.generateKnownDocsMeanHistograms(histograms.generateKnownDocsNormalizedHistogramSet(knownDocuments))
-			#self._histogramsNp = {author:np.asarray(list(docHistogram.items())) for (author,docHistogram) in self._histograms.items()}
-			# ^^ goes into the histogram list and change mean histograms into numpy arrays
-		elif self.mode == 'document':
-			# authors -> list of histograms
-			self._histograms = histograms.generateKnownDocsNormalizedHistogramSet(knownDocuments)
-			#self._histogramsNp = {author:[np.asarray(list(docHistogram.items())) for docHistogram in listOfHistograms] for (author,listOfHistograms) in self._histograms.items()}
-			# ^^ goes into the list of histograms and individually change all histograms of all authors into numpy arrays
-	def analyze(self, unknownDocument):
-		# unknownDocument is a single doc, type Document.
-		results=dict()
-		unknownDocHistogram: dict = histograms.normalizeHistogram(histograms.generateAbsoluteHistogram(unknownDocument))
-		#unknownDocHistogramNp = np.asarray(list(unknownDocHistogram.items()))
-		results = dict()
-		if self.mode == "author":
-			for author in self._histograms:
-				authorResult = 0 # numerial result for an author (mean histogram)
-				for item in self._histograms[author]:
-					if unknownDocHistogram.get(item) != None:
-						authorResult -= self._histograms[author][item] * math.log(unknownDocHistogram[item])
-				results[author] = authorResult
-
-		elif self.mode == "document":
-			for author in self._histograms:
-				for doc in self._histograms[author]:
-					docResult = 0 # numerical result for a single document
-					for item in doc:
-						if unknownDocHistogram.get(item) != None:
-							docResult -= self._histograms[author][doc][item] * math.log(unknownDocHistogram[item])
-					results[doc] = docResult
-
-		return results
-	
-	def displayDescription():
-		return "Discrete cross Entropy."
-	
+class KNearestNeighbor(AnalysisMethod):
+	_document_embeddings: np.array = None
+	_labels_to_categories = None
+	_train_labels = None
+	_distance = None
+	k = 5
+	tie_breaker = "average"
+	_variable_options = {
+		"k": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 4, "displayed_name": "K"},
+		"tie_breaker": {"options": ["average", "minimum"], "type": "OptionMenu", "default": 0, "displayed_name": "Tie breaker"}
+	}
 	def displayName():
-		return "Cross Entropy"
+		return "K-Nearest Neighbors"
 
-
-class exampleExternalAM(AnalysisMethod):
-	_NoDistanceFunction_ = True
-	var = 1
-	_variable_options = {"var": {"default": 0, "type": "OptionMenu", "options": [1, 3, 5, 6, 10, 12]}}
-
-	def __init__(self):
-		self._module = external_modules["extra.modules.analysis_method_example"].analysis_method_example()
-		self.var = 1
-
-	def unwrap(self):
-		return self._module
-
-	def train(self, known_docs):
-		return None
-	
-	def analyze(self, unknownDocument):
-		return 0 
-	
 	def displayDescription():
-		return "Example external analysis method"
+		return "This finds the K nearest documents in the feature space and assigns the class with most docs among them.\n" +\
+			"Tie breakers:\n\taverage: the category with the smallest average\n\tminimum: category of the closest document among the ties."
 
-	def displayName():
-		return "Example external AM"
+	def train(self, known_docs, train_data=None, **options):
+		self._train_labels, self._labels_to_categories =\
+			pn.auth_list_to_labels([d.author for d in known_docs])
+		if train_data is None:
+			train_data = self.get_train_data(known_docs)
 
-# class sklearnNaiveBayes(AnalysisMethod):
-# 	_NoDistanceFunction_ = True
-# 	features_limit = 1000
-# 	_variable_options = {"features_limit": {"default": 0, "type": "OptionMenu", "options": [1000, 2000, 3000, 4000]}}
+		self._document_embeddings = train_data
 
-# 	def __init_(self):
-# 		self._module = external_modules["extra.modules.am_sklearn_naive_bayes"].sklearn_naive_bayes()
+	def analyze(self, unknown_docs, unknown_data=None, **options):
+		"""
+		K-nearest neighbor analysis implementation:\n
+		This uses the usual algorithm for K-NN, where the class/category/author
+		with the most votes from the K-nerest neighbors is assigned.
+		Votes always out-rank the distance: this is ensured by calculating the votes
+		and the distances separately, scaling the distances (per-doc on analysis) to [0, 0.5],
+		and calculating the final author score using ```max_vote - votes + tie_breaking_distance.````\n
+		Since the tie-breaker never exceeds 0.5, it will only affect ranking if two classes receive
+		the same number of votes.
+		"""
+		if unknown_data is None:
+			unknown_data = self.get_test_data(unknown_docs)
+		labels = self._train_labels.flatten().tolist()
+		unknown_by_known = self._distance.distance(unknown_data, self._document_embeddings)
+		unknown_by_known = [[[u_doc[d], labels[d]] for d in range(len(u_doc))] for u_doc in unknown_by_known]
+		unknown_by_known = [sorted(x)[:self.k] for x in unknown_by_known]
 
-# 	def unwrap(self):
-# 		return self._module
-	
-# 	def train(self, feature_set):
-# 		self._module.max_features = self.features_limit
-# 		results = self._module.train(feature_set)
-	
-# 	def analyze(self, unknown_doc_feature_set):
-# 		self._module.max_features = self.features_limit
-# 		results = self._module.predict(unknown_doc_feature_set)
-	
-# 	def displayDescription():
-# 		return "Naive Bayes classifier with CountVectorizer using scikit-learn"
-	
-# 	def displayName():
-# 		return "Naive Bayes (scikit-learn)"
-
-
+		unknown_by_authors = []
+		for doc in unknown_by_known:
+			doc_dict = dict()
+			for auth in doc:
+				doc_dict[auth[1]] = doc_dict.get(auth[1], []) + [auth[0]]
+			if self.tie_breaker == "average":
+							# votes				average
+				doc_list = [[len(doc_dict[a]), sum(doc_dict[a])/len(doc_dict[a]), a] for a in doc_dict]
+			elif self.tie_breaker == "minimum":
+							# votes				closest score
+				doc_list = [[len(doc_dict[a]), min(doc_dict[a]), a] for a in doc_dict]
+			doc_list.sort(); doc_list.reverse()
+			max_vote = doc_list[0][0]
+			doc_list = {self._labels_to_categories[auth[2]]:max_vote-auth[0]+auth[1]/(2*max([a[1] for a in doc_list])) for auth in doc_list}
+			unknown_by_authors.append(doc_list)
+		return unknown_by_authors

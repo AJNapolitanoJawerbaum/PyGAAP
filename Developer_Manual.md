@@ -1,20 +1,23 @@
 PyGAAP is the Python port of JGAAP, Java Graphical Authorship Attribution Program by Patrick Juola et al.\
 See https://evllabs.github.io/JGAAP/
 
+```Updated: 2022.07.14```
+
 # PyGAAP Developer Manual
 
 # Table of contents
-1. [Key differences from JGAAP](#key_differences)
+1. [Differences from JGAAP](#differences)
 2. [Widget structures](#structures)
    1. [Outline of tkinter widgets](#Outline_of_tkinter_widgets)
    2. [Function Calls](#nested_funcs)
 3. [Adding a new module](#new_mod)
+   1. [The analysis process](#analysis_process)
    1. [Classs variables](#class_variables)
    1. [Class initialization](#class_init)
    2. [Class functions](#class_functions)
    3. [Reload modules while PyGAAP is running](#live_reload)
 
-# Key differences from JGAAP <a name="key-differences"></a>
+# Differences from JGAAP <a name="differences"></a>
 ## Module parameters
 1. Unlike JGAAP, PyGAAP does not (currently) use dedicated classes for module parameters. See [Class variables](#class_variables).
 
@@ -75,7 +78,7 @@ Notepad()
 ├── -# NotepadWindow_SaveButton
    ├── -NotepadWindow_SaveButton -> Notepad_Save(text)
 
-authorsList(.., mode)                                 #called when a button in [Tab_Documents_knownauth_buttons] is pressed. The mode distinguishes the buttons.
+edit_known_authors(.., mode)                            #called when a button in [Tab_Documents_knownauth_buttons] is pressed. The mode distinguishes the buttons.
 ├── -# AuthorAddDocButton
 │    ├── -addFile()                                     # opens OS's file browser
 |
@@ -94,27 +97,77 @@ authorsList(.., mode)                                 #called when a button in [
 
 
 # Adding a new module <a name="new_mod"></a>
-Each module is a class in or imported to the file containing modules of the same type. These types are canonicizers (```Canonicizer.py```), event drivers (```EventDriver.py```), event cullers (```EventCulling.py```), analysis methods (```AnalysisMethod.py```), and distance functions (```DistanceFunction.py```). Add package dependencies and their version numbers to ```./requirements.txt```, if applicable.
+Add new modules to ```./generics/modules``` for the API to pick up while loading. Always add a line to import the generic type from ```~/generics```. For example, for a set of analysis methods:
+
+```
+from generics.AnalysisMethod import *
+```
+
+Add package dependencies and their version numbers to ```~/requirements.txt```, if applicable.\
+As a readability consideration, it's recommended that the files in ```~/generics/modules``` be prefixed with the following:\
+```cc``` for canonicizers\
+```ed``` for event drivers\
+```ec``` for event cullers\
+```nc``` for number converters\
+```am``` for analysis methods\
+```df``` for distance functions.
+
+## <span style="color:#aaeeff">The analysis Process</span> <a name="analysis_process"></a>
+
+### <span style="color:#aaeeff">Data types</span>
+These are the expected input and output types.
+```
+Canonicizers (pre-processors)
+   String -> String
+   save to Document.text, returning is not required
+
+Event drivers (feature extractors)
+   String (Document.text) -> list of strings
+   save to Document.eventSet, return is not requied
+
+Event cullers (feature filtering/culling)
+   list of strings (Document.eventSet) -> list of strings
+   save to Document.eventSet, return is not required
+
+Number converters (text embedders)
+   list of strings (Document.eventSet) -> numpy.array (1D)
+   save to Document.numbers, returning a 2D numpy.array is recommended, with shape (known categories, unknown categories)
+
+Distance functions
+   numpy.array (1D or 2D) -> numpy.array (2D), shape (known categories, unknown categories)
+   must return
+
+analysis methods
+   numpy.array (Document.numbers) -> list[dict[string:float]]
+   list of dicts whose keys are authors and values, scores for each unknown category where a lower score is higher ranked.
+   must return
+```
+### <span style="color:#aaeeff">The process</span>
+1. The text string is read from file and saved to Document.text. The canonicizers process the text & save it back into (overwrite) Document.text.
+2. Event drivers read from Document.text and convert it into a list of strings. This is saved into Document.eventSet.
+3. Event cullers read from Document.eventSet, process the list, and save it back into (overwrite) Document.eventSet
+4. Number converters read from Document.eventSet and convert the list into a NumPy array. The NumPy arrays are the numerical representations of the documents and are saved into Document.numbers. (1D array) At the same time, two aggregate NumPy arrays (2D) containing data from the known document set (training data) and the unknown document set (testing data) are passed to the next steps. Number converters returning these aggregate arrays is optional but recommended because it may help analysis increase performance by vectorizing the representations.
+5. The analysis modules receives the *entire* set of unknown documents, and optionally the aggregate testing data, and performs classification. It's up to the developer to decide whether to process them all at once or one-by-one. The result is a list of dictionaries where each dictionary has the scores for each candidate author.
 
 ## <span style="color:#aaeeff">Class variables</span> <a name="class_variables"></a>
 Class variables are declared within the class definition.
 
-### <span style="color:#aaeeff">User parameters for Event Drivers, Event Culling and Analysis Methods
+### <span style="color:#aaeeff">User parameters</span>
 Each user parameter is a class variable exposed to the GUI. These variables must also have corresponding entries in ```_variable_options```, and their names cannot begin with a "```_```".
 Conversely, to hide a class variable from the GUI, prefix the name with a "```_```".
 
 - `_global_parameters` API parameters to be passed to all modules, like `language`.
-- ```_variable_options``` (dictionary) lists the options, GUI type, and the default values of variables. The variables' names are the keys and their attributes are dicts. Each dict for a variable must have ```"options"``` for range of available choices, ```"type"``` for the GUI widget type (currently only ```OptionMenu``` is supported), and ```"default"``` for the default value _**as an index of the ```"options"``` list**_ (for the example below, the default corresponds to ```0```, which picks the item with ```0``` index in the ```"options"``` list as the default value, i.e. the default **value** is ```3```).\
+- ```_variable_options``` (dictionary) lists the options, GUI type, and the default values of variables. The variables' names are the keys and their attributes are dicts. Each dict for a variable must have ```"options"``` for range of available choices, ```"type"``` for the GUI widget type (currently only ```OptionMenu``` is supported), and ```"default"``` for the default value _**as an index of the ```"options"``` list**_ (for the example below, the default is ```0```, which picks the item with ```0``` index in the ```"options"``` list as the default value, i.e. the default **value** for the variable is ```3```). Optionally, add a display name if different from the variable name.\
 Example:
-```{"variable_1": {"options": list(range(3, 10)), "type": OptionMenu, "default": 0}}```
+```{"variable_1": {"options": list(range(3, 10)), "type": OptionMenu, "default": 0, "displayed_name": "The First Variable"}}```
 
 
 ### <span style="color:#aaeeff">Class variables for Analysis Methods
-- ```_NoDistanceFunction_``` (boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's okay to omit this variable if it would be set to ```False```.
-- ```_multiprocessing_score``` (integer) the "time-consumingness" of an analysis method. Default is 1 (or if omitted). The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long.
+- ```_NoDistanceFunction_``` (boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's ```False``` if omitted.
+<!-- - ```_multiprocessing_score``` (integer, *not yet implemented*) the "time-consumingness" of an analysis method. It's 1 by default or if omitted. The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long. -->
 
 ## <span style="color:#aaeeff"> Class initialization</span> <a name="class_init"></a>
-The `__init__()` method for module classes contains initialization for required parameters. These are handled in the abstract (base) class at the top of the generic module files (`~/generics/...`). If a separate init method is needed for a module, the init function for the abstract class should be called as well.
+The `__init__()` method for module classes contains initialization for required parameters. These are handled in the abstract (base) class at the top of the generic module files (`~/generics/...`). Use an ```after_init(**options)``` function if there are extra steps for a module right after initialization. It takes key-word arguments passed into ```__init__()```.
 
 ## <span style="color:#aaeeff"> Class functions</span> <a name="class_functions"></a>
 - All modules are required to have ```displayName()``` and ```displayDescription()```.
@@ -130,7 +183,9 @@ Functions by types of module:
    - ```CreateEventSet()``` (String → List)
    - ```setParams()```
 - Event cullers:
-   - to be determined
+   - ```process()``` (List → List)
+- Number Converters:
+   - ```convert``` (List → NumPy.array)
 - Analysis methods:
    - ```train()```
    - ```analyze()```
@@ -138,9 +193,10 @@ Functions by types of module:
 
 ## <span style="color:#aaeeff"> Reload modules while PyGAAP is running</span> <a name="live_reload"></a>
 
-To reload all modules while PyGAAP is running, switch to the ```Canonicizers``` tab, press the **right ctrl key**, and click ```Reload all modules``` that appears on the right.\
+To reload all modules while PyGAAP is running, go to the top menu bar: "Developer" $\rightarrow$ "Reload all modules".\
 There will be a confirmation in the status bar or an error message window.
-> ❗ Reloading will remove all selected modules.
+> ❗ Reloading will remove all selected modules.\
+> ❗ This does not reload libraries that the modules may import, e.g. SpaCy.
 
 
 # Abbreviations, Initialisms, and Acronyms

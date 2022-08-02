@@ -1,28 +1,25 @@
 from abc import ABC, abstractmethod
-from matplotlib.pyplot import eventplot
 from nltk import ngrams
 from nltk.tokenize import word_tokenize, sent_tokenize
-import spacy
-from importlib import import_module
-
-external_modules = {}
-# external imports must use "backend.import_external"
-for mod in external_modules:
-	external_modules[mod] = import_module(mod)
-
+# import spacy
 
 # An abstract EventDriver class.
 class EventDriver(ABC):
 
 	_global_parameters = dict()
 
-	def __init__(self):
+	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
+		try: self.after_init(**options)
+		except (AttributeError, NameError): pass
+
+	def after_init(self, **options):
+		pass
 
 	@abstractmethod
 	def displayName():
@@ -153,9 +150,7 @@ class CharacterPositionEventDriver(EventDriver):
 		return "Converts delimited words into list of letters with their positions within the word.\nRecommended with the Cangjie canonicizer"
 
 
-class WithinWordNGram(EventDriver):
-	n = 2
-	delimiter = "<whitespace(s)>"
+class WithinWordNGram(EventDriver):	
 	_variable_options = {
 		"delimiter":
 		{
@@ -170,6 +165,8 @@ class WithinWordNGram(EventDriver):
 			"default": 0
 		}
 	}
+	delimiter = _variable_options["delimiter"]["options"][_variable_options["delimiter"]["default"]]
+	n = _variable_options["n"]["options"][_variable_options["n"]["default"]]
 	
 	def displayName():
 		return "Within-word n-gram [under construction]"
@@ -191,44 +188,28 @@ class WithinWordNGram(EventDriver):
 			eventSet += [str(word[letterIndex] + "_" + str(letterIndex)) for letterIndex in range(len(word))]
 		return eventSet
 	
-class SpacyLemmatize(EventDriver):
-# class var.
-	_SpacyLemmatize_module_dict = {
-		"English": "en_core_web_sm",
-		"Chinese (GB2123)": "zh_core_web_sm",
-		"Japanese": "ja_core_news_sm",
-		# see https://spacy.io/usage/models
-		# for language module names.
-	}
-	# class var.
-	_SpacyLemmatize_lang_pipeline = None
 
-		
-	def displayName():
-		return "Lemmatize (Spacy)"
+class KSkipNGramCharacterEventDriver(EventDriver):
+	_variable_options = {
+		"k": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Skips (k)"},
+		"n": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 0, "displayed_name": "n-gram length (n)"}
+	}
+	k = 1
+	n = 1
+
+	def setParams(self, params):
+		self.k = params[0]
+		self.n = params[1]
 
 	def displayDescription():
-		return "Lemmatize words using the Spacy module."
-	
-		
-	def setParams(self, params):
-		'''Accepts a list of parameters and assigns them to the appropriate variables.'''
+		return "n-gram extracted from text that only has every k characters from the original text."
 
-	
-	def createEventSet(self, procText):
-		"""Lemmatize using spacy"""
+	def displayName():
+		return "K-skip Character N-gram"
 
-		if EventDriver._spacy_lang_pipeline == None:
-			EventDriver._spacy_lang_pipeline = spacy.load(
-				self._SpacyLemmatize_module_dict.get(
-					self._global_parameters["language"],
-					"xx_ent_wiki_sm"
-				)
-			)
-		lem = [
-			token.lemma_ for
-			token in
-			EventDriver._spacy_lang_pipeline(procText)
-		]
-		#print(lem)
-		return lem
+	def createEventSet(self, text):
+		text = "".join([text[i] for i in range(len(text)) if i%(self.k + 1) == 0])
+		nltkRawOutput = list(ngrams(text, self.n))
+		formattedOutput = [''.join(val) for val in nltkRawOutput]
+		return formattedOutput
+

@@ -15,7 +15,6 @@ def generateKnownDocsAbsoluteHistogramSet(documents):
 				absHistogramsByAuthor[author].append(docEventHist)
 			except KeyError:
 				absHistogramsByAuthor[author] = [docEventHist]
-				
 	return absHistogramsByAuthor
 	
 def generateKnownDocsNormalizedHistogramSet(documents):
@@ -64,17 +63,17 @@ def generateAbsoluteHistogram(document):
 	for event in document.eventSet:
 		absHist[event] = absHist.get(event, 0) + 1
 	return absHist
-	
+
 def normalizeHistogram(histogram):
 	'''Returns a normalized version of a given histogram.'''
 	normHist = dict()
 	factor = 1.0/sum(histogram.values())
-	
+
 	for k in histogram:
 		normHist[k] = histogram[k]*factor
-		
+
 	return normHist
-	
+
 def _generateAuthorDocumentDictionary(documents):
 	'''Generates a dictionary of lists of documents by author.'''
 	docsByAuthor = dict()

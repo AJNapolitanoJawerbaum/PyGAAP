@@ -1,7 +1,9 @@
 # Ignore all __pycache__ directories
 **/__pycache__
+**/.vscode
 
 # Ignore the tmp directory (experiment outputs are stored in it)
 /tmp
 launchpygaap.sh
 multi_test.py
+backend/GUI/GUI_run_experiment_original.py

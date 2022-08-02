@@ -1,46 +1,35 @@
-from generics.Canonicizer import Canonicizer
-from generics.EventCulling import EventCulling
-from generics.EventDriver import EventDriver
-from generics.AnalysisMethod import AnalysisMethod
-from generics.DistanceFunction import DistanceFunction
+# import spacy
+from importlib import import_module
+from os import listdir as ls
 
 class API:
 	'''API class'''
+	modules = []
 	canonicizers = dict()
 	eventDrivers = dict()
 	analysisMethods = dict()
 	distanceFunctions = dict()
 	eventCulling = dict()
+	numberConverters = dict()
 	documents = []
-	test = 3
 
 	moduleTypeDict = {
-		"canonicizers": canonicizers,
-		"eventDrivers": eventDrivers,
-		"eventCulling": eventCulling,
-		"analysisMethods": analysisMethods,
-		"distanceFunctions": distanceFunctions,
-
 		"Canonicizers": canonicizers,
 		"EventDrivers": eventDrivers,
 		"EventCulling": eventCulling,
+		"NumberConverters": numberConverters,
 		"AnalysisMethods": analysisMethods,
 		"DistanceFunctions": distanceFunctions,
-
-		"Canonicizers": canonicizers,
-		"Event Drivers": eventDrivers,
-		"Event Culling": eventCulling,
-		"Analysis Methods": analysisMethods,
-		"Distance Functions": distanceFunctions
 	}
 
 	# these are lists of modules (and their params) added to the processing queue.
 	# lists may contain multiple instances of the same module.
 	# ! This currently only works for the GUI.
-	modulesInUse={
+	modulesInUse = {
 		"Canonicizers": [],
 		"EventDrivers": [],
 		"EventCulling": [],
+		"NumberConverters": [],
 		"AnalysisMethods": [],
 		"DistanceFunctions": []
 	}
@@ -51,8 +40,30 @@ class API:
 	# e.g. if an event culler requires information on the text
 	# before it was converted to the feature set.
 
-	
+
+	languages_available = ["English", "Arabic (ISO-8859-6)", "Chinese (GB2123)"]
+	default_language = 0
+
+	known_authors: list = [] # list used in GUI2 to keep track of known documents. LIST OF STRINGS
+	unknown_docs: list = [] # list of unknown documents "Documents" (backend.Document). LIST OF DOCUMENTS
+
+
 	def __init__(self, documents):
+
+		# delay importing modules to creation of API instance
+		from generics.Canonicizer import Canonicizer
+		from generics.EventCulling import EventCulling
+		from generics.EventDriver import EventDriver
+		from generics.NumberConverter import NumberConverter
+		from generics.AnalysisMethod import AnalysisMethod
+		from generics.DistanceFunction import DistanceFunction
+
+
+		self.modules = []
+		for item in ls("./generics/modules/"):
+			if item[-3:] == ".py":
+				self.modules.append(import_module("generics.modules.%s" % (item[:-3])))
+
 		'''Build dictionaries of all the different parameters we can choose from.'''
 		# Populate dictionary of canonicizers.
 		for cls in Canonicizer.__subclasses__():
@@ -65,6 +76,9 @@ class API:
 		# Populate dictionary of event culling.
 		for cls in EventCulling.__subclasses__():
 			self.eventCulling[cls.displayName()] = cls
+
+		for cls in NumberConverter.__subclasses__():
+			self.numberConverters[cls.displayName()] = cls
 		
 		# Populate dictionary of analysis methods.
 		for cls in AnalysisMethod.__subclasses__():
@@ -79,6 +93,17 @@ class API:
 
 		self.global_parameters = self.global_parameters
 
+		# self.known_authors: list = []
+		# self.unknown_docs: list = []
+
+
+	def show_process_content(self):
+		print("Unknown_docs:\n")
+		[print(str(d)) for d in self.unknown_docs]
+		print("Known_authors:\n")
+		[print(str(d)) for d in self.known_authors]
+		print("Modules-in-use\n" + str(self.modulesInUse))
+		return
 		
 	def runCanonicizer(self, canonicizerString):
 		'''Runs the canonicizer specified by the string against all documents.'''
@@ -86,14 +111,18 @@ class API:
 		for doc in self.documents:
 			doc.text = canonicizer.process(doc.text)
 			
-	def runEventDriver(self, eventDriverString):
+	def runEventDriver(self, eventDriverString, **options):
 		'''Runs the event driver specified by the string against all documents.'''
 		eventDriver = self.eventDrivers.get(eventDriverString.split('|')[0])()
 		eventDriver.setParams(self._buildParamList(eventDriverString))
+		append = options.get("append", False)
 		for doc in self.documents:
-			doc.setEventSet(eventDriver.createEventSet(doc.text))
+			doc.setEventSet(eventDriver.createEventSet(doc.text), append=append)
 	
-	def runEventCulling(self):
+	def runEventCuller(self):
+		raise NotImplementedError
+
+	def runNumberConverter(self):
 		raise NotImplementedError
 			
 	def runAnalysis(self, analysisMethodString, distanceFunctionString):
@@ -116,7 +145,7 @@ class API:
 		analysis.train(knownDocs)
 		return unknownDoc, analysis.analyze(unknownDoc)
 		
-	def prettyFormatResults(self, canonicizers, eventDrivers, analysisMethod, distanceFunc, unknownDoc, results):
+	def prettyFormatResults(self, canonicizers, eventDrivers, eventCullers, numberConverters, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.
 		formattedResults = str(unknownDoc.title) + ' ' + str(unknownDoc.filepath) + "\nCanonicizers:\n"
@@ -124,9 +153,16 @@ class API:
 			formattedResults += '\t' + canonicizer + '\n'
 		if type(eventDrivers) == list:
 			for eventDriver in eventDrivers:
-				formattedResults += '\t' + eventDriver + '\n'
+				formattedResults += "Event Drivers:\n\t" + eventDriver + '\n'
 		else:
 			formattedResults += "Event Driver:\n\t" + eventDrivers + '\n'
+
+		for eventCuller in eventCullers:
+			formattedResults += "Event Culler:\n\t" + eventCuller + '\n'
+
+		for numberConverter in numberConverters:
+			formattedResults += "Number Converter:\n\t" + numberConverter + '\n'
+
 		formattedResults += "Analysis Method:\n\t" + analysisMethod + " with " + distanceFunc + '\n'
 		
 		# Sort the dictionary in ascending order by distance values and build the results listing.

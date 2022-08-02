@@ -1,25 +1,25 @@
 from abc import ABC, abstractmethod
 from importlib import import_module
 
-external_modules = {}
-# external imports must use "backend.import_external"
-for mod in external_modules:
-	external_modules[mod] = import_module(mod)
-
-
 
 # An abstract Event Culling class.
 class EventCulling(ABC):
 
-	def __init__(self):
+	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except:
 			self._variable_options = dict()
 
+		try: self.after_init(**options)
+		except (AttributeError, NameError): pass
+
+	def after_init(self, **options):
+		pass
+
 	@abstractmethod
-	def process(self, procText):
+	def process(self, eventSet):
 		'''To be determined'''
 		pass
 		
@@ -33,19 +33,28 @@ class EventCulling(ABC):
 		'''Returns the display description for the event culler.'''
 
 
-class EmptyEventCuller(EventCulling):
-	test_param1=2
-	test_param2=14
-	test_param3="op1"
-	_variable_options={"test_param1": {"options": list(range(2, 8)), "default": 0, "type": "OptionMenu"},
-					   "test_param2": {"options": list(range(10, 15)), "default": 4, "type": "OptionMenu"},
-					   "test_param3": {"options": ["op1", "op2"], "default": 0, "type": "OptionMenu"}}
+class N_Occurrences(EventCulling):
+	_variable_options = {
+		"Mode": {"options": ["Cull more freq.", "Cull less freq."], "type": "OptionMenu", "default": 0},
+		"Frequency": {"options": list(range(1, 10)), "default": 0, "type": "OptionMenu", "default": 0},
+	}
+
+	Frequency = _variable_options["Frequency"]["options"][_variable_options["Frequency"]["default"]]
+	Mode = _variable_options["Mode"]["options"][_variable_options["Mode"]["default"]]
 	
-	def process(self, procText):
-		pass
+	def process(self, eventSet: list):
+		freq = dict()
+		for e in eventSet:
+			if freq.get(e) == None: freq[e] = 1
+			else: freq[e] += 1
+		if self.Mode == "Cull more freq.":
+			new_events = [ev for ev in eventSet if (freq.get(ev)!=None and freq.get(ev) <= self.Frequency)]
+		if self.Mode == "Cull less freq.":
+			new_events = [ev for ev in eventSet if (freq.get(ev)!=None and freq.get(ev) >= self.Frequency)]
+		return new_events
 
 	def displayName():
-		return "Test event culler"
+		return "N occurrences"
 
 	def displayDescription():
-		return "An empty event culler class."
+		return "Remove features that are encountered N or fewer/more times."
