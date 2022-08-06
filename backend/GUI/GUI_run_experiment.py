@@ -89,6 +89,8 @@ class Experiment:
 
 		# LOADING DOCUMENTS
 
+		if self.pipe_here != None: self.pipe_here.send("Getting documents")
+
 		# gathering the documents for pre-processing
 		# read documents here (at the last minute)
 		docs = []
@@ -107,6 +109,8 @@ class Experiment:
 
 		for d in docs: d.text = readDocument(d.filepath)
 		self.backend_API.documents = docs
+
+		if self.pipe_here != None: self.pipe_here.send("Pre-processing text")
 
 		# PRE-PROCESSING
 		if len(self.backend_API.documents) < self.gui_params["multiprocessing_limit_docs"]:
@@ -173,7 +177,8 @@ class Experiment:
 				if am_df_pair[1] != "NA":
 					am_df_pair[1]._global_parameters = self.backend_API.global_parameters
 
-				am_df_names_display = self.module_names["am_df_names"][am_df_index]
+				am_df_names_display = [self.module_names["AnalysisMethods"][am_df_index],
+											self.module_names["DistanceFunctions"][am_df_index]]
 				if am_df_names_display[1] == "NA": am_df_names_display = am_df_names_display[0]
 				else: am_df_names_display = am_df_names_display[0] + ', ' + am_df_names_display[1]
 				if self.pipe_here != None: self.pipe_here.send("Training - %s" % str(am_df_names_display))
@@ -192,12 +197,12 @@ class Experiment:
 
 					formatted_results = \
 						self.backend_API.prettyFormatResults(
-							self.module_names["canonicizers_names"],
-							self.module_names["event_drivers_names"],
-							self.module_names["event_cullers_names"],
-							self.module_names["number_converters_names"],
-							self.module_names["am_df_names"][am_df_index][0],
-							self.module_names["am_df_names"][am_df_index][1],
+							self.module_names["Canonicizers"],
+							self.module_names["EventDrivers"],
+							self.module_names["EventCulling"],
+							self.module_names["NumberConverters"],
+							self.module_names["AnalysisMethods"][am_df_index],
+							self.module_names["DistanceFunctions"][am_df_index],
 							unknown_docs[d_index],
 							doc_results[d_index]
 						)
@@ -214,4 +219,5 @@ class Experiment:
 			return 0
 		if return_results:
 			return results_text
+		print(results_text)
 

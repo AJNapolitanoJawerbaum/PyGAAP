@@ -67,25 +67,37 @@ class API:
 		'''Build dictionaries of all the different parameters we can choose from.'''
 		# Populate dictionary of canonicizers.
 		for cls in Canonicizer.__subclasses__():
+			if self.canonicizers.get(cls.displayName()) != None:
+				raise ValueError("Two canonicizers can't both have the same displayed name: %s" % cls.displayName())
 			self.canonicizers[cls.displayName()] = cls
 		
 		# Populate dictionary of event drivers.
 		for cls in EventDriver.__subclasses__():
+			if self.eventDrivers.get(cls.displayName()) != None:
+				raise ValueError("Two event drivers can't both have the same displayed name: %s" % cls.displayName())
 			self.eventDrivers[cls.displayName()] = cls
 
 		# Populate dictionary of event culling.
 		for cls in EventCulling.__subclasses__():
+			if self.eventCulling.get(cls.displayName()) != None:
+				raise ValueError("Two event cullers can't both have the same displayed name: %s" % cls.displayName())
 			self.eventCulling[cls.displayName()] = cls
 
 		for cls in NumberConverter.__subclasses__():
+			if self.numberConverters.get(cls.displayName()) != None:
+				raise ValueError("Two number converters can't both have the same displayed name: %s" % cls.displayName())
 			self.numberConverters[cls.displayName()] = cls
 		
 		# Populate dictionary of analysis methods.
 		for cls in AnalysisMethod.__subclasses__():
+			if self.analysisMethods.get(cls.displayName()) != None:
+				raise ValueError("Two analysis methods can't both have the same displayed name: %s" % cls.displayName())
 			self.analysisMethods[cls.displayName()] = cls
 		
 		# Populate dictionary of distance functions.
 		for cls in DistanceFunction.__subclasses__():
+			if self.distanceFunctions.get(cls.displayName()) != None:
+				raise ValueError("Two distance functions can't both have the same displayed name: %s" % cls.displayName())
 			self.distanceFunctions[cls.displayName()] = cls
 			
 		# Set a list of documents for processing.

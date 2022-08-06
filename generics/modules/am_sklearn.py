@@ -3,6 +3,7 @@ from generics.AnalysisMethod import *
 from sklearn.svm import LinearSVC, SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 class Linear_SVM_sklearn(AnalysisMethod):
 	penalty = "L2"
@@ -29,13 +30,10 @@ class Linear_SVM_sklearn(AnalysisMethod):
 
 	def train(self, train, train_data, **options):
 		"""Create model in train() because after this starts the parameters won't change."""
-		train_labels, self._labels_to_categories =\
-			pn.auth_list_to_labels([d.author for d in train])
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
 
 		train_labels = train_labels.flatten() # sklearn's svm takes flattened labels array.
 
-		if train_data is None:
-			train_data = self.get_train_data(train)
 		self._model = LinearSVC(
 			max_iter=self.iterations, tol=self.tol, penalty=self._display_to_input["penalty"][self.penalty],
 			C=1/self.reg_strength, dual=self._display_to_input["dual"][self.opt]
@@ -96,13 +94,10 @@ class Linear_SVM_sklearn(AnalysisMethod):
 # 		...
 
 # 	def train(self, train, train_data, **options):
-# 		train_labels, self._labels_to_categories =\
-# 			pn.auth_list_to_labels([d.author for d in train])
+#		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
 
 # 		train_labels = train_labels.flatten() # sklearn's svm takes flattened labels array.
 
-# 		if train_data is None:
-# 			train_data = self.get_train_data(train)
 # 		self._model = SVC(
 # 			degree=self.poly_deg,
 # 			kernel=self._display_to_input["kernel"][self.kernel],
@@ -169,10 +164,7 @@ class MLP_sklearn(AnalysisMethod):
 	_NoDistanceFunction_ = True
 
 	def train(self, train, train_data):
-		if train_data is None:
-			train_data = self.get_train_data(train)
-		train_labels, self._labels_to_categories =\
-			pn.auth_list_to_labels([d.author for d in train])
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
 		train_labels = train_labels.flatten()
 		self._model = MLPClassifier(
 			hidden_layer_sizes=(self.hidden_width,)*self.depth,
@@ -217,11 +209,9 @@ class Naive_bayes_sklearn(AnalysisMethod):
 	}
 
 	def train(self, train, train_data=None, **options):
-		if train_data is None: train_data = self.get_train_data(train)
-		train_labels, self._labels_to_categories =\
-			pn.auth_list_to_labels([d.author for d in train])
-
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
 		self._model = MultinomialNB(alpha = self.alpha)
+		train_labels = train_labels.flatten()
 		self._model.fit(train_data, train_labels)
 		return
 
@@ -238,3 +228,20 @@ class Naive_bayes_sklearn(AnalysisMethod):
 
 	def displayDescription():
 		return "Multinomial naive bayes implemented in scikit-learn."
+
+class LDA_sklearn(AnalysisMethod):
+
+	def train(self, train, train_data=None, **options):
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
+		return
+
+	def analyze(self, test, test_data=None, **options):
+		if test_data is None:
+			test_data = self.get_test_data(test)
+		return
+	
+	def displayName():
+		return "[n.i.] Linear Discriminant Analysis (sklearn)"
+	
+	def displayDescription():
+		return "Linear discriminant analysis implemented in scikit-learn"

@@ -11,6 +11,7 @@ def main():
 	else:
 		# import backend.GUI.GUI
 		from backend.GUI import GUI2
+		#app = GUI2.PyGAAP_GUI()
 		app = GUI2.PyGAAP_GUI()
 		app.run()
 

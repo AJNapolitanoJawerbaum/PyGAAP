@@ -9,6 +9,7 @@
 # Style note: if-print checks using the GUI_debug variable
 # are condensed into one line where possible.
 
+TEST_WIN = False
 GUI_debug = 0
 # GUI debug level:
 #   0 = no debug info.
@@ -18,7 +19,7 @@ GUI_debug = 0
 
 # system modules
 from copy import deepcopy
-from multiprocessing import Process, Queue, Pipe
+from multiprocessing import Process, Queue, Pipe, set_start_method
 from datetime import datetime
 from tkinter import *
 from tkinter import ttk
@@ -42,9 +43,18 @@ import Constants
 
 # closely coupled modules
 from backend.GUI import GUI_unified_tabs
-from backend.GUI import GUI_run_experiment
+if platform != "win32" and not TEST_WIN:
+	from backend.GUI import GUI_run_experiment
+else:
+	if __name__ == "backend.GUI.GUI2":
+		from backend import API_manager
 
 import util.MultiprocessLoading as MultiprocessLoading
+
+if TEST_WIN:
+	try:
+		set_start_method("spawn")
+	except RuntimeError: pass
 
 
 def todofunc():
@@ -181,36 +191,50 @@ class PyGAAP_GUI:
 	def run_experiment(self):
 		if GUI_debug >= 3: print("run_experiment()")
 
+
+		am_df_names = [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"]
+						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
 		# names of modules in use
 		module_names = {
-		"canonicizers_names": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
-		"event_drivers_names": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
-		"event_cullers_names": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
-		"number_converters_names": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
-		"am_df_names": [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"]
-						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
+		"Canonicizers": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
+		"EventDrivers": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
+		"EventCulling": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
+		"NumberConverters": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
+		"AnalysisMethods": [x[0] for x in am_df_names],
+		"DistanceFunctions": [x[1] for x in am_df_names]
 		}
 
 		progress_report_here, progress_report_there = Pipe(duplex=True)
-		self.results_queue = Queue()
-		experiment = GUI_run_experiment.Experiment(
-			self.backend_API, module_names, progress_report_there, self.results_queue,
-			dpi=self.dpi_setting
-		)
 
 		MultiprocessLoading.process_window(
 			self.dpi_setting["dpi_process_window_geometry"],
 			"determinate",
 			progress_report_here,
-			starting_text="Processing",
+			starting_text="...",
 			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
 			end_run=self.display_results
 		)
 
-
-		self.experiment_process = Process(target=experiment.run_experiment)
-		self.experiment_process.start()
-
+		if platform != "win32" and not TEST_WIN:
+			self.results_queue = Queue()
+			experiment = GUI_run_experiment.Experiment(
+				self.backend_API, module_names, progress_report_there, self.results_queue,
+				dpi=self.dpi_setting
+			)
+			self.experiment_process = Process(target=experiment.run_experiment)
+			self.experiment_process.start()
+		else:
+			if __name__ == "backend.GUI.GUI2":
+				self.results_queue = Queue()
+				self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
+				API_manager.manager_run_exp(
+					self.backend_API,
+					self.pipe_mainproc,
+					self.pipe_subproc,
+					progress_report_there,
+					module_names,
+					self.results_queue
+				)
 		return
 
 
@@ -586,6 +610,8 @@ class PyGAAP_GUI:
 					this_author_list = [doc.filepath]
 				else:
 					this_author_list.append(doc.filepath)
+			self.status_update("Loaded corpus")
+			self.statusbar_label.after(3000, lambda:self.status_update("", "Loaded corpus"))
 			return
 
 		elif function == "save":
@@ -606,6 +632,8 @@ class PyGAAP_GUI:
 						if filepath[0] == ".": filepath = getcwd() + filepath[1:]
 						elif filepath[0] != "/": filepath = getcwd() + filepath
 						write_to.write(auth_list[0]+","+filepath+","+doc.split("/")[-1]+"\n")
+			self.status_update("Saved corpus to %s" % filepath)
+			self.statusbar_label.after(5000, lambda:self.status_update("", ("Saved corpus to %s" % filepath)))
 			return
 
 
@@ -1765,18 +1793,15 @@ class PyGAAP_GUI:
 		!!! It does not reload the libraries that the modules import.
 		e.g. SpaCy, NLTK are NOT reloaded.
 		"""
-		# for module_type in [
-		# 	"generics.AnalysisMethod", "generics.Canonicizer", "generics.DistanceFunction",
-		# 	"generics.EventCulling", "generics.EventDriver"
-		# ]:
-			# for external_module in sys_modules[module_type].external_modules:
-			# 	sys_modules.pop(external_module)
-			# sys_modules.pop(module_type)
+
+		known = self.backend_API.known_authors
+		unknown = self.backend_API.unknown_docs
+
 		sys_modules_pop = [m for m in sys_modules if (
 				"generics.modules" in m or "GUI_unified_tabs" in m or "GUI_run_experiment" in m or
 				"AnalysisMethod" in m or "Canonicizer" in m or "DistanceFunction" in m or
-				"EventCulling" in m or "EventDriver" in m or
-				"MultiprocessLoading" in m or "API" in m
+				"EventCulling" in m or "EventDriver" in m or "NumberConverter" in m or
+				"MultiprocessLoading" in m or ("API" in m and "manager" not in m)
 			)
 		]
 		for m in sys_modules_pop: sys_modules.pop(m)
@@ -1787,26 +1812,34 @@ class PyGAAP_GUI:
 
 		import util.MultiprocessLoading as MultiprocessLoading
 		from backend.GUI import GUI_unified_tabs
-		from backend.GUI import GUI_run_experiment
 		from backend.API import API
+		if platform != "win32" and not TEST_WIN:
+			from backend.GUI import GUI_run_experiment
+		else:
+			if __name__ == "backend.GUI.GUI2":
+				from backend import API_manager
 
 		self.backend_API = API("place-holder")
+
+		self.backend_API.known_authors = known
+		self.backend_API.unknown_docs = unknown
+
 		self._unified_tabs()
 		self._load_modules_to_GUI()
 		self.change_style(self.topwindow)
 
-	def test_run(self):
-		"""This loads everything but without starting the mainloop or splash screen."""
-		from backend.API import API
-		self.backend_API = API("place-holder")
-		self.gui()
 
 	def run(self):
 		# open a loading window so the app doesn't appear frozen.
 		pipe_from, pipe_to = Pipe(duplex=True)
-		if platform != "win32":
+		if platform != "win32" and not TEST_WIN:
 			p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
 			p.start()
+		else:
+			if __name__ == "backend.GUI.GUI2":
+				p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
+				p.start()
+
 		pipe_from.send("Loading API")
 		# LOCAL IMPORTS
 		from backend.API import API

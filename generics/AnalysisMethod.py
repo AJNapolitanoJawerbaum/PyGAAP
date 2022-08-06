@@ -49,15 +49,15 @@ class AnalysisMethod(ABC):
 	def displayDescription():
 		'''Returns the description of the method.'''
 		pass
-
-	def get_train_data(self, known_docs):
-		"""
-		Aggregate training data into a single matrix,
-		designed to take parameters from document list input of train.
-		"""
-		train_data = tuple([d.numbers for d in known_docs])
-		train_data = np.array(train_data)
-		return train_data
+	
+	def get_train_data_and_labels(self, known_docs, train_data):
+		"""get train data and labels, also sets self._labels_to_categories."""
+		if train_data is None:
+			train_data = tuple([d.numbers for d in known_docs])
+			train_data = np.array(train_data)
+		train_labels, self._labels_to_categories =\
+			pn.auth_list_to_labels([d.author for d in known_docs])
+		return train_data, train_labels
 
 	def get_test_data(self, unknown_docs):
 		"""
@@ -118,17 +118,7 @@ class CentroidDriver(AnalysisMethod):
 
 	def train(self, known_docs, train_data=None):
 
-		train_labels, self._labels_to_categories =\
-			pn.auth_list_to_labels([d.author for d in known_docs])
-		if train_data is None:
-			# using "is" instead of "==" because numpy overloads "=="
-			# as element-wise comparison
-
-			# If none: did not use a vectorized number converter.
-			# in this case, the representations are set in the texts,
-			# no single matrix consisting of representation of all files were passed in.
-			# need to recombine representations of the texts.
-			train_data = self.get_train_data(known_docs)
+		train_data, train_labels = self.get_train_data_and_labels(known_docs, train_data)
 		self._mean_per_author, self._means_labels =\
 			pn.find_mean_per_author(train_data, train_labels)
 		return
@@ -168,11 +158,7 @@ class KNearestNeighbor(AnalysisMethod):
 			"Tie breakers:\n\taverage: the category with the smallest average\n\tminimum: category of the closest document among the ties."
 
 	def train(self, known_docs, train_data=None, **options):
-		self._train_labels, self._labels_to_categories =\
-			pn.auth_list_to_labels([d.author for d in known_docs])
-		if train_data is None:
-			train_data = self.get_train_data(known_docs)
-
+		train_data, self._train_labels = self.get_train_data_and_labels(known_docs, train_data)
 		self._document_embeddings = train_data
 
 	def analyze(self, unknown_docs, unknown_data=None, **options):

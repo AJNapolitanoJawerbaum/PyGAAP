@@ -114,3 +114,4 @@ def splash(pto):
 
 	progress.start()
 	loading_window.mainloop()
+	return
