@@ -77,38 +77,38 @@ class Experiment:
 		input: unknown authors, known authors, all listboxes.
 		"""
 		return_results = options.get("return_results", False)
-		# check_listboxes:
-		#   list of listboxes that shouldn't be empty.
-		# check_labels:
-		#   list of labels whose text colors need to be updated upon checking the listboxes.
 		if GUI_debug >= 3: print("run_experiment()")
 
-
-		# above is the code to change the color/available status of the "process" button.
-		# below is the actual processing.
-
 		# LOADING DOCUMENTS
-
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
 
-		# gathering the documents for pre-processing
-		# read documents here (at the last minute)
-		docs = []
-		for author in self.backend_API.known_authors:
-			for authorDoc in author[1]:
-				docs.append(Document(author[0],
-					authorDoc.split("/")[-1],
-					"", authorDoc))
+		if not options.get("skip_loading_docs", False):
 
-		# make copies for use in processing.
-		# This is much faster than deepcopying after reading the files,
-		# especially for long files.
-		known_docs = shallowcopy(docs)
-		docs += self.backend_API.unknown_docs
-		unknown_docs = self.backend_API.unknown_docs
+			# "loading docs" is skipped in CLI because
+			# the CLI will load the docs.
 
-		for d in docs: d.text = readDocument(d.filepath)
-		self.backend_API.documents = docs
+			# gathering the documents for pre-processing
+			# read documents here (at the last minute)
+			docs = []
+			for author in self.backend_API.known_authors:
+				for authorDoc in author[1]:
+					docs.append(Document(author[0],
+						authorDoc.split("/")[-1],
+						"", authorDoc))
+
+			# make copies for use in processing.
+			# This is much faster than deepcopying after reading the files,
+			# especially for long files.
+			known_docs = shallowcopy(docs)
+			docs += self.backend_API.unknown_docs
+			unknown_docs = self.backend_API.unknown_docs
+
+			for d in docs: d.text = readDocument(d.filepath)
+			self.backend_API.documents = docs
+		else:
+			known_docs = [d for d in self.backend_API.documents if d.author != ""]
+			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
+			docs = known_docs + unknown_docs
 
 		if self.pipe_here != None: self.pipe_here.send("Pre-processing text")
 
@@ -219,5 +219,5 @@ class Experiment:
 			return 0
 		if return_results:
 			return results_text
-		print(results_text)
+		#print(results_text)
 

@@ -6,7 +6,7 @@ sys_path.append(getcwd())
 from backend import CSVIO
 from backend import API
 from backend.Document import Document
-from backend.GUI import GUI_run_experiment
+from backend import run_experiment
 
 api = API.API("")
 corpus = CSVIO.readCorpusCSV("./resources/aaac/problemC/loadC.csv")
@@ -38,7 +38,7 @@ api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Jensen-Shannon Distance"]())
 
 
-exp = GUI_run_experiment.Experiment(api, mod_names)
+exp = run_experiment.Experiment(api, mod_names)
 results = exp.run_experiment(return_results=True)
 
 print(results)

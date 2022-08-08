@@ -1,7 +1,7 @@
 from backend import API
 from multiprocessing import Process, Queue, Pipe
 from multiprocessing.connection import Connection
-from backend.GUI import GUI_run_experiment
+from backend import run_experiment
 
 
 
@@ -84,7 +84,7 @@ def API_process(pipe_subproc: Connection,
 				"Module name mismatch while communicating between processes. %s != %s" % (mod_name, mod_name2)
 			setattr(mod_obj, mod_attribute, mod_attribute_value)
 			heard = pipe_subproc.recv()
-	exp = GUI_run_experiment.Experiment(api, mod_names, prog_report_pipe, results_queue)
+	exp = run_experiment.Experiment(api, mod_names, prog_report_pipe, results_queue)
 	exp.run_experiment()
 
 	return

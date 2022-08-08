@@ -16,9 +16,12 @@ class Linear_SVM_sklearn(AnalysisMethod):
 	_model = None
 
 	_variable_options = {
-		"iterations": {"options": [10, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], "type": "OptionMenu", "default": -1, "displayed_name": "Iterations"},
+		"iterations": {"options": [10, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000],
+			"type": "OptionMenu", "default": -1, "displayed_name": "Iterations",
+			"validator": (lambda x: x in range(2, 500001))},
 		"tol": {"options": [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
-			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance"},
+			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance",
+			"validator": (lambda x: (x > 0.000001 and x < 0.1))},
 		"penalty": {"options": ["L1", "L2"], "type": "OptionMenu", "default": 1, "displayed_name": "Penalty type"},
 		"reg_strength": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Regularization Strength"},
 		"opt": {"options": ["primal", "dual"], "type": "OptionMenu", "default": 1, "displayed_name": "Optimization Problem"},
@@ -146,15 +149,20 @@ class MLP_sklearn(AnalysisMethod):
 	validation_fraction = 0.1
 
 	_variable_options = {
-		"hidden_width": {"options": list(range(2,10))+[10,20,30,40,50,75,100,200,300,400,500,750,1000],"default": 14, "displayed_name": "Hidden layers width"},
-		"depth": {"options": list(range(1, 10))+[10,15,20,25,30,35,40,45,50,100], "default":0, "displayed_name": "Network depth"},
+		"hidden_width": {"options": list(range(2,10))+[10,20,30,40,50,75,100,200,300,400,500,750,1000],"default": 14,
+			"displayed_name": "Hidden layers width", "validator": (lambda x: (x > 1 and x < 5001))},
+		"depth": {"options": list(range(1, 10))+[10,15,20,25,30,35,40,45,50,100], "default":0, "displayed_name": "Network depth",
+			"validator": (lambda x: (x > 0 and x < 1001))},
 		"activation": {"options": ["ReLU", "tanh", "Logistic", "Identity"], "default": 0, "displayed_name": "Activation function"},
-		"learn_rate_init": {"options": [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2], "default": 3, "displayed_name": "Initial learn rate"},
+		"learn_rate_init": {"options": [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2], "default": 3,
+			"displayed_name": "Initial learn rate", "validator": (lambda x: (x > 0.00001 and x <= 1))},
 		"learn_rate_mode": {"options": ["Constant", "Inverse Scaling", "Adaptive"], "default": 0, "displayed_name": "Learn rate mode"},
-		"iterations": {"options": [10, 50, 100, 200, 300, 400, 500, 750, 1000, 2500, 5000, 7500, 10000], "default": -1, "displayed_name": "Maximum iterations"},
+		"iterations": {"options": [10, 50, 100, 200, 300, 400, 500, 750, 1000, 2500, 5000, 7500, 10000], "default": -1,
+			"displayed_name": "Maximum iterations", "validator": (lambda x: (x > 1 and x < 100001))},
 		"tol": {"options": [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
-			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance"},
-		"validation_fraction": {"options": [0.05, 0.1, 0.2, 0.3, 0.4], "default": 1, "displayed_name": "Fraction used for validation"}
+			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance", "validator": (lambda x: (x >= 0.000001 and x <=0.1))},
+		"validation_fraction": {"options": [0.05, 0.1, 0.2, 0.3, 0.4], "default": 1, "displayed_name": "Fraction used for validation",
+			"validator": (lambda x: (x > 0.01 and x < 0.5))}
 	}
 
 	_display_to_input = {
@@ -205,7 +213,7 @@ class Naive_bayes_sklearn(AnalysisMethod):
 	alpha = 1
 	_variable_options = {"alpha":
 		{"options": [0, 0.2, 0.4, 0.6, 0.8, 1], "default": 5,
-			"displayed_name": "Adaptive smoothing"}
+			"displayed_name": "Adaptive smoothing", "validator": (lambda x: (x >= 0 and x <= 2))}
 	}
 
 	def train(self, train, train_data=None, **options):

@@ -1,70 +1,170 @@
 import argparse, os, sys
 
-
 from backend.CSVIO import *
 from backend.Document import Document
 from pathlib import Path
 from time import time
+from backend import run_experiment
 
-gui = False
+def setParams(module_object, params_list: list, mod_name=""):
+	for param in params_list:
+		param_name = param.split(":")[0]
+		param_value = param.split(":")[1]
+		if type(param_value) != bool:
+			try: # to identify numbers
+				param_value = float(param_value)
+				# if value is a number, try converting to a number.
+				if abs(int(param_value) - param_value) < 0.0000001:
+					param_value = int(param_value)
+			except ValueError:
+				pass
+		validate = module_object.validate_parameter(param_name, param_value)
+		if type(validate) == str or validate is False:
+			raise AttributeError("Parameter validation failed for %s. Validator returned:\n%s" % (mod_name, validate))
+		setattr(module_object, param_name, param_value)
+	return
 
 def cliMain():
 	'''Main function for the PyGAAP CLI'''
-
-	print("Loading API...", end="")
 	# this import is moved here (inside CLI function) to delay loading the API
 	# i.e. let the CLI or GUI load the API instead of it being immediately loaded,
 	# because it may take a long time to load depending on the modules,
 	# and to also make the splash screen of the GUI work.
 	# The GUI splash screen appears while API is loading so the app doesn't appear unresponsive.
 	from backend.API import API
-	print("done")
+	api = API("")
 	args = _parse_args()
-	
+
+	print("starting experiment(s)")
 	# If a CSV file has been specified, process it.
 	if args.experimentengine:
+
 		# Get a list of experiments in the CSV.
 		expCsvPath = args.experimentengine[0]
 		experiments = readExperimentCSV(expCsvPath)
 		
 		# Process each experiment entry in the CSV.
 		for exp in experiments:
+			exp_name = exp[0]
+			for mod_type in api.modulesInUse:
+				api.modulesInUse[mod_type] = []
+			api.documents = []
 			# Get a list of entries in the specified corpus CSV.
 			corpusEntries = readCorpusCSV(findCorpusCSVPath(exp[-1]))
-			
-			# Build a list of Documents using the entries in corpusEntries.
-			docs = []
-			for entry in corpusEntries:
-				docs.append(Document(entry[0], entry[2], readDocument(entry[1]), entry[1]))
-				
-			# Extract specified canonicizers, event drivers, analysis methods, and distance functions
-			canonicizers = exp[1].split('&') # More than one canonicizer can be separated in a &-delimited list.
-			eventDriver = exp[2]
-			analysisMethod = exp[3]
-			distanceFunc = exp[4]
-			
-			# Create the API object that will be used to actually run the experiment.
-			api = API(docs)
-			
-			# Run each specified canonicizer against the documents in the API object.
-			for canonicizer in canonicizers:
-				api.runCanonicizer(canonicizer)
-			
-			# Run the event driver against the documents in the API object.
-			api.runEventDriver(eventDriver)
-			
-			# Run the analysis and get the results in a formatted string.
-			# TODO implement event culling for the CLI
-			unknownDoc, results = api.runAnalysis(analysisMethod, distanceFunc)
-			formattedResults = api.prettyFormatResults(canonicizers, eventDriver, "", analysisMethod, distanceFunc, unknownDoc, results)
-			
+			api.documents = []
+			for doc in corpusEntries:
+				api.documents.append(Document(
+					doc[0], doc[2], readDocument(doc[1]), doc[1]
+				))
+
+			# now check for file format: whether PyGAAP exp csv or JGAAP exp csv
+			if len(exp) == 8 or len(exp) == 9:
+				# PyGAAP format
+				canonicizers = exp[1].split('&')
+				eventDrivers = exp[2].split('&')
+				eventCulling = exp[3].split('&')
+				numberConverters = [exp[4]]
+				if '&' in numberConverters:
+					raise ValueError("There can only be 1 number converter per experiment")
+				analysisMethods = [exp[5]]
+				if '&' in analysisMethods:
+					raise ValueError("There can only be 1 analysis method per experiment")
+				distanceFunctions = [exp[6]]
+				if '&' in distanceFunctions:
+					raise ValueError("There can only be 1 distance function per experiment")
+
+
+			elif len(exp) == 6 or len(exp) == 7:
+				# JGAAP format
+				api.modulesInUse["NumberConverters"] = ["Frequency"]
+				canonicizers = exp[1].split('&')
+				eventDrivers = exp[2].split('&')
+				analysisMethods = [exp[3]]
+				distanceFunctions = [exp[4]]
+
+			canonicizers = [x for x in canonicizers if x != ""]
+			eventCulling = [x for x in eventCulling if x != ""]
+
+			# now set the parameters
+			for can in canonicizers:
+				params = can.split("|")
+				cc = params[0]
+				mod = api.canonicizers[cc]()
+				api.modulesInUse["Canonicizers"].append(mod)
+				if len(params) > 1: 
+					params = params[1:]
+					setParams(mod, params, cc)
+
+			for edr in eventDrivers:
+				params = edr.split("|")
+				ed = params[0]
+				mod = api.eventDrivers[ed]()
+				api.modulesInUse["EventDrivers"].append(mod)
+				if len(params) > 1: 
+					params = params[1:]
+					setParams(mod, params, ed)
+
+			for ecl in eventCulling:
+				params = ecl.split("|")
+				ec = params[0]
+				mod = api.eventCulling[ec]()
+				api.modulesInUse["EventCulling"].append(mod)
+				if len(params) > 1: 
+					params = params[1:]
+					setParams(mod, params, ec)
+
+			nmc = numberConverters[0]
+			params = nmc.split("|")
+			nc = params[0]
+			mod = api.numberConverters[nc]()
+			api.modulesInUse["NumberConverters"].append(mod)
+			if len(params) > 1:
+				params = params[1:]
+				setParams(mod, params, nc)
+
+			anm = analysisMethods[0]
+			params = anm.split("|")
+			am = params[0]
+			mod = api.analysisMethods[am]()
+			api.modulesInUse["AnalysisMethods"].append(mod)
+			if len(params) > 1:
+				params = params[1:]
+				setParams(mod, params, am)
+
+			dis = distanceFunctions[0]
+			params = dis.split("|")
+			df = params[0]
+			mod = api.distanceFunctions[df]()
+			api.modulesInUse["DistanceFunctions"].append(mod)
+			if len(params) > 1:
+				params = params[1:]
+				setParams(mod, params, df)
+
+			module_names = {
+				"Canonicizers": canonicizers,
+				"EventDrivers": eventDrivers,
+				"EventCulling": eventCulling,
+				"NumberConverters": numberConverters,
+				"AnalysisMethods": analysisMethods,
+				"DistanceFunctions": distanceFunctions,
+			}
+
+			experiment_runner = run_experiment.Experiment(api, module_names)
+			results = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)
+
 			# Create the directories that the results will be stored in.
-			outPath = os.path.join(Path.cwd(), "tmp", '&'.join(canonicizers).replace('|', '_').replace(':', '_'), eventDriver.replace('|', '_').replace(':', '_'), analysisMethod + '-' + distanceFunc)
+			outPath = os.path.join(Path.cwd(), "tmp",
+				'&'.join(canonicizers).replace('|', '_').replace(':', '_'),
+				'&'.join(eventDrivers).replace('|', '_').replace(':', '_'),
+				analysisMethods[0] + '-' + distanceFunctions[0])
 			if not os.path.exists(outPath):
 				os.makedirs(outPath)
-			expFile=open(os.path.join(outPath,str(int(time())) + ".txt"), 'w')
-			expFile.write(formattedResults)
+			out_filepath = os.path.join(outPath, (exp_name + str(int(time()))) + ".txt")
+			print(out_filepath)
+			expFile=open(out_filepath, 'w')
+			expFile.write(results)
 			expFile.close()
+	print("Finished")
 
 def _parse_args(empty=False):
 	"""Parse command line arguments"""

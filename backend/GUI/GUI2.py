@@ -44,7 +44,7 @@ import Constants
 # closely coupled modules
 from backend.GUI import GUI_unified_tabs
 if platform != "win32" and not TEST_WIN:
-	from backend.GUI import GUI_run_experiment
+	from backend import run_experiment
 else:
 	if __name__ == "backend.GUI.GUI2":
 		from backend import API_manager
@@ -196,12 +196,12 @@ class PyGAAP_GUI:
 						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
 		# names of modules in use
 		module_names = {
-		"Canonicizers": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
-		"EventDrivers": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
-		"EventCulling": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
-		"NumberConverters": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
-		"AnalysisMethods": [x[0] for x in am_df_names],
-		"DistanceFunctions": [x[1] for x in am_df_names]
+			"Canonicizers": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
+			"EventDrivers": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
+			"EventCulling": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
+			"NumberConverters": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
+			"AnalysisMethods": [x[0] for x in am_df_names],
+			"DistanceFunctions": [x[1] for x in am_df_names]
 		}
 
 		progress_report_here, progress_report_there = Pipe(duplex=True)
@@ -217,7 +217,7 @@ class PyGAAP_GUI:
 
 		if platform != "win32" and not TEST_WIN:
 			self.results_queue = Queue()
-			experiment = GUI_run_experiment.Experiment(
+			experiment = run_experiment.Experiment(
 				self.backend_API, module_names, progress_report_there, self.results_queue,
 				dpi=self.dpi_setting
 			)
@@ -1798,7 +1798,7 @@ class PyGAAP_GUI:
 		unknown = self.backend_API.unknown_docs
 
 		sys_modules_pop = [m for m in sys_modules if (
-				"generics.modules" in m or "GUI_unified_tabs" in m or "GUI_run_experiment" in m or
+				"generics.modules" in m or "GUI_unified_tabs" in m or "run_experiment" in m or
 				"AnalysisMethod" in m or "Canonicizer" in m or "DistanceFunction" in m or
 				"EventCulling" in m or "EventDriver" in m or "NumberConverter" in m or
 				"MultiprocessLoading" in m or ("API" in m and "manager" not in m)
@@ -1814,7 +1814,7 @@ class PyGAAP_GUI:
 		from backend.GUI import GUI_unified_tabs
 		from backend.API import API
 		if platform != "win32" and not TEST_WIN:
-			from backend.GUI import GUI_run_experiment
+			from backend import run_experiment
 		else:
 			if __name__ == "backend.GUI.GUI2":
 				from backend import API_manager

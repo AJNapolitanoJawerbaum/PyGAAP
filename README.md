@@ -5,9 +5,8 @@ The Python Graphical Authorship Attribution Program (PyGAAP) is an experimental 
 ## Features
 PyGAAP currently contains only some of the features from JGAAP. Those yet to be implemented include:
 * Many of the text and analysis modules
-* Multi-threading/multi-processing
 * Extensive logging
-* Feature set culling for the command line
+* Extensive multi-processing
 
 ## How to Contribute
 To contribute to PyGAAP, simply fork the repository, create a new branch, make your desired changes, and submit a pull request. While adding a new module, you may find the [developer manual](/Developer_Manual.md) useful. Additionally, please consider opening an issue on this repository with an explanation of your planned contribution so that we may track who is working on what.

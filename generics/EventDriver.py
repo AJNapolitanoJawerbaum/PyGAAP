@@ -21,6 +21,18 @@ class EventDriver(ABC):
 	def after_init(self, **options):
 		pass
 
+	def validate_parameter(self, param_name: str, param_value):
+		"""validating parameter expects param_value to already been correctly typed"""
+		if param_name not in self._variable_options:
+			raise NameError("Unknown parameter in module")
+		validator = self._variable_options[param_name].get("validator")
+		if validator != None:
+			val_result = validator(param_value)
+			if not val_result: raise ValueError("Module parameter out of range")
+		elif param_value not in self._variable_options[param_name]["options"]:
+			raise ValueError("Module parameter out of range")
+		return
+
 	@abstractmethod
 	def displayName():
 		'''Returns the display name for the given event driver.'''

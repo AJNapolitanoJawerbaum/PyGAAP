@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import sys
-
-from backend.CLI import cliMain
-from Constants import version
+from Constants import version, versiondate
 
 def main():
-	if len(sys.argv) >= 2:	
-		print("PyGAAP v" + version + "\nby David Berdik & Michael Fang")
+	if len(sys.argv) >= 2:
+		from backend.CLI import cliMain
+		print("PyGAAP v" + version + " (CLI, " + versiondate + ")\nby David Berdik & Michael Fang\n")
 		cliMain()
 	else:
 		# import backend.GUI.GUI

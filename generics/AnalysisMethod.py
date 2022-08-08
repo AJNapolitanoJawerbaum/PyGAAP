@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
+from codecs import namereplace_errors
 
 import backend.Histograms as histograms
 from backend import PrepareNumbers as pn
@@ -49,6 +50,18 @@ class AnalysisMethod(ABC):
 	def displayDescription():
 		'''Returns the description of the method.'''
 		pass
+
+	def validate_parameter(self, param_name: str, param_value):
+		"""validating parameter expects param_value to already been correctly typed"""
+		if param_name not in self._variable_options:
+			raise NameError("Unknown parameter in module")
+		validator = self._variable_options[param_name].get("validator")
+		if validator != None:
+			val_result = validator(param_value)
+			if not val_result: raise ValueError("Module parameter out of range")
+		elif param_value not in self._variable_options[param_name]["options"]:
+			raise ValueError("Module parameter out of range")
+		return
 	
 	def get_train_data_and_labels(self, known_docs, train_data):
 		"""get train data and labels, also sets self._labels_to_categories."""
