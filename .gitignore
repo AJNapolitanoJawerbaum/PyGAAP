@@ -7,5 +7,5 @@
 launchpygaap.sh
 multi_test.py
 backend/GUI/GUI_run_experiment_original.py
-backend/GUI/GUI2_old.py
+backend/GUI/GUI2_old_linux.py
 backend/CLI_backup.py

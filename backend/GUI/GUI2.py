@@ -129,6 +129,7 @@ class PyGAAP_GUI:
 	Tab_RP_EventDrivers_Listbox: Listbox = None
 	Tab_RP_EventCulling_Listbox: Listbox = None
 	Tab_RP_AnalysisMethods_Listbox: ttk.Treeview = None
+	Tab_RP_Process_Button: Button = None
 
 	progress_window: Toplevel = None
 	error_window: Toplevel = None
@@ -279,13 +280,11 @@ class PyGAAP_GUI:
 			self,
 			check_listboxes: list,
 			check_labels: list,
-			process_button: Button,
-			# click: bool = False
 		):
 		if GUI_debug >= 3: print("process_check()")
 		all_set = True
 		# first check if the listboxes in check_listboxes are empty. If empty
-		process_button.config(state = NORMAL, text = "Process")
+		self.Tab_RP_Process_Button.config(state = NORMAL, text = "Process")
 		for lb_index in range(len(check_listboxes)):
 			try: size = len(check_listboxes[lb_index].get_children())
 			except AttributeError: size = check_listboxes[lb_index].size()
@@ -293,7 +292,7 @@ class PyGAAP_GUI:
 				check_labels[lb_index].config(
 					fg = "#e24444",
 					activeforeground = "#e24444")
-				process_button.config(
+				self.Tab_RP_Process_Button.config(
 					fg = "#333333",
 					state = DISABLED,
 					text = "Process [missing parameters]",
@@ -301,7 +300,7 @@ class PyGAAP_GUI:
 				# if something is missing
 			else: # if all is ready
 				check_labels[lb_index].config(fg = "black", activeforeground = "black")
-		process_button.config(fg = "black")
+		self.Tab_RP_Process_Button.config(fg = "black")
 		return
 
 
@@ -757,20 +756,19 @@ class PyGAAP_GUI:
 			command = self.Tab_RP_AnalysisMethods_Listbox.yview)
 		self.Tab_RP_AnalysisMethods_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
 		self.Tab_RP_AnalysisMethods_Listbox.config(yscrollcommand = self.Tab_RP_AnalysisMethods_Listbox_scrollbar.set)
-		Tab_RP_Process_Button = Button(self.tabs_frames["Tab_ReviewProcess"], text = "Process", width = 25)
+		self.Tab_RP_Process_Button = Button(self.tabs_frames["Tab_ReviewProcess"], text = "Process", width = 25)
 
 		# button command see after documents tab.
 
-		Tab_RP_Process_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 5, padx = 20)
+		self.Tab_RP_Process_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 5, padx = 20)
 
-		Tab_RP_Process_Button.bind("<Map>",
+		self.Tab_RP_Process_Button.bind("<Map>",
 			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_NumberConverters_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
-			labels = [Tab_RP_EventDrivers_Button, Tab_RP_NumberConverters_Button, Tab_RP_AnalysisMethods_Button],
-			#button = Tab_RP_Process_Button:self.run_experiment(lb, labels, button)
-			button = Tab_RP_Process_Button:self.process_check(lb, labels, button)
+			labels = [Tab_RP_EventDrivers_Button, Tab_RP_NumberConverters_Button, Tab_RP_AnalysisMethods_Button]:
+			self.process_check(lb, labels)
 		)
 		
-		Tab_RP_Process_Button.config(\
+		self.Tab_RP_Process_Button.config(\
 			command = lambda:self.run_experiment())
 
 
@@ -1152,10 +1150,12 @@ class PyGAAP_GUI:
 					after_choose -= 1
 				self.Tab_Documents_UnknownAuthors_listbox.select_set(max(after_choose, 0))
 		elif mode == "add":
-			add_list = askopenfilename(
-				filetypes=(("Text File", "*.txt"), ("All Files", "*.*")),
-				title="Add Unknown Document(s)", multiple=True
-			)
+			if not options.get("test", False):
+				add_list = askopenfilename(
+					filetypes=(("Text File", "*.txt"), ("All Files", "*.*")),
+					title="Add Unknown Document(s)", multiple=True
+				)
+			else: add_list = options.get("add_list")
 			if type(add_list) == str: add_list = (add_list,)
 			for item in add_list:
 				# do not read documents and save content to Document.text. Read only when processing.
@@ -1219,7 +1219,7 @@ class PyGAAP_GUI:
 			
 			error_text = "An error occurred while loading the modules:\n\n"
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
-			error_text += "\n\nDevelopers: Reload modules by going to \"developers\" -> \"Reload all modules\""
+			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload all modules"'
 			error_text_field.insert(END, error_text)
 			error_window.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
@@ -1827,6 +1827,13 @@ class PyGAAP_GUI:
 		self._unified_tabs()
 		self._load_modules_to_GUI()
 		self.change_style(self.topwindow)
+
+	def test_run(self):
+		"""It initializes the GUI in the background but doesn't show it. Good for testing."""
+		from backend.API import API
+		self.backend_API = API("place-holder")
+		self.gui()
+		return
 
 
 	def run(self):

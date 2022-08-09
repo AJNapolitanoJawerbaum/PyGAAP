@@ -49,3 +49,17 @@ class Document:
 	def __repr__(self):
 		return '<Auth: "%s", Title: "%s", Text sample: |%s|, Event sample: %s, Path: %s>' % \
 			(str(self.author), str(self.title), str(self.text[:10]), str(self.eventSet)[:10]+"...", str(self.filepath))
+
+	def __eq__(self, other):
+		try:
+			for att in self.__dict__:
+				if att[0] != "_" and self.__dict__[att] != other.__dict__[att]:
+					return False
+		except AttributeError: return False
+		return True
+
+	def is_same_doc(self, other):
+		if self.author == other.author and self.title == other.title and self.filepath == other.filepath:
+			return True
+		else: return False
+		
