@@ -805,7 +805,7 @@ class PyGAAP_GUI:
 
 		analysisLanguage.trace_add("write",
 							lambda v1, v2, v3, p = "language", stringvar = analysisLanguage:
-							self.set_API_global_parameters(p, stringvar)) # TODO 0
+							self.set_API_global_parameters(p, stringvar))
 
 
 		#documents-unknown authors
@@ -1587,6 +1587,7 @@ class PyGAAP_GUI:
 
 	def set_API_global_parameters(self, parameter, stringvar):
 		"""Wrapper for backend_API's global parameter setter"""
+		if GUI_debug > 3: print("set api global parameters: %s" % parameter)
 		self.backend_API.set_global_parameters(parameter, stringvar.get())
 		return
 

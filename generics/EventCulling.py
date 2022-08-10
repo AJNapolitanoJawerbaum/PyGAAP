@@ -9,7 +9,7 @@ class EventCulling(ABC):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
-		except:
+		except AttributeError:
 			self._variable_options = dict()
 
 		try: self.after_init(**options)
@@ -30,10 +30,18 @@ class EventCulling(ABC):
 			raise ValueError("Module parameter out of range")
 		return
 
-	@abstractmethod
-	def process(self, eventSet):
-		'''To be determined'''
-		pass
+	def process(self, docs, pipe):
+		"""Process all docs"""
+		for d_i in range(l:=len(docs)):
+			if pipe is not None: pipe.send(100*d_i/l)
+			d = docs[d_i]
+			new_events = self.process_single(d.eventSet)
+			d.setEventSet(new_events)
+		return
+			
+		
+	def process_single(self, eventSet):
+		"""Process a single document"""
 		
 	@abstractmethod
 	def displayName():
@@ -54,7 +62,7 @@ class N_Occurrences(EventCulling):
 	Frequency = _variable_options["Frequency"]["options"][_variable_options["Frequency"]["default"]]
 	Mode = _variable_options["Mode"]["options"][_variable_options["Mode"]["default"]]
 	
-	def process(self, eventSet: list):
+	def process_single(self, eventSet: list):
 		freq = dict()
 		for e in eventSet:
 			if freq.get(e) == None: freq[e] = 1

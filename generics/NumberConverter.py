@@ -12,7 +12,7 @@ class NumberConverter(ABC):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
-		except:
+		except AttributeError:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
 		try: self.after_init(**options)

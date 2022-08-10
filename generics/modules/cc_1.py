@@ -46,7 +46,7 @@ class CangjieConvert(Canonicizer):
 				raise IndexError("CharacterTable.txt is longer than expected, please update the initialization of the table in Canonicizers.CangjieConvert.")
 		return None
 
-	def process(self, procText):
+	def process_single(self, procText):
 		outText=""
 		lastCharConverted = False
 		for character in procText:
@@ -79,7 +79,7 @@ class CangjieConvert(Canonicizer):
 
 
 class StripTabs(Canonicizer):
-	def process(self, text):
+	def process_single(self, text):
 		return "".join([x for x in text if x!="\t"])
 	
 	def displayDescription():
@@ -110,7 +110,7 @@ class StripTabs(Canonicizer):
 	# 	def displayDescription():
 	# 		return "Lemmatize words using the Spacy module."
 		
-	# 	def process(self, procText):
+	# 	def process_single(self, procText):
 	# 		"""Lemmatize using spacy"""
 	# 		print(self._SpacyLemmatize_module_dict)
 	# 		if Canonicizer._SpacyLemmatize_lang_pipeline == None:
@@ -145,7 +145,7 @@ class Nothing(Canonicizer):
 	def displayName():
 		return "_Nothing"
 
-	def process(self, text):
+	def process_single(self, text):
 		if self.Segment == "full":
 			print(text)
 		else:

@@ -1,7 +1,15 @@
 from abc import ABC, abstractmethod
 from nltk import ngrams
 from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk import WordNetLemmatizer
+from json import load as json_load
+from pathlib import Path
+from importlib import import_module
 # import spacy
+
+spacy_language_codes = json_load(f:=open(Path("./resources/spacy/languages.json"), "r"))
+f.close()
+del f
 
 # An abstract EventDriver class.
 class EventDriver(ABC):
@@ -12,7 +20,7 @@ class EventDriver(ABC):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
-		except:
+		except AttributeError:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
 		try: self.after_init(**options)
@@ -39,17 +47,29 @@ class EventDriver(ABC):
 		pass
 		
 	@abstractmethod
-	def createEventSet(self, procText):
-		'''Returns a list containing the resulting event set.'''
-		pass
-		
-	@abstractmethod
 	def setParams(self, params):
 		'''Accepts a list of parameters and assigns them to the appropriate variables.'''
 
 	@abstractmethod
 	def displayDescription():
 		pass
+	
+	def process(self, docs, pipe):
+		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
+		for d_i in range(l:=len(docs)):
+			d = docs[d_i]
+			if pipe is not None: pipe.send(100*d_i/l)
+			event_set = self.process_single(d.text)
+			d.setEventSet(event_set)
+	
+	def process_single(self, procText):
+		'''
+		Processes a single document.
+		This is no longer an abstract method because
+		some modules may choose to deal with all documents in "process".
+		'''
+		pass
+
 	
 # REFERENCE CLASS FOR PyGAAP GUI.
 class CharacterNGramEventDriver(EventDriver):
@@ -58,11 +78,13 @@ class CharacterNGramEventDriver(EventDriver):
 	_variable_options={"n": {"options": list(range(1, 21)), "default": 1, "type": "OptionMenu"}}
 	# for PyGAAP GUI to know which options to list/are valid
 		
-	def createEventSet(self, procText):
+	def process_single(self, procText):
 		'''Returns a list containing the desired character n-grams.'''
 		nltkRawOutput = list(ngrams(procText, self.n)) # This gives us a list of tuples.
 		# Make the list of tuples in to a list of character fragments in the form of strings.
 		formattedOutput = [''.join(val) for val in nltkRawOutput]
+		if len(formattedOutput) == 0:
+			raise ValueError("NLTK n-gram returned empty list. Check output of previous modules.")
 		return formattedOutput
 	
 	def displayName():
@@ -79,7 +101,7 @@ class CharacterNGramEventDriver(EventDriver):
 class WhitespaceDelimitedWordEventDriver(EventDriver):
 	'''Event Driver for Whitespace-Delimited Words'''
 	
-	def createEventSet(self, procText):
+	def process_single(self, procText):
 		'''Returns a list of words where a word is considered a whitespace-delimited unit.'''
 		return procText.split()
 		
@@ -96,7 +118,7 @@ class WhitespaceDelimitedWordEventDriver(EventDriver):
 class NltkWordTokenizerEventDriver(EventDriver):
 	'''Event Driver for using the NLTK Word Tokenizer.'''
 	
-	def createEventSet(self, procText):
+	def process_single(self, procText):
 		'''Returns a list of words as defined by the NLTK Word Tokenizer.'''
 		return word_tokenize(procText)
 		
@@ -113,7 +135,7 @@ class NltkWordTokenizerEventDriver(EventDriver):
 class SentenceEventDriver(EventDriver):
 	'''Event Driver for getting sentences using the NLTK Sentence Tokenizer.'''
 	
-	def createEventSet(self, procText):
+	def process_single(self, procText):
 		'''Returns a list of sentences as defined by the NLTK Sentence Tokenizer.'''
 		return sent_tokenize(procText)
 		
@@ -139,8 +161,7 @@ class CharacterPositionEventDriver(EventDriver):
 		}
 	}
 
-	def createEventSet(self, procText):
-
+	def process_single(self, procText):
 		eventSet = []
 		if self.delimiter == "<whitespace(s)>":
 			splitText = procText.split()
@@ -186,10 +207,11 @@ class WithinWordNGram(EventDriver):
 	def displayDescription():
 		return "Lists the n-gram of letter sequences within a word."
 
+	def setParams(self, params):
+		return
 
 
-	def createEventSet(self, procText):
-
+	def process_single(self, procText):
 		eventSet = []
 		if self.delimiter == "<whitespace(s)>":
 			splitText = procText.split()
@@ -219,9 +241,53 @@ class KSkipNGramCharacterEventDriver(EventDriver):
 	def displayName():
 		return "K-skip Character N-gram"
 
-	def createEventSet(self, text):
+	def process_single(self, text):
 		text = "".join([text[i] for i in range(len(text)) if i%(self.k + 1) == 0])
 		nltkRawOutput = list(ngrams(text, self.n))
 		formattedOutput = [''.join(val) for val in nltkRawOutput]
 		return formattedOutput
+
+# PROBLEM: need to download vocab for tokenizing?
+
+class WordNGram(EventDriver):
+	n = 2
+	tokenizer = "NLTK"
+	lemmatize = "No"
+
+	_variable_options = {
+		"n": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
+		"tokenizer": {"options": ["Space delimiter", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 1},
+		"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"}
+	}
+
+	def setParams(self, params):
+		self.n, self.tokenizer, self.lemmatize = params
+
+	def process_single(self, text: str):
+		if self.tokenizer == "SpaCy":
+			lang = self._global_parameters["language_code"][self._global_parameters["language"]]
+			lang = spacy_language_codes.get(lang, "unk")
+			lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
+			lang_tokenizer = getattr(lang_module, lang.split(".")[1])
+			lang_tokenizer = lang_tokenizer()
+			tokens = lang_tokenizer(text)
+			tokens = [str(t) for t in tokens]
+		elif self.tokenizer == "NLTK":
+			tokens = text.split()
+		elif self.tokenizer == "Space delimiter":
+			return text.split()
+		else:
+			raise ValueError("Unknown tokenizer option for Word n-grams: %s" % self.tokenizer)
+		if self.lemmatize == "SpaCy":
+			...
+		elif self.lemmatize == "NLTK":
+			...
+		return tokens
+	
+	def displayName():
+		return "Word n-grams"
+
+	def displayDescription():
+		return "Word n-grams."
+
 

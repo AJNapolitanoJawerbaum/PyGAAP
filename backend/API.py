@@ -34,15 +34,21 @@ class API:
 		"DistanceFunctions": []
 	}
 
-	global_parameters = {"language": None}
 	# TODO priority low:
 	# allow modules to pass info along the pipeline:
 	# e.g. if an event culler requires information on the text
 	# before it was converted to the feature set.
 
 
-	languages_available = ["English", "Arabic (ISO-8859-6)", "Chinese (GB2123)"]
 	default_language = 0
+	language_code = {
+		# letter codes mostly follow ISO 639-3
+		"English": "eng", "Chinese (simplified)": "zho", "Chinese (traditional)": "zht",
+		"Spanish": "spa", "French": "fra", "German": "deu", "Japanese": "jpn",
+		# "Italian": "ita", "Greek": "ell", "Russian": "rus", "Arabic": "ara", "Korean": "kor",
+	}
+	global_parameters = {"language": "English", "language_code": language_code}
+	languages_available = list(language_code.keys())
 
 	known_authors: list = [] # list used in GUI2 to keep track of known documents. LIST OF STRINGS
 	unknown_docs: list = [] # list of unknown documents "Documents" (backend.Document). LIST OF DOCUMENTS
@@ -109,6 +115,7 @@ class API:
 		# self.unknown_docs: list = []
 
 	def show_process_content(self):
+		print("\nLanguage", self.global_parameters["language"], end="\n")
 		print("Unknown_docs:\n")
 		[print(str(d)) for d in self.unknown_docs]
 		print("Known_authors:\n")

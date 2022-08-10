@@ -8,9 +8,10 @@ from backend import API
 from backend.Document import Document
 from backend import run_experiment
 
+print("load API...", end="")
 api = API.API("")
 corpus = CSVIO.readCorpusCSV("./resources/aaac/problemC/loadC.csv")
-
+print("done. Loading docs...", end="")
 for doc in corpus:
     if doc[0] == "":
         api.unknown_docs.append(Document(title=doc[2], filepath=doc[1]))
@@ -24,19 +25,19 @@ known_dict = [[x, known_dict[x]] for x in known_dict]
 
 api.known_authors = known_dict
 del known_dict, corpus
-
+print("done. starting exp.")
 mod_names = {
-    "canonicizers_names": [],
-    "event_drivers_names": ["Character NGrams"],
-    "event_cullers_names": [],
-    "number_converters_names": ["Frequency"],
-    "am_df_names": [["Centroid Driver", "Jensen-Shannon Distance"]]
+    "Canonicizers": [],
+    "EventDrivers": ["Word n-grams"],
+    "EventCulling": [],
+    "NumberConverters": ["Frequency"],
+    "AnalysisMethods": ["Centroid Driver"],
+    "DistanceFunctions": ["Histogram Distance"]
 }
-api.modulesInUse["EventDrivers"].append(api.eventDrivers["Character NGrams"]())
+api.modulesInUse["EventDrivers"].append(api.eventDrivers["Word n-grams"]())
 api.modulesInUse["NumberConverters"].append(api.numberConverters["Frequency"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
-api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Jensen-Shannon Distance"]())
-
+api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
 
 exp = run_experiment.Experiment(api, mod_names)
 results = exp.run_experiment(return_results=True)

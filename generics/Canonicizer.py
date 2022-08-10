@@ -10,7 +10,7 @@ class Canonicizer(ABC):
 		try:
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
-		except:
+		except AttributeError:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
 		try: self.after_init(**options)
@@ -31,9 +31,22 @@ class Canonicizer(ABC):
 			raise ValueError("Module parameter out of range")
 		return
 
-	@abstractmethod
-	def process(self, procText):
-		'''Input is original text and output is canonicized text.'''
+	def process(self, documents, pipe):
+		"""
+		process all docs at once, auto-call process_single.
+		"""
+		for d_i in range(l:=len(documents)):
+			d = documents[d_i]
+			if pipe is not None: pipe.send(100*d_i/l)
+			d.text = self.process_single(d.text)
+
+	def process_single(self, text):
+		"""
+		This is not an abstract method in the base class because
+		it may not be present in some modules.
+		Input/output of this may change. If changing input,
+		also need to change the self.process() function.
+		"""
 		pass
 		
 	@abstractmethod
@@ -46,7 +59,7 @@ class Canonicizer(ABC):
 		'''Returns the display description for the canonicizer.'''
 		
 class NormalizeWhitespace(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		'''Convert procText in to a string where all whitespace characters are the same.'''
 		return ' '.join(procText.split())
 
@@ -57,7 +70,7 @@ class NormalizeWhitespace(Canonicizer):
 		return "Converts all whitespace characters (newline, space and tab) to a single space.  Uses Java Character.isWhitespace for classification."
 
 class UnifyCase(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		"""Convert procText to lower case"""
 		return procText.lower()
 	
@@ -68,7 +81,7 @@ class UnifyCase(Canonicizer):
 		return "Converts all text to lower case."
 
 class StripPunctuation(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		"""Gets rid of punctuation characters"""
 		return ''.join([char for char in procText if char not in ",.?!\"'`;:-()&$"])
 	
@@ -79,10 +92,10 @@ class StripPunctuation(Canonicizer):
 		return "Strip Punctuation"
 
 class StripNumbers(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		"""Converts each digit string to a single zero."""
 		regex_match=re.compile("0+")
-		procText=''.join(["0" for char in procText if char in "0123456789"])
+		procText=''.join(["0" if char in "0123456789" else char for char in procText])
 		return re.subn(regex_match, "0", procText)[0]
 
 	def displayDescription():
@@ -92,7 +105,7 @@ class StripNumbers(Canonicizer):
 		return "Strip Numbers"
 
 class PunctuationSeparator(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		"""Adds whitespaces before and after punctuations."""
 		return ''.join([" "+char+" " if char in ",.?!\"'`;:-()&$" else char for char in procText])
 	
@@ -103,7 +116,7 @@ class PunctuationSeparator(Canonicizer):
 		return "Punctuation Separator"
 
 class StripAlphanumeric(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		"""Strips all non-whitespace, non-punctuation marks."""
 		return ''.join([char for char in procText if char in " ,.?!\"'`;:-()&$"])
 
@@ -114,7 +127,7 @@ class StripAlphanumeric(Canonicizer):
 		return "Strip Alpha-numeric"
 
 class StripNullCharacters(Canonicizer):
-	def process(self, procText):
+	def process_single(self, procText):
 		return ''.join([char for char in procText if char!="\0"])
 
 	def displayDescription():

@@ -28,7 +28,7 @@ class Document:
 		
 	def setEventSet(self, eventSet, **options):
 		'''Sets the eventSet list value.'''
-		append = options.get("append", False)
+		append = options.get("append", True)
 		if not append:
 			self.eventSet = eventSet
 		else:

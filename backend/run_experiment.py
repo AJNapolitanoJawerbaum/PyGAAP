@@ -6,9 +6,6 @@
 # and how to add new modules.
 # @ author: Michael Fang
 
-# this is closely coupled with the main file ~/backend/GUI/GUI2.py.
-# this file is separate from GUI2.py for readability only.
-
 
 from multiprocessing import Process, Queue, Pipe, Pool	
 from copy import deepcopy
@@ -17,24 +14,21 @@ from copy import copy as shallowcopy
 import datetime
 from json import load as json_load
 
-#from backend import API
-
 
 from backend.CSVIO import readDocument
 from backend.Document import Document
-#from generics.NumberConverter import NumberConverter
 
-
-GUI_debug = 0
 
 class Experiment:
+	
+	"""An experiment class to be invoked by either the GUI or the CLI."""
 
 	backend_API = None
 	module_names: dict = {}
 
 	def __init__(self, api, module_names: dict, pipe_here=None, q:Queue=None, **options):
 		"""
-		Copies API in a different process
+		Copies API in a different process (GUI)
 		receives an end of a pipe to send info back to main process.
 		"""
 		self.gui_params = json_load(f:=open("./backend/GUI/gui_params.json", "r"))
@@ -45,30 +39,29 @@ class Experiment:
 		#self.dpi_setting = options.get("dpi")
 		self.q = q
 
-	def run_pre_processing(
-			self,
-			doc: Document,
-		):
+	def run_pre_processing(self):
 		"""
-		Run pre-processing on a single document:
+		Run pre-processing on all documents:
 		Canonicizers, event drivers, event cullers.
 		"""
 		# doc: the document passed in.
 		# dump_queue: when multi-processing,
 		# the shared queue to temporarily store the documents.
+		if self.pipe_here is not None: self.pipe_here.send("Running canonicizers")
 		for c in self.backend_API.modulesInUse["Canonicizers"]:
 			c._global_parameters = self.backend_API.global_parameters
-			doc.text = c.process(doc.text)
-		
+			c.process(self.backend_API.documents, self.pipe_here)
+
+		if self.pipe_here is not None: self.pipe_here.send("Running event drivers")
 		for e in self.backend_API.modulesInUse["EventDrivers"]:
 			e._global_parameters = self.backend_API.global_parameters
-			event_set = e.createEventSet(doc.text)
-			doc.setEventSet(event_set, append=True)
-		
+			e.process(self.backend_API.documents, self.pipe_here)
+
+		if self.pipe_here is not None: self.pipe_here.send("Running event cullers")
 		for ec in self.backend_API.modulesInUse["EventCulling"]:
 			ec._global_parameters = self.backend_API.global_parameters
-			doc.setEventSet(ec.process(doc.eventSet))
-		return doc
+			ec.process(self.backend_API.documents, self.pipe_here)
+		return
 
 	def run_experiment(self, **options):
 
@@ -77,7 +70,6 @@ class Experiment:
 		input: unknown authors, known authors, all listboxes.
 		"""
 		return_results = options.get("return_results", False)
-		if GUI_debug >= 3: print("run_experiment()")
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
@@ -110,50 +102,12 @@ class Experiment:
 			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
 			docs = known_docs + unknown_docs
 
-		if self.pipe_here != None: self.pipe_here.send("Pre-processing text")
-
-		# PRE-PROCESSING
-		if len(self.backend_API.documents) < self.gui_params["multiprocessing_limit_docs"]:
-			# only use multi-processing when the number of docs is large.
-			if GUI_debug >= 2: print("single-threading.")
-
-			processed_docs = []
-			total_num_docs = len(self.backend_API.documents)
-			for doc_ind in range(total_num_docs):
-				if self.pipe_here != None: self.pipe_here.send(int((doc_ind/total_num_docs)*100))
-				pre_processed_doc = self.run_pre_processing(self.backend_API.documents[doc_ind])
-				processed_docs.append(pre_processed_doc)
-			self.backend_API.documents = processed_docs
-
-		else:
-			# TODO 1 priority high:
-			# implement multi-processing for pre-processing.
-			raise NotImplementedError
-			if GUI_debug >= 2: print("multi-threading")
-			process_list = []
-			dump_queue = Queue()
-			for doc in self.backend_API.documents:
-				process_list.append(Process(target = run_pre_processing(doc, dump_queue)))
-				process_list[-1].start()
-			for proc in process_list:
-				proc.join()
-			self.backend_API.documents = []
-			while not dump_queue.empty():
-				doc_get = dump_queue.get()
-				self.backend_API.documents.append(doc_get)
-
-		# RUN ANALYSIS ON UNKNOWN DOCS
-		# TODO 1 priority high:
-		# implement multi-processing for analysis methods.
-		# if $score < multiprocessing_limit_analysis:
+		self.run_pre_processing()
 
 		if self.pipe_here != None: self.pipe_here.send(0)
 
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
-		
-
 		results = []
-
 		for nc in self.backend_API.modulesInUse["NumberConverters"]:
 			"""
 			Only one number converter used for one analysis method
@@ -161,16 +115,15 @@ class Experiment:
 			"""
 			nc._global_parameters = self.backend_API.global_parameters
 
+			if self.pipe_here is not None: self.pipe_here.send("Running number converters")
 			all_data = nc.convert(known_docs + unknown_docs)
 			known_docs_numbers_aggregate = all_data[:len(known_docs)]
 			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
 			del all_data
 
-			if GUI_debug >= 3: print("Running analysis methods")
 			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
 			for am_df_index in range(number_of_classifiers):
-				#if GUI_debug >= 3: print("a")
-
+				if self.pipe_here is not None: self.pipe_here.send
 				am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
 							self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
 				am_df_pair[0]._global_parameters = self.backend_API.global_parameters

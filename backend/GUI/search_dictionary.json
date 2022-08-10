@@ -21,5 +21,6 @@
     "histogram distance": ["euclidean"],
     "euclidean distance": ["histogram distance"],
     "jensen-shannon distance": ["information radius", "js divergence", "js", "jensen-shannon"],
-    "k-nearest neighbors": ["knn", "k nearest"]
+    "k-nearest neighbors": ["knn", "k nearest"],
+    "linear discriminant analysis": ["lda"]
 }
