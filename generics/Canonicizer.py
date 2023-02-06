@@ -31,7 +31,7 @@ class Canonicizer(ABC):
 			raise ValueError("Module parameter out of range")
 		return
 
-	def process(self, documents, pipe):
+	def process(self, documents, pipe=None):
 		"""
 		process all docs at once, auto-call process_single.
 		"""

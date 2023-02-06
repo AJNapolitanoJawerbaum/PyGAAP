@@ -51,6 +51,13 @@ class AnalysisMethod(ABC):
 		'''Returns the description of the method.'''
 		pass
 
+	# def set_attr(self, var, value):
+	# 	"""Custom way to set attributes
+	# 	(good for when setting a parameter changes the list of parameters itself)
+	# 	return a boolean for whether to use the GUI's built-in way to set attributes after.
+	# 	Default is to let the GUI set parameters."""
+	# 	return True
+
 	def validate_parameter(self, param_name: str, param_value):
 		"""validating parameter expects param_value to already been correctly typed"""
 		if param_name not in self._variable_options:

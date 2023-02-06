@@ -5,6 +5,8 @@ from importlib import import_module
 # An abstract Event Culling class.
 class EventCulling(ABC):
 
+	_global_parameters = dict()
+
 	def __init__(self, **options):
 		try:
 			for variable in self._variable_options:

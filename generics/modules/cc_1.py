@@ -1,4 +1,4 @@
-from generics.Canonicizer import *
+from generics.Canonicizer import Canonicizer
 import re
 import numpy as np
 

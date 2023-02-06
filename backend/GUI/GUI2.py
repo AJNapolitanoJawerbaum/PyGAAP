@@ -1250,7 +1250,7 @@ class PyGAAP_GUI:
 		If entry is empty, display all as usual.
 		"""
 
-		query = search_entry.get().lower() # string
+		query = search_entry.get().lower().strip() # string
 		retrieve = {x.lower():x for x in search_from}
 		candidates = [retrieve[item] for item in list(retrieve.keys()) if
 			self.intelligent_search(query, item)]
@@ -1422,7 +1422,6 @@ class PyGAAP_GUI:
 			this_module_name = listbox.item(listbox.selection())["values"][0]
 			this_df_module_name = listbox.item(listbox.selection())["values"][1]
 			# this is the way to retrieve treeview selection names
-			
 		else: return
 		
 		for params in displayed_params:
@@ -1507,7 +1506,8 @@ class PyGAAP_GUI:
 					param_options[-1].trace_add(("write"),
 						lambda v1, v2, v3, stringvar = param_options[-1],
 						module = this_module, var = parameter_i:\
-							self.set_parameters(stringvar, module, var))
+							self.set_parameters(stringvar, module, var,
+							param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type))
 			if rowshift == 1:
 				# if the rows are shifted, there is an extra label for the DF parameters.
 				displayed_params.append(Label(param_frame,
@@ -1567,7 +1567,7 @@ class PyGAAP_GUI:
 		desc.config(state = DISABLED)
 		return
 
-	def set_parameters(self, stringvar, module, variable_name):
+	def set_parameters(self, stringvar, module, variable_name, **options):
 		"""sets parameters whenever the widget is touched."""
 		if GUI_debug >= 3:
 			print("set_parameters(module = %s, variable_name = %s)"
@@ -1582,7 +1582,12 @@ class PyGAAP_GUI:
 					value_to = int(value_to)
 			except ValueError:
 				pass
-		setattr(module, variable_name, value_to)
+		try:
+			need_setattr = module.set_attr(variable_name, value_to)
+			if need_attr: setattr(module, variable_name, value_to)
+		except NameError:
+			setattr(module, variable_name, value_to)
+		self.find_parameters(options.get("param_frame"), options.get("listbox"), options.get("dp"), module_type=options.get("module_type"))
 		return
 
 	def set_API_global_parameters(self, parameter, stringvar):

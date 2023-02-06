@@ -6,7 +6,7 @@ from tkinter import *
 from tkinter import ttk
 
 # This function creates canonicizers, event drivers, event culling, and analysis methods tabs.
-def create_module_tab(tab_frame: Frame, available_content: list, parameters_content = None, **extra):
+def create_module_tab(tab_frame: Frame, available_content: list, parameters_content: str = None, **extra):
 	"""
 	creates a tab of available-buttons-selected-description tab.
 	See PyGAAP_developer_manual.md for list of major widgets/frames.

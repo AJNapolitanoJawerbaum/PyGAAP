@@ -54,7 +54,7 @@ class EventDriver(ABC):
 	def displayDescription():
 		pass
 	
-	def process(self, docs, pipe):
+	def process(self, docs, pipe=None):
 		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
 		for d_i in range(l:=len(docs)):
 			d = docs[d_i]
@@ -263,19 +263,27 @@ class WordNGram(EventDriver):
 	def setParams(self, params):
 		self.n, self.tokenizer, self.lemmatize = params
 
-	def process_single(self, text: str):
+	def process(self, docs, pipe):
 		if self.tokenizer == "SpaCy":
 			lang = self._global_parameters["language_code"][self._global_parameters["language"]]
 			lang = spacy_language_codes.get(lang, "unk")
 			lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
 			lang_tokenizer = getattr(lang_module, lang.split(".")[1])
-			lang_tokenizer = lang_tokenizer()
-			tokens = lang_tokenizer(text)
+			self._lang_tokenizer = lang_tokenizer()
+		elif self.tokenizer == "NLTK":
+			self._lang_tokenizer = word_tokenize
+		elif self.tokenizer == "Space delimiter":
+			for d in docs:
+				d.setEventSet(d.text.split())
+
+	def process_single(self, text: str):
+		if self.tokenizer == "SpaCy":
+			tokens = self._lang_tokenizer(text)
 			tokens = [str(t) for t in tokens]
 		elif self.tokenizer == "NLTK":
-			tokens = text.split()
+			tokens = self._lang_tokenizer(text)
 		elif self.tokenizer == "Space delimiter":
-			return text.split()
+			pass # already processed in "process"
 		else:
 			raise ValueError("Unknown tokenizer option for Word n-grams: %s" % self.tokenizer)
 		if self.lemmatize == "SpaCy":

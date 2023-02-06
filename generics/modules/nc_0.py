@@ -1,4 +1,4 @@
-from generics.NumberConverter import *
+from generics.NumberConverter import NumberConverter
 from backend.Histograms import generateAbsoluteHistogram as gh
 from backend import PrepareNumbers as pn
 import numpy as np

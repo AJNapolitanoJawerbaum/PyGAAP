@@ -122,8 +122,8 @@ class Experiment:
 			del all_data
 
 			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
+			if self.pipe_here is not None: self.pipe_here.send("Running analysis")
 			for am_df_index in range(number_of_classifiers):
-				if self.pipe_here is not None: self.pipe_here.send
 				am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
 							self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
 				am_df_pair[0]._global_parameters = self.backend_API.global_parameters

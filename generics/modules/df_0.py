@@ -1,4 +1,4 @@
-from generics.DistanceFunction import *
+from generics.DistanceFunction import DistanceFunction
 import numpy as np
 
 class CosineDistance(DistanceFunction):
