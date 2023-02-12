@@ -4,6 +4,7 @@ from sklearn.svm import LinearSVC, SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+import numpy as np
 
 class Linear_SVM_sklearn(AnalysisMethod):
 	penalty = "L2"
@@ -237,19 +238,19 @@ class Naive_bayes_sklearn(AnalysisMethod):
 	def displayDescription():
 		return "Multinomial naive bayes implemented in scikit-learn."
 
-class LDA_sklearn(AnalysisMethod):
+# class LDA_sklearn(AnalysisMethod):
 
-	def train(self, train, train_data=None, **options):
-		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
-		return
+# 	def train(self, train, train_data=None, **options):
+# 		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
+# 		return
 
-	def analyze(self, test, test_data=None, **options):
-		if test_data is None:
-			test_data = self.get_test_data(test)
-		return
+# 	def analyze(self, test, test_data=None, **options):
+# 		if test_data is None:
+# 			test_data = self.get_test_data(test)
+# 		return
 	
-	def displayName():
-		return "[n.i.] Linear Discriminant Analysis (sklearn)"
+# 	def displayName():
+# 		return "[n.i.] Linear Discriminant Analysis (sklearn)"
 	
-	def displayDescription():
-		return "Linear discriminant analysis implemented in scikit-learn"
+# 	def displayDescription():
+# 		return "Linear discriminant analysis implemented in scikit-learn"

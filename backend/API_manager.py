@@ -10,10 +10,11 @@ This is a module to maintain compatibility with Windows.
 It runs in the same process as the GUI, but starts another process
 with the API by initializing API_process, and sends/receives signals.
 
-When the experiment starts, it creates a copy of the API which
-takes in all the module info and parameters through a pipe
+When the experiment starts, it creates a copy of the API in another process by
+by initializing API_process which
+takes in all the module info and parameters as strings through a pipe
 instead of passing the modules and/or the API objects themselves because
-they're not picklable.
+the modules are not picklable.
 """
 
 

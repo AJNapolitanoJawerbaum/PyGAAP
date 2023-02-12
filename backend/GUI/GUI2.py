@@ -32,6 +32,7 @@ from os import listdir as ls
 from time import sleep
 from pathlib import Path
 from os import getcwd
+from gc import collect as collect_garbage
 
 # local modules
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
@@ -1582,11 +1583,7 @@ class PyGAAP_GUI:
 					value_to = int(value_to)
 			except ValueError:
 				pass
-		try:
-			need_setattr = module.set_attr(variable_name, value_to)
-			if need_attr: setattr(module, variable_name, value_to)
-		except NameError:
-			setattr(module, variable_name, value_to)
+		setattr(module, variable_name, value_to)
 		self.find_parameters(options.get("param_frame"), options.get("listbox"), options.get("dp"), module_type=options.get("module_type"))
 		return
 
@@ -1596,6 +1593,13 @@ class PyGAAP_GUI:
 		self.backend_API.set_global_parameters(parameter, stringvar.get())
 		return
 
+	def show_API_process_content(self):
+		"""
+		show list of modules in use.
+		The API.show_process_content is called here to avoid keeping a pointer
+		to the old API when reloading modules.
+		"""
+		self.backend_API.show_process_content()
 
 	def gui(self):
 		"""This arranges the elements of the GUI. Calls helpers for some tasks."""
@@ -1709,7 +1713,7 @@ class PyGAAP_GUI:
 
 		menu_dev = Menu(menubar, tearoff=0)
 		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
-		menu_dev.add_command(label="Show process content", command=self.backend_API.show_process_content)
+		menu_dev.add_command(label="Show process content", command=self.show_API_process_content)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
 
 		topwindow.config(menu = menubar)
@@ -1815,6 +1819,7 @@ class PyGAAP_GUI:
 
 		del self.backend_API
 		del self.generated_widgets
+		collect_garbage()
 
 		import util.MultiprocessLoading as MultiprocessLoading
 		from backend.GUI import GUI_unified_tabs

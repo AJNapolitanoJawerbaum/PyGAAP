@@ -1,0 +1,15 @@
+{
+	"example: API_language": {"module": "language_name_in_the_module"},
+	"eng": {"spacy": "en.English", "nltk": "english"},
+	"zho": {"spacy": "zh.Chinese"},
+	"zht": {"spacy": "zh.Chinese"},
+	"spa": {"spacy": "es.Spanish", "nltk": "spanish"},
+	"fra": {"spacy": "fr.French", "nltk": "french"},
+	"deu": {"spacy": "de.German", "nltk": "german"},
+	"jpn": {"spacy": "ja.Japanese"},
+	"kor": {"spacy": "ko.Korean"},
+	"rus": {"spacy": "ru.Russian", "nltk": "russian"},
+	"ita": {"spacy": "it.Italian", "nltk": "italian"},
+	"ell": {"spacy": "el.Greek", "nltk": "greek"},
+	"unk": {"spacy": "xx.MultiLanguage"}
+}

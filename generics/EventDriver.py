@@ -7,7 +7,7 @@ from pathlib import Path
 from importlib import import_module
 # import spacy
 
-spacy_language_codes = json_load(f:=open(Path("./resources/spacy/languages.json"), "r"))
+language_codes = json_load(f:=open(Path("./resources/languages.json"), "r"))
 f.close()
 del f
 
@@ -56,9 +56,9 @@ class EventDriver(ABC):
 	
 	def process(self, docs, pipe=None):
 		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
-		for d_i in range(l:=len(docs)):
-			d = docs[d_i]
-			if pipe is not None: pipe.send(100*d_i/l)
+		l = len(docs)
+		for i, d in enumerate(docs):
+			if pipe is not None: pipe.send(100*i/l)
 			event_set = self.process_single(d.text)
 			d.setEventSet(event_set)
 	
@@ -183,44 +183,44 @@ class CharacterPositionEventDriver(EventDriver):
 		return "Converts delimited words into list of letters with their positions within the word.\nRecommended with the Cangjie canonicizer"
 
 
-class WithinWordNGram(EventDriver):	
-	_variable_options = {
-		"delimiter":
-		{
-			"options": ["<whitespace(s)>", ", (comma)", ". (period)", "; (semicolon)"],
-			"type": "OptionMenu",
-			"default": 0
-		},
-		"n":
-		{
-			"options": list(range(4)),
-			"type": "OptionMenu",
-			"default": 0
-		}
-	}
-	delimiter = _variable_options["delimiter"]["options"][_variable_options["delimiter"]["default"]]
-	n = _variable_options["n"]["options"][_variable_options["n"]["default"]]
+# class WithinWordNGram(EventDriver):	
+# 	_variable_options = {
+# 		"delimiter":
+# 		{
+# 			"options": ["<whitespace(s)>", ", (comma)", ". (period)", "; (semicolon)"],
+# 			"type": "OptionMenu",
+# 			"default": 0
+# 		},
+# 		"n":
+# 		{
+# 			"options": list(range(4)),
+# 			"type": "OptionMenu",
+# 			"default": 0
+# 		}
+# 	}
+# 	delimiter = _variable_options["delimiter"]["options"][_variable_options["delimiter"]["default"]]
+# 	n = _variable_options["n"]["options"][_variable_options["n"]["default"]]
 	
-	def displayName():
-		return "Within-word n-gram [under construction]"
+# 	def displayName():
+# 		return "Within-word n-gram [under construction]"
 
-	def displayDescription():
-		return "Lists the n-gram of letter sequences within a word."
+# 	def displayDescription():
+# 		return "Lists the n-gram of letter sequences within a word."
 
-	def setParams(self, params):
-		return
+# 	def setParams(self, params):
+# 		return
 
 
-	def process_single(self, procText):
-		eventSet = []
-		if self.delimiter == "<whitespace(s)>":
-			splitText = procText.split()
-		else:
-			splitText = procText.split(self.delimiter[0])
+	# def process_single(self, procText):
+	# 	eventSet = []
+	# 	if self.delimiter == "<whitespace(s)>":
+	# 		splitText = procText.split()
+	# 	else:
+	# 		splitText = procText.split(self.delimiter[0])
 
-		for word in splitText:
-			eventSet += [str(word[letterIndex] + "_" + str(letterIndex)) for letterIndex in range(len(word))]
-		return eventSet
+	# 	for word in splitText:
+	# 		eventSet += [str(word[letterIndex] + "_" + str(letterIndex)) for letterIndex in range(len(word))]
+	# 	return eventSet
 	
 
 class KSkipNGramCharacterEventDriver(EventDriver):
@@ -252,45 +252,39 @@ class KSkipNGramCharacterEventDriver(EventDriver):
 class WordNGram(EventDriver):
 	n = 2
 	tokenizer = "NLTK"
-	lemmatize = "No"
+	#lemmatize = "No"
 
 	_variable_options = {
 		"n": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
 		"tokenizer": {"options": ["Space delimiter", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 1},
-		"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"}
+		#"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"}
 	}
 
 	def setParams(self, params):
 		self.n, self.tokenizer, self.lemmatize = params
 
 	def process(self, docs, pipe):
+		l = len(docs)
 		if self.tokenizer == "SpaCy":
-			lang = self._global_parameters["language_code"][self._global_parameters["language"]]
-			lang = spacy_language_codes.get(lang, "unk")
+			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
+			lang = language_codes.get(lang, "unk").get("spacy", "xx.MultiLanguage")
 			lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
-			lang_tokenizer = getattr(lang_module, lang.split(".")[1])
-			self._lang_tokenizer = lang_tokenizer()
+			lang_module = getattr(lang_module, lang.split(".")[1])()
+			for i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*i/l)
+				d.setEventSet([str(token) for token in lang_module.tokenizer(d.text)])
 		elif self.tokenizer == "NLTK":
-			self._lang_tokenizer = word_tokenize
+			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
+			lang = language_codes.get(lang, "unk").get("nltk", "english")
+			for i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*i/l)
+				d.setEventSet(word_tokenize(d.text, language=lang))
 		elif self.tokenizer == "Space delimiter":
-			for d in docs:
+			for i, d in enumerate(docs):
 				d.setEventSet(d.text.split())
-
-	def process_single(self, text: str):
-		if self.tokenizer == "SpaCy":
-			tokens = self._lang_tokenizer(text)
-			tokens = [str(t) for t in tokens]
-		elif self.tokenizer == "NLTK":
-			tokens = self._lang_tokenizer(text)
-		elif self.tokenizer == "Space delimiter":
-			pass # already processed in "process"
 		else:
-			raise ValueError("Unknown tokenizer option for Word n-grams: %s" % self.tokenizer)
-		if self.lemmatize == "SpaCy":
-			...
-		elif self.lemmatize == "NLTK":
-			...
-		return tokens
+			raise ValueError("Unknown tokenizer type %s" % self.tokenizer)
+
 	
 	def displayName():
 		return "Word n-grams"

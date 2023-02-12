@@ -128,25 +128,25 @@ class StripTabs(Canonicizer):
 	# 		lemmatized = " ".join(lem)
 	# 		return lemmatized
 
-class Nothing(Canonicizer):
+# class Nothing(Canonicizer):
 	
-	Segment = 10
+# 	Segment = 10
 
-	_variable_options = {
-		"Segment": {
-			"options": ["10", "50", "full"],
-			"type": "OptionMenu",
-			"default": 0
-		}
-	}
-	def displayDescription():
-		return "Prints received file to terminal"
+# 	_variable_options = {
+# 		"Segment": {
+# 			"options": ["10", "50", "full"],
+# 			"type": "OptionMenu",
+# 			"default": 0
+# 		}
+# 	}
+# 	def displayDescription():
+# 		return "Prints received file to terminal"
 	
-	def displayName():
-		return "_Nothing"
+# 	def displayName():
+# 		return "*"
 
-	def process_single(self, text):
-		if self.Segment == "full":
-			print(text)
-		else:
-			print(text[int(self.Segment)])
+# 	def process_single(self, text):
+# 		if self.Segment == "full":
+# 			print(text)
+# 		else:
+# 			print(text[int(self.Segment)])
