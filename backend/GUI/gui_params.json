@@ -19,7 +19,7 @@
 	"dpi": {
 		"comment": "small: regular DPI; large: 2x DPI.",
 		"small": {
-			"dpi_top_window_geometry": "1000x670",
+			"dpi_top_window_geometry": "1200x670",
 			"dpi_scrollbar_width": 16,
 			"dpi_option_menu_width": 10,
 			"dpi_language_dropdown_width": 18,
@@ -30,7 +30,7 @@
 			"dpi_treeview_entry_height": 1,
 			"dpi_process_window_geometry_finished": "1200x900",
 			"dpi_description_box_border": 3,
-			"Treeview.rowheight": 20
+			"Treeview.rowheight": 30
 		},
 		"large": {
 			"dpi_top_window_geometry": "2000x1150",
@@ -41,7 +41,7 @@
 			"dpi_progress_bar_length": 400,
 			"dpi_about_page_geometry": "1200x600",
 			"dpi_author_window_geometry": "1170x590",
-			"dpi_treeview_entry_height": 2,
+			"dpi_treeview_entry_height": 3,
 			"dpi_process_window_geometry_finished": "1900x1100",
 			"dpi_description_box_border": 5,
 			"Treeview.rowheight": 35

@@ -11,3 +11,4 @@ backend/GUI/GUI2_old_linux.py
 backend/CLI_backup.py
 backend/GUI/GUI2_mono.py
 generics/modules/am_pytorch.py
+manage.py

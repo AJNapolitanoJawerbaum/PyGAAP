@@ -1569,6 +1569,7 @@ class PyGAAP_GUI:
 		return
 
 	def set_parameters(self, stringvar, module, variable_name, **options):
+		# ctrl-f: change_params change params edit params
 		"""sets parameters whenever the widget is touched."""
 		if GUI_debug >= 3:
 			print("set_parameters(module = %s, variable_name = %s)"
@@ -1583,7 +1584,9 @@ class PyGAAP_GUI:
 					value_to = int(value_to)
 			except ValueError:
 				pass
-		setattr(module, variable_name, value_to)
+		#setattr(module, variable_name, value_to)
+		if not module.set_attr(variable_name, value_to):
+			raise ValueError("Set param failed") # TODO make louder
 		self.find_parameters(options.get("param_frame"), options.get("listbox"), options.get("dp"), module_type=options.get("module_type"))
 		return
 

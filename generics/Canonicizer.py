@@ -19,6 +19,12 @@ class Canonicizer(ABC):
 	def after_init(self, **options):
 		pass
 
+	def set_attr(self, var, value):
+		"""Custom way to set attributes"""
+		if var not in self.__dict__: return False
+		self.__dict__[var] = value
+		return True
+
 	def validate_parameter(self, param_name: str, param_value):
 		"""validating parameter expects param_value to already been correctly typed"""
 		if param_name not in self._variable_options:
