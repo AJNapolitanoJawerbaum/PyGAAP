@@ -1228,33 +1228,49 @@ class PyGAAP_GUI:
 			return
 		#######
 
-	def intelligent_search(self, query, item):
+	def expanded_search(self, query, mod_name, mode="forwards"):
 		"""
 		This expands search terms to itself along with common substitutions.
 		e.g. it expands "neural network" to "neural network" and "perceptron".
 		Inspired by Cinnamon's (DE) search function that shows "LibreOffice calc"
 		when queried with "excel".
+		Forwards and backwards search: see comments in ./backend/GUI/search_dictinoary.json
+		forwards is consistent with JGAAP.
 		"""
-		expanded_terms = [item]
-		for dict_item_in in self.search_dictionary:
-			if dict_item_in in item:
-				expanded_terms += self.search_dictionary[dict_item_in]
+		mod_name = mod_name.replace("-", " ")
+		query = query.replace("-", " ")
+		if query in mod_name: return True
+		# query is not empty below this line (mod_name is never empty)
+		if query in "".join([x[0] for x in mod_name.split()]): return True
+		if mode == "backwards":
+			search = self.search_dictionary["backwards"]
+			expanded_terms = [mod_name]
+			for key in search:
+				if key in mod_name:
+					for alt_term in search[key]:
+						if query in alt_term: return True
+			return False
+		if mode == "forwards":
+			search = self.search_dictionary["forwards"]
+			expanded_terms = [query]
+			for key in search:
+				if query in key:
+					# no need to check if key in mod_name
+					# because from above: query not in mod_name,
+					# and query in key, therefore key not in mod_name.
+					for alt_term in search[key]:
+						if alt_term in mod_name: return True
+			return False
 
-		for t in expanded_terms:
-			if query in t:
-				return True
-		return False
- 
 	def search_modules(self, search_entry, listbox, search_from):
 		"""
 		Alter what's displayed in the listbox from search query.
 		If entry is empty, display all as usual.
 		"""
-
 		query = search_entry.get().lower().strip() # string
-		retrieve = {x.lower():x for x in search_from}
+		retrieve = {x.strip().lower():x for x in search_from}
 		candidates = [retrieve[item] for item in list(retrieve.keys()) if
-			self.intelligent_search(query, item)]
+			self.expanded_search(query, item)]
 		candidates.sort()
 		listbox.delete(0, END)
 		for c in candidates:
