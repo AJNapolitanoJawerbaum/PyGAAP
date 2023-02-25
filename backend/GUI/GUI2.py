@@ -53,8 +53,7 @@ else:
 import util.MultiprocessLoading as MultiprocessLoading
 
 if TEST_WIN:
-	try:
-		set_start_method("spawn")
+	try: set_start_method("spawn")
 	except RuntimeError: pass
 
 
@@ -89,12 +88,6 @@ class PyGAAP_GUI:
 	#	   [author, [file-directory, file-directory]],
 	#	   [author, [file-directory, file directory]]
 	#   ]
-	known_authors_list: list = []
-	# this decides which in the 1-dimensionl listbox is the author...load_save
-	#   and therefore can be deleted when using delete author
-	# format: [0, -1, -1. -1, 1, -1, ..., 2, -1, ..., 3, -1, ...]
-	#   -1 = not author; 
-	#   >= 0: author index.
 
 	# tkinter StringVars.
 	# need to save because need tkinter to detect changes
@@ -124,7 +117,7 @@ class PyGAAP_GUI:
 	author_window = None
 
 	Tab_Documents_UnknownAuthors_listbox: Listbox = None
-	Tab_Documents_KnownAuthors_listbox: Listbox = None
+	Tab_Documents_KnownAuthors_treeview: ttk.Treeview = None
 
 	Tab_RP_Canonicizers_Listbox: Listbox = None
 	Tab_RP_EventDrivers_Listbox: Listbox = None
@@ -362,22 +355,21 @@ class PyGAAP_GUI:
 
 	def authors_list_updater(self):
 		"""This updates the ListBox from the self.backend_API.known_authors python-list"""
-		self.Tab_Documents_KnownAuthors_listbox.delete(0, END)
+		opened_items = dict()
+		tv = self.Tab_Documents_KnownAuthors_treeview
+		for entry in tv.get_children():
+			if tv.item(entry)["open"]:
+				opened_items[tv.item(entry)["text"]] = True
+		tv.delete(*tv.get_children())
 		if GUI_debug >= 3: print("authors_list_updater()")
-		self.known_authors_list = []
-		for author_list_index in range(len(self.backend_API.known_authors)):
-			self.Tab_Documents_KnownAuthors_listbox.insert(END, self.backend_API.known_authors[author_list_index][0])
-			self.Tab_Documents_KnownAuthors_listbox.itemconfig(END, 
-				background = self.gui_params["styles"][self.style_choice]["accent_color_light"],
-				selectbackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"])
-			self.known_authors_list += [author_list_index]
-			for document in self.backend_API.known_authors[author_list_index][1]:
-				self.Tab_Documents_KnownAuthors_listbox.insert(END, document)#Author's documents
-				self.Tab_Documents_KnownAuthors_listbox.itemconfig(END, background = "gray90", selectbackground = "gray77")
-				self.known_authors_list += [-1]
+		for author_list in self.backend_API.known_authors:
+			author_node = tv.insert("", "end", text=str(author_list[0]))
+			for document in author_list[1]:
+				tv.insert(author_node, "end", text=str(document))
+		for entry in tv.get_children():
+			if opened_items.get(tv.item(entry)["text"], False):
+				tv.item(entry, open=True)
 		return
-
-
 
 	def author_save(self, author, documents_list, mode, window=None):
 		"""
@@ -449,65 +441,47 @@ class PyGAAP_GUI:
 		This updates the global self.backend_API.known_authors list.
 		"""
 		#authorList: the listbox that displays known authors in the topwindow.
-
+		tv = self.Tab_Documents_KnownAuthors_treeview
 		if GUI_debug >= 3: print("edit_known_authors(mode = %s)"%(mode))
 		if mode == "add":
 			title = "Add Author"
 		elif mode == 'edit':
-			try:
-				self.Tab_Documents_KnownAuthors_listbox.get(self.Tab_Documents_KnownAuthors_listbox.curselection())
+			if len(tv.selection()) == 1:
 				title = "Edit Author"
-				selected = int(self.Tab_Documents_KnownAuthors_listbox.curselection()[0])
-				if self.known_authors_list[selected] == -1:
-					self.status_update("Select the author instead of the document.")
-					print("edit author: select the author instead of the document")
-					return
-				else:
-					author_index = self.known_authors_list[selected] #gets the index in the 2D list
-					insert_author = self.backend_API.known_authors[author_index][0] #original author name
-					insert_docs = self.backend_API.known_authors[author_index][1] #original list of documents
-			except TclError:
-				self.status_update("No author selected.")
+				# assumes treeview only has two levels: treeview -> authors -> texts.
+				author_index = tv.index(tv.selection()) if tv.parent(tv.selection()) == "" else tv.index(tv.parent(tv.selection()))
+				insert_author = self.backend_API.known_authors[author_index][0] #original author name
+				insert_docs = self.backend_API.known_authors[author_index][1] #original list of documents
+			else:
+				self.status_update("Select only one item")
 				if GUI_debug > 0:
-					print("edit author: no author selected")
+					print("edit author: selected multiple or zero.")
 				return
-
+			# not returning here because it's edit mode, need to open a window.
 		elif mode == "remove":#remove author does not open a window
-			try:
-				selected = int(self.Tab_Documents_KnownAuthors_listbox.curselection()[0])
-				#this gets the listbox selection index
-				if self.known_authors_list[selected] == -1:
-					self.status_update("Select the author instead of the document.")
-					print("remove author: select the author instead of the document")
-					return
-				else:
-					author_index = self.known_authors_list[selected]
-					#This gets the index in self.backend_API.known_authors nested list
-					if author_index >= len(self.backend_API.known_authors)-1:
-						self.backend_API.known_authors = self.backend_API.known_authors[:author_index]
-					else:
-						self.backend_API.known_authors = self.backend_API.known_authors[:author_index] \
-							+ self.backend_API.known_authors[author_index + 1:]
-					self.authors_list_updater()
-
-			except (TclError, IndexError):
+			if len(tv.selection()) == 1 and tv.parent(tv.selection()) == "":
+				author_index = tv.index(tv.selection())
+				self.backend_API.known_authors.pop(author_index)
+				self.authors_list_updater()
+			elif len(tv.selection()) == 0:
 				self.status_update("No author selected.")
 				if GUI_debug > 0:
 					print("remove author: nothing selected")
 				return
+			elif tv.parent(tv.selection()) != "":
+				self.status_update("Select an author. To add/remove documents, press Edit")
+				print("remove author: Select an author. To add/remove documents, press Edit.")
+				return
 			return
 		elif mode == "clear":
-			self.Tab_Documents_KnownAuthors_listbox.delete(0, END)
+			self.Tab_Documents_KnownAuthors_treeview.delete(*self.Tab_Documents_KnownAuthors_treeview.get_children())
 			self.backend_API.known_authors = []
-			self.known_authors_list = []
 			return
 		else:
 			assert mode == "add" or mode == "remove" or mode == "edit", \
 				"bug: Internal function 'edit_known_authors' has an unknown mode parameter " \
 				+ str(mode)
-			
 			return
-
 		try:
 			self.author_window.lift()
 			return
@@ -843,20 +817,14 @@ class PyGAAP_GUI:
 		Tab_Documents_doc_buttons.grid(row = 6, column = 0, sticky = "W")
 		Tab_Documents_UnknownAuthors_AddDoc_Button = Button(
 				Tab_Documents_doc_buttons, text = "Add Document", width = "16",
-				# command = lambda:self.file_add_remove(
-				# 	"Add a document to Unknown Authors", self.Tab_Documents_UnknownAuthors_listbox, False, "add")
 				command = lambda: self._edit_unknown_docs("add")
 		)
 		Tab_Documents_UnknownAuthors_RmvDoc_Button = Button(
 			Tab_Documents_doc_buttons, text="Remove Document", width = "16",
-			# command = lambda:self.file_add_remove(
-			# 	None, self.Tab_Documents_UnknownAuthors_listbox, False, "remove")
 			command=lambda: self._edit_unknown_docs("remove")
 		)
 		Tab_Documents_UnknownAuthors_clear_Button = Button(
-			Tab_Documents_doc_buttons, text="Clear Document List", width = "16",
-			# command = lambda:self.file_add_remove(
-			# 	None, self.Tab_Documents_UnknownAuthors_listbox, False, "remove")
+			Tab_Documents_doc_buttons, text="CLEAR DOCUMENTS", width = "16",
 			command=lambda: self._edit_unknown_docs("clear")
 		)
 
@@ -875,16 +843,17 @@ class PyGAAP_GUI:
 		Tab_Documents_KnownAuthors_Frame.grid(row = 8, column = 0, sticky = "wnse")
 
 
-		self.Tab_Documents_KnownAuthors_listbox = Listbox(Tab_Documents_KnownAuthors_Frame, width = "100")
+		#self.Tab_Documents_KnownAuthors_treeview = Listbox(Tab_Documents_KnownAuthors_Frame, width = "100")
+		self.Tab_Documents_KnownAuthors_treeview = ttk.Treeview(Tab_Documents_KnownAuthors_Frame, show="tree")
 		Tab_Documents_KnownAuthors_listscroller = Scrollbar(Tab_Documents_KnownAuthors_Frame, width = self.dpi_setting["dpi_scrollbar_width"])
 
-		self.Tab_Documents_KnownAuthors_listbox.config(
+		self.Tab_Documents_KnownAuthors_treeview.config(
 			yscrollcommand = Tab_Documents_KnownAuthors_listscroller.set
 		)
-		Tab_Documents_KnownAuthors_listscroller.config(command = self.Tab_Documents_KnownAuthors_listbox.yview)
+		Tab_Documents_KnownAuthors_listscroller.config(command = self.Tab_Documents_KnownAuthors_treeview.yview)
 
 
-		self.Tab_Documents_KnownAuthors_listbox.pack(side = LEFT, fill = BOTH, expand = True)
+		self.Tab_Documents_KnownAuthors_treeview.pack(side = LEFT, fill = BOTH, expand = True)
 		Tab_Documents_KnownAuthors_listscroller.pack(side = RIGHT, fill = BOTH, padx = (0, 30))
 
 		#These are known authors
@@ -900,7 +869,7 @@ class PyGAAP_GUI:
 			Tab_Documents_knownauth_buttons, text = "Remove Author", width = "15",
 			command = lambda:self.edit_known_authors("remove"))
 		Tab_Documents_KnownAuthors_ClrAuth_Button = Button(
-			Tab_Documents_knownauth_buttons, text = "Clear All", width = "15",
+			Tab_Documents_knownauth_buttons, text = "CLEAR ALL", width = "15",
 			command = lambda:self.edit_known_authors("clear"))
 
 		Tab_Documents_KnownAuthors_AddAuth_Button.grid(row=1, column=1, sticky="W")
@@ -1677,7 +1646,7 @@ class PyGAAP_GUI:
 		menu_file = Menu(menubar, tearoff = 0)
 
 		self.Tab_Documents_UnknownAuthors_listbox = None
-		self.Tab_Documents_KnownAuthors_listbox = None
+		self.Tab_Documents_KnownAuthors_treeview = None
 
 		#tkinter menu building goes from bottom to top / leaves to root
 		menu_batch_documents = Menu(menu_file, tearoff = 0)#batch documents menu
@@ -1807,13 +1776,6 @@ class PyGAAP_GUI:
 		"""This calls the change_style function to enable theme switching in the menu bar."""
 		if GUI_debug >= 3: print("change_style_live(themeString = %s)"%(themeString))
 		self.style_choice = themeString
-		for entry in range(len(self.known_authors_list)):
-			if self.known_authors_list[entry] != -1:
-				self.Tab_Documents_KnownAuthors_listbox.itemconfig(
-					entry,
-					background = self.gui_params["styles"][self.style_choice]["accent_color_light"],
-					selectbackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"]
-				)
 		self.change_style(self.topwindow)
 
 	def reload_modules(self):
