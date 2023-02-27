@@ -116,7 +116,7 @@ class Experiment:
 			nc._global_parameters = self.backend_API.global_parameters
 
 			if self.pipe_here is not None: self.pipe_here.send("Running number converters")
-			all_data = nc.convert(known_docs + unknown_docs)
+			all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
 			known_docs_numbers_aggregate = all_data[:len(known_docs)]
 			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
 			del all_data

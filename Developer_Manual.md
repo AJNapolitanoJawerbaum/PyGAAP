@@ -124,8 +124,9 @@ As a readability consideration, it's recommended that the files in ```~/generics
 Class variables are declared within the class definition, outside of the `__init__` function.
 
 ### <span style="color:#aaeeff">User parameters</span>
-Each user parameter is a class variable exposed to the GUI. These variables must also have corresponding entries in ```_variable_options```, and their names cannot begin with a "```_```".
-Conversely, to hide a class variable from the GUI, prefix the name with a "```_```".
+Each user parameter is a class variable exposed to the GUI. These variables must also have corresponding entries in `_variable_options`, and their names cannot begin with a "`_`".
+To hide a class variable from the GUI, prefix the name with a "`_`".
+<!-- Alternatively, add a key `show` in the corresponding entry in `_variable_options` and set it to `False` (it defaults to `True`, i.e. If no `show` key is found for a param in `_variable_options`, the param is shown.) -->
 
 ### <span style="color:#aaeeff">System parameters</span>
 - `_global_parameters` (dictionary) API parameters to be passed to all modules, like `language`.

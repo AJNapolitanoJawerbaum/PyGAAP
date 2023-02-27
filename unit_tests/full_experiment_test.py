@@ -30,14 +30,17 @@ mod_names = {
     "Canonicizers": [],
     "EventDrivers": ["Word n-grams"],
     "EventCulling": [],
-    "NumberConverters": ["Frequency"],
+    "NumberConverters": ["RoBERTa"],
     "AnalysisMethods": ["Centroid Driver"],
     "DistanceFunctions": ["Histogram Distance"]
 }
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Word n-grams"]())
-api.modulesInUse["NumberConverters"].append(api.numberConverters["Frequency"]())
+api.modulesInUse["NumberConverters"].append(api.numberConverters["RoBERTa"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
+
+api.modulesInUse["NumberConverters"][-1].convert_from = "features"
+api.modulesInUse["NumberConverters"][-1].long_text_method = "average every 64"
 
 exp = run_experiment.Experiment(api, mod_names)
 results = exp.run_experiment(return_results=True)

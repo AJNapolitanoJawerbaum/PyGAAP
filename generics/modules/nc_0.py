@@ -12,7 +12,7 @@ class Frequency(NumberConverter):
 		"displayed_name": "Statistical normalization"}
 	}
 
-	def convert(self, docs):
+	def convert(self, docs, pipe_here=None):
 		"""Convert and assign to Documents.numbers"""
 		raw_frequency = [gh(d) for d in docs]
 		numbers = pn.dicts_to_array(raw_frequency)
