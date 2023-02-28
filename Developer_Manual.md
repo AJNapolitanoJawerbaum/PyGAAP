@@ -9,13 +9,12 @@ See https://evllabs.github.io/JGAAP/
 1. [Differences from JGAAP](#differences)
 2. [Widget structures](#structures)
    1. [Outline of tkinter widgets](#Outline_of_tkinter_widgets)
-   2. [Function Calls](#nested_funcs)
+   2. [Debug modes](#debug)
 3. [Adding a new module](#new_mod)
    1. [Classs variables](#class_variables)
    2. [Class initialization](#class_init)
    3. [Class functions](#class_functions)
    4. [Reload modules while PyGAAP is running](#live_reload)
-   5. [The analysis process](#analysis_process)
 
 # Differences from JGAAP <a name="differences"></a>
 ## Module parameters
@@ -71,29 +70,8 @@ topwindow                                             name of main window (Tk)
 ```
 
 
-## Map of some function calls <a name="nested_funcs"></a>
+## Debug modes <a name="debug"></a>
 In the GUI code, set ```GUI_debug``` to ```3``` to see function calls printed to the terminal.
-```
-Notepad()
-├── -# NotepadWindow_SaveButton
-   ├── -NotepadWindow_SaveButton -> Notepad_Save(text)
-
-edit_known_authors(.., mode)                            #called when a button in [Tab_Documents_knownauth_buttons] is pressed. The mode distinguishes the buttons.
-├── -# AuthorAddDocButton
-│    ├── -addFile()                                     # opens OS's file browser
-|
-├── -# AuthorRmvDocButton
-│    ├── -select_features(..., "remove")
-|
-├── -#AuthorOKButton
-   ├── -@ if mode=="add":                             # when "Add Author" button is pressed
-   │    authorSave(..., "add")                        # updates global list (backend) of authors and their documents
-   │    ├── -authorsListUpdater()                       # refreshes the listbox used to display authors
-   |
-   ├── -@ else if mode=="edit"                        # when "Edit Author" button is pressed
-      authorSave(..., "edit")                       # updates global list (backend) of authors and their documents
-      ├── -authorsListUpdater()                       # refreshes the listbox used to display authors
-```
 
 
 # Adding a new module <a name="new_mod"></a>
@@ -130,11 +108,14 @@ To hide a class variable from the GUI, prefix the name with a "`_`".
 
 ### <span style="color:#aaeeff">System parameters</span>
 - `_global_parameters` (dictionary) API parameters to be passed to all modules, like `language`.
-- ```_variable_options``` (dictionary) lists the options, GUI type, and the default values of variables. The variables' names are the keys and their attributes are dicts. Each dict for a variable must have ```"options"``` for range of available choices, ```"type"``` for the GUI widget type (currently only ```OptionMenu``` is supported), and ```"default"``` for the default value _**as an index of the ```"options"``` list**_ (for the example below, the default is ```0```, which picks the item with ```0``` index in the ```"options"``` list as the default value, i.e. the default **value** for the variable is ```3```). Optionally, add a display name if different from the variable name.\
+- `_variable_options` (dictionary) lists the options, GUI type, and the default values of variables. The variables' names are the keys and their attributes are dicts. Each dict for a variable must have `"options"` for range of available choices, `"type"` for the GUI widget type (currently supports `OptionMenu` and `Slider`), and `"default"` for the default value _**as an index of the `"options"` list**_ (for the example below, the default is `0`, which picks the item with `0` index in the `"options"` list as the default value, i.e. the default **value** for the variable is `3`). Optionally, add a display name if different from the variable name.\
 Example:
-```{"variable_1": {"options": list(range(3, 10)), "type": OptionMenu, "default": 0, "displayed_name": "The First Variable"}}```
+```{"variable_1": {"options": range(3, 10), "type": "OptionMenu", "default": 0, "displayed_name": "The First Variable"}}```<br>
+Widget types and required keys other than `options`:
+   - `Slider`: `resolution`.
 
-- ```_NoDistanceFunction_``` (`AnalysisMethod` only, boolean) if an anlysis method does not allow a distance function to be set, add this and set it to ```True```. It's ```False``` if omitted.
+
+- `_NoDistanceFunction_` (`AnalysisMethod` only, boolean) if an anlysis method does not allow a distance function to be set, add this and set it to `True`. It's `False` if omitted.
 <!-- - ```_multiprocessing_score``` (integer, *not yet implemented*) the "time-consumingness" of an analysis method. It's 1 by default or if omitted. The score for all analysis methods will be summed before processing to determine if multi-processing is needed. Set a higher score if a method usually takes particularly long. -->
 
 ## <span style="color:#aaeeff"> Class initialization</span> <a name="class_init"></a>
@@ -142,72 +123,52 @@ The `__init__()` method for module classes contains initialization for required 
 
 ## <span style="color:#aaeeff"> Class functions</span> <a name="class_functions"></a>
 - All modules are required to have ```displayName()``` and ```displayDescription()```.
-   - ```displayName()``` (nothing → String) returns the name of the module. Note that the name of a distance function cannot be ```NA```, which is reserved for a place-holder for analysis methods that don't use distance functions.
-   - ```displayDescription()``` (nothing → String) returns a description of the module.
+   - ```displayName() -> str``` returns the name of the module. Note that the name of a distance function cannot be ```NA```, which is reserved for a place-holder for analysis methods that don't use distance functions.
+   - ```displayDescription() -> str``` returns a description of the module.
 
-> ❗ Make sure to **return** and not (just) print the names and descriptions.
+> ❗ Make sure to **return** and not print the names and descriptions.
 
 Functions by types of module:
+these can all be overwritten, but the input/output types must match the originals.
 - Canonicizers:
-   - ```process(document: backend.Document, pipe: Multiprocessing.pipe=None) -> None```
-      - if not overwritten, processes all documents by calling `process_single` in a loop
+   - `process(document: backend.Document, pipe: Multiprocessing.pipe`*`=None) -> None`
+      - Built-in. If not overwritten, processes all documents by calling `process_single` in a loop
    - ```process_single(text: str)```
+
+      Canonicizers are expected to write `str` to `Document.canonicized`, either in `process_single()` or `process()`.
 - Event drivers:
    - ```process(document: backend.Document, pipe: Multiprocessing.pipe=None) -> None```
       - (see canonicizers above)
    - ```process_single(text: str)```
    - ```setParams(list) -> None```
+
+      Event drivers are expected to call `Document.setEventSet(eventSet **options)` to **append** events, either in `process_single()` or `process()`. Overwriting events (using keyword `append=False`) is not recommended.
 - Event cullers:
    - ```process(document: backend.Document, pipe: Multiprocessing.pipe=None) -> None```
       - (see canonicizers above)
    - ```process_single(text: str)```
+
+   Event cullers are expected to call `Document.setEventSet(eventSet, **options)` to overwrite document event sets in `process_single()` or `process()`.
 - Number Converters:
-   - ```convert(list[backend.Document]) -> np.ndarray```
+   - ```convert(docs: list[backend.Document]) -> np.ndarray of shape (len(docs), *, ...)```
+   
+      Number Converters / text embedders are expected to **both** write to `Document.numbers` for each document **and** return an `np.ndarray` (or compatible type) where the first dimension is the number of all documents, known or unknown. For example, in the `roberta` module, each document is embedded in a 768-long vector. If `roberta` receives 23 documents in total, it returns an `ndarray` of `shape (23, 768)`.
 - Analysis methods:
    - ```train(self, train: list[backend.Document], train_data: np.ndarray=None, **options) -> None```
    - ```analyze(self, test, test_data=None, **options) -> dict```
    - ```setDistanceFunction()``` (optional)
 
+      Analysis methods are expected to return a list of dicts whose keys are authors and values are scores for each unknown category where a lower score is higher ranked.
+
+\* `pipe` is an end of a multiprocessing Pipe to send `str`/`int`/`float` updates to the GUI while the module is running. If a module  takes a long time to run, it's recommended that the author use `Pipe.send()` to regularly send updates to the GUI to be shown to the user so the app doesn't appear frozen.<br>
+How to send updates:
+- send `str` types to change displayed text. e.g
+<br>`if pipe is not None: pipe.send("tokenizing...")`
+- send `float` or `int` to change the progress bar, where `0` is empty and `100` is full. e.g.<br>`if pipe is not None: pipe.send(doc_index*100/n_docs)`.
+
 ## <span style="color:#aaeeff"> Reload modules while PyGAAP is running</span> <a name="live_reload"></a>
 
 To reload all modules while PyGAAP is running, go to the top menu bar: "Developer" $\rightarrow$ "Reload all modules".\
-There will be a confirmation in the status bar or an error message window.
+There will be a confirmation in the status bar on success or an error message window on failure.
 > ❗ Reloading will remove all selected modules. It does not remove documents.\
 > ❗ This does not reload libraries that the modules may import, e.g. SpaCy.
-
-## <span style="color:#aaeeff">The analysis Process</span> <a name="analysis_process"></a>
-
-### <span style="color:#aaeeff">Data types</span>
-These are the expected data types.
-```
-Canonicizers (pre-processors)
-   String -> process() -> String
-   save to Document.text for each doc, returning is not required
-
-Event drivers (feature extractors)
-   String (Document.text) -> process() -> list of strings
-   save to Document.eventSet for each doc, return is not requied
-
-Event cullers (feature filtering/culling)
-   list of strings (Document.eventSet) -> process() -> list of strings
-   save to Document.eventSet for each doc, return is not required
-
-Number converters (text embedders)
-   list of strings (Document.eventSet) -> convert -> numpy.array (1D)
-   save to Document.numbers, returning a 2D numpy.array is recommended, with shape (known categories, unknown categories)
-
-Distance functions
-   numpy.array (1D or 2D) -> distance() -> numpy.array (2D), shape (known categories, unknown categories)
-   must return
-
-analysis methods
-   numpy.array (Document.numbers) -> train() & analyze -> list[dict[string:float]]
-   list of dicts whose keys are authors and values, scores for each unknown category where a lower score is higher ranked.
-   must return
-```
-### <span style="color:#aaeeff">The process</span>
-1. The text string is read from file and saved to Document.text. The canonicizers process the text & save it back into (overwrite) Document.text.
-2. Event drivers read from Document.text and convert it into a list of strings. This is saved into Document.eventSet.
-3. Event cullers read from Document.eventSet, process the list, and save it back into (overwrite) Document.eventSet
-4. Number converters read from Document.eventSet and convert the list into a NumPy array. The NumPy arrays are the numerical representations of the documents and are saved into Document.numbers. (1D array) At the same time, two aggregate NumPy arrays (2D) containing data from the known document set (training data) and the unknown document set (testing data) are passed to the next steps. Number converters returning these aggregate arrays is optional but recommended because it may help analysis increase performance by vectorizing the representations.
-5. The analysis modules receives the *entire* set of unknown documents, and optionally the aggregate testing data, and performs classification. It's up to the developer to decide whether to process them all at once or one-by-one. The result is a list of dictionaries where each dictionary has the scores for each candidate author.

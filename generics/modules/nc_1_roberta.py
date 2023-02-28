@@ -153,6 +153,7 @@ class Roberta(NumberConverter):
 					)
 					document_result.append(results[-1][-1].detach().tolist())
 				document_result = np.mean(document_result, axis=0).tolist()
+				docs[doc_index].numbers = document_result
 				numbers.append(document_result)
 			numbers = np.array(numbers)
 
@@ -174,6 +175,7 @@ class Roberta(NumberConverter):
 					tensor([doc_mask], dtype=long_int)
 				)
 				doc_result = results[-1][-1].detach().tolist()
+				docs[doc_index].numbers = doc_result
 				numbers.append(doc_result)
 			numbers = np.array(numbers)
 		del roberta; collect_garbage()

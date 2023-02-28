@@ -63,16 +63,16 @@ class EventDriver(ABC):
 		l = len(docs)
 		for i, d in enumerate(docs):
 			if pipe is not None: pipe.send(100*i/l)
-			event_set = self.process_single(d.text)
+			event_set = self.process_single(d.canonicized)
 			d.setEventSet(event_set)
 	
 	def process_single(self, procText):
 		'''
 		Processes a single document.
 		This is no longer an abstract method because
-		some modules may choose to deal with all documents in "process".
+		some modules may choose to ignore this function and deal with all documents instead in "process".
 		'''
-		pass
+		raise NotImplementedError
 
 	
 # REFERENCE CLASS FOR PyGAAP GUI.

@@ -48,6 +48,7 @@ class EventCulling(ABC):
 		
 	def process_single(self, eventSet):
 		"""Process a single document"""
+		raise NotImplementedError
 		
 	@abstractmethod
 	def displayName():

@@ -42,7 +42,7 @@ class Canonicizer(ABC):
 		for d_i in range(l:=len(documents)):
 			d = documents[d_i]
 			if pipe is not None: pipe.send(100*d_i/l)
-			d.text = self.process_single(d.text)
+			d.canonicized = self.process_single(d.text)
 
 	def process_single(self, text):
 		"""
@@ -51,7 +51,7 @@ class Canonicizer(ABC):
 		Input/output of this may change. If changing input,
 		also need to change the self.process() function.
 		"""
-		pass
+		raise NotImplementedError
 		
 	@abstractmethod
 	def displayName():
