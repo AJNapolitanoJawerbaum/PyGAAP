@@ -19,7 +19,7 @@
 	"dpi": {
 		"comment": "small: regular DPI; large: 2x DPI.",
 		"small": {
-			"dpi_top_window_geometry": "1200x670",
+			"dpi_top_window_geometry": "1500x900",
 			"dpi_scrollbar_width": 16,
 			"dpi_option_menu_width": 10,
 			"dpi_language_dropdown_width": 18,

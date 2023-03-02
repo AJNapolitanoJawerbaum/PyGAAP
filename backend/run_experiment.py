@@ -52,6 +52,15 @@ class Experiment:
 			c._global_parameters = self.backend_API.global_parameters
 			c.process(self.backend_API.documents, self.pipe_here)
 
+		# if Document.canonicized is empty, default to original text
+		no_canon = 0
+		for doc in self.backend_API.documents:
+			if doc.canonicized == "" or doc.canonicized is None:
+				no_canon += 1
+				doc.canonicized = doc.text
+		print("! %s/%s docs had no canonicized texts, defaulting to original texts. Expected if no canonicizers used."
+        	% (str(no_canon), str(len(self.backend_API.documents))))
+
 		if self.pipe_here is not None: self.pipe_here.send("Running event drivers")
 		for e in self.backend_API.modulesInUse["EventDrivers"]:
 			e._global_parameters = self.backend_API.global_parameters

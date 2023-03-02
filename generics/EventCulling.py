@@ -63,7 +63,7 @@ class EventCulling(ABC):
 class N_Occurrences(EventCulling):
 	_variable_options = {
 		"Mode": {"options": ["Cull more freq.", "Cull less freq."], "type": "OptionMenu", "default": 0},
-		"Frequency": {"options": list(range(1, 10)), "default": 0, "type": "OptionMenu", "default": 0},
+		"Frequency": {"options": range(1, 201), "default": 0, "type": "Slider", "default": 10},
 	}
 
 	Frequency = _variable_options["Frequency"]["options"][_variable_options["Frequency"]["default"]]

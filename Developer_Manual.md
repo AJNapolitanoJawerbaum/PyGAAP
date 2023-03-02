@@ -146,9 +146,9 @@ these can all be overwritten, but the input/output types must match the original
 - Event cullers:
    - ```process(document: backend.Document, pipe: Multiprocessing.pipe=None) -> None```
       - (see canonicizers above)
-   - ```process_single(text: str)```
+   - ```process_single(eventSet: list)```
 
-   Event cullers are expected to call `Document.setEventSet(eventSet, **options)` to overwrite document event sets in `process_single()` or `process()`.
+   Event cullers are expected to call `Document.setEventSet(eventSet, append=False)` to overwrite document event sets in `process_single()` or `process()`.
 - Number Converters:
    - ```convert(docs: list[backend.Document]) -> np.ndarray of shape (len(docs), *, ...)```
    

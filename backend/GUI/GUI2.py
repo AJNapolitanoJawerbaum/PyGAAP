@@ -1167,7 +1167,7 @@ class PyGAAP_GUI:
 			for driver in sorted(list(self.backend_API.eventDrivers.keys())):
 				self.generated_widgets["EventDrivers"]["available_listboxes"][0][2].insert(END, driver)
 			for distancefunc in sorted(list(self.backend_API.distanceFunctions.keys())):
-				assert distancefunc != "NA", 'Distance Function cannot have a name of "NA" ' \
+				assert distancefunc != "NA", 'Distance Function cannot have the name "NA" ' \
 				+ '(Reserved for Analysis methods that do not use a distance function).\n' \
 				+ 'Please check the file containing the definition of the distance function class, ' \
 				+ 'most likely in or imported to DistanceFunction.py,\nand change the return of displayName().'
@@ -1726,6 +1726,7 @@ class PyGAAP_GUI:
 		menubar.add_cascade(label = "Help", menu = menu_help)
 
 		menu_dev = Menu(menubar, tearoff=0)
+		#menu_dev.add_command(label="Instant experiment", command=self.instant_experiment)
 		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
 		menu_dev.add_command(label="Show process content", command=self.show_API_process_content)
 		menubar.add_cascade(label="Developer", menu=menu_dev)

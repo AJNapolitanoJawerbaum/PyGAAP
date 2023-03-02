@@ -79,7 +79,7 @@ class EventDriver(ABC):
 class CharacterNGramEventDriver(EventDriver):
 	'''Event Driver for Character N-Grams'''
 	n = 2
-	_variable_options={"n": {"options": list(range(1, 21)), "default": 1, "type": "OptionMenu"}}
+	_variable_options={"n": {"options": range(1, 21), "default": 1, "type": "Slider"}}
 	# for PyGAAP GUI to know which options to list/are valid
 		
 	def process_single(self, procText):
@@ -229,8 +229,8 @@ class CharacterPositionEventDriver(EventDriver):
 
 class KSkipNGramCharacterEventDriver(EventDriver):
 	_variable_options = {
-		"k": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Skips (k)"},
-		"n": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 0, "displayed_name": "n-gram length (n)"}
+		"k": {"options": range(1, 11), "type": "Slider", "default": 0, "displayed_name": "Skips (k)"},
+		"n": {"options": range(1, 21), "type": "Slider", "default": 0, "displayed_name": "n-gram length (n)"}
 	}
 	k = 1
 	n = 1
@@ -259,7 +259,7 @@ class WordNGram(EventDriver):
 	#lemmatize = "No"
 
 	_variable_options = {
-		"n": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
+		"n": {"options": range(1, 11), "type": "Slider", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
 		"tokenizer": {"options": ["Space delimiter", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 1},
 		#"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"}
 	}

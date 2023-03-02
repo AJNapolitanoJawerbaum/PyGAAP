@@ -17,6 +17,7 @@ class AnalysisMethod(ABC):
 	distance = None
 	_variable_options = dict()
 	_global_parameters = dict()
+	_NoDistanceFunction_ = False
 	
 	def __init__(self, **options):
 		try:
@@ -164,7 +165,7 @@ class KNearestNeighbor(AnalysisMethod):
 	k = 5
 	tie_breaker = "average"
 	_variable_options = {
-		"k": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 4, "displayed_name": "K"},
+		"k": {"options": range(1, 21), "type": "Slider", "default": 4, "displayed_name": "K"},
 		"tie_breaker": {"options": ["average", "minimum"], "type": "OptionMenu", "default": 0, "displayed_name": "Tie breaker"}
 	}
 	def displayName():
