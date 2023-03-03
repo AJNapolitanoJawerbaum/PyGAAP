@@ -183,6 +183,12 @@ class PyGAAP_GUI:
 		Label(self.error_window, text=error_text).pack(padx=30, pady=30)
 		return
 
+	def toggle_mp(self):
+		self.backend_API.default_mp = not self.backend_API.default_mp
+		print("Built-in multiprocessing:", self.backend_API.default_mp)
+		self.status_update("Built-in MP: "+str(self.backend_API.default_mp))
+		return
+
 	def run_experiment(self):
 		if GUI_debug >= 3: print("run_experiment()")
 
@@ -214,9 +220,10 @@ class PyGAAP_GUI:
 			self.results_queue = Queue()
 			experiment = run_experiment.Experiment(
 				self.backend_API, module_names, progress_report_there, self.results_queue,
-				dpi=self.dpi_setting
+				dpi=self.dpi_setting,
+				default_mp = self.backend_API.default_mp,
 			)
-			self.experiment_process = Process(target=experiment.run_experiment)
+			self.experiment_process = Process(target=experiment.run_experiment, kwargs={"verbose": True})
 			self.experiment_process.start()
 		else:
 			if __name__ == "backend.GUI.GUI2":
@@ -1729,6 +1736,7 @@ class PyGAAP_GUI:
 		#menu_dev.add_command(label="Instant experiment", command=self.instant_experiment)
 		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
 		menu_dev.add_command(label="Show process content", command=self.show_API_process_content)
+		menu_dev.add_command(label="Toggle built-in multiprocessing", command=self.toggle_mp)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
 
 		topwindow.config(menu = menubar)

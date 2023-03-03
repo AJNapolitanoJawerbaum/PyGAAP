@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from importlib import import_module
-
+from multiprocessing import Pool, cpu_count
 
 # An abstract Event Culling class.
 class EventCulling(ABC):
 
 	_global_parameters = dict()
+	_default_multiprocessing = True
 
 	def __init__(self, **options):
 		try:
@@ -38,11 +39,17 @@ class EventCulling(ABC):
 
 	def process(self, docs, pipe):
 		"""Process all docs"""
-		for d_i in range(l:=len(docs)):
-			if pipe is not None: pipe.send(100*d_i/l)
-			d = docs[d_i]
-			new_events = self.process_single(d.eventSet)
-			d.setEventSet(new_events)
+		if self._default_multiprocessing:
+			if pipe is not None: pipe.send(True)
+			with Pool(cpu_count()-1) as p:
+				events = p.map(self.process_single, [d.eventSet for d in docs])
+			for d in range(len(events)):
+				docs[d].setEventSet(events[d], append=False)
+		else:
+			for d_i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*d_i/len(docs))
+				new_events = self.process_single(d.eventSet)
+				d.setEventSet(new_events, append=False)
 		return
 			
 		

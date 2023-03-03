@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 import re
+from multiprocessing import Pool, cpu_count
 
 # An abstract Canonicizer class.
 class Canonicizer(ABC):
 	_index = 0
 	_global_parameters = dict()
+	_default_multiprocessing = True
 
 	def __init__(self, **options):
 		try:
@@ -35,14 +37,22 @@ class Canonicizer(ABC):
 			raise ValueError("Module parameter out of range")
 		return
 
-	def process(self, documents, pipe=None):
+	def process(self, docs, pipe=None):
 		"""
 		process all docs at once, auto-call process_single.
 		"""
-		for d_i in range(l:=len(documents)):
-			d = documents[d_i]
-			if pipe is not None: pipe.send(100*d_i/l)
-			d.canonicized = self.process_single(d.text)
+		if self._default_multiprocessing:
+			if pipe is not None: pipe.send(True)
+			with Pool(cpu_count()-1) as p:
+				canon = p.map(self.process_single, [d.text for d in docs])
+			for d in range(len(canon)):
+				docs[d].canonicized = canon[d]
+		else:
+			for i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*i/len(docs))
+				d.canonicized = self.process_single(d.text)
+		return
+
 
 	def process_single(self, text):
 		"""

@@ -160,7 +160,11 @@ these can all be overwritten, but the input/output types must match the original
 
       Analysis methods are expected to return a list of dicts whose keys are authors and values are scores for each unknown category where a lower score is higher ranked.
 
-\* `pipe` is an end of a multiprocessing Pipe to send `str`/`int`/`float` updates to the GUI while the module is running. If a module  takes a long time to run, it's recommended that the author use `Pipe.send()` to regularly send updates to the GUI to be shown to the user so the app doesn't appear frozen.<br>
+Canonicizers, Event drivers, and event cullers use multi-processing in `process()` if not over-written, with each process processing one file.
+Number converters and Analysis methods don't use multi-processing by default because their processing is commonly vectorized.<br>
+To disable the built-in multi-processing, set `_default_multiprocessing` to `False`.
+
+\* `pipe` is an end of a multiprocessing Pipe to send `str`/`int`/`float` updates to the GUI while the module is running. The pipe connects between the experiment runner and the GUI. If a module  takes a long time to run, it's recommended that the author use `Pipe.send()` to regularly send updates to the GUI to be shown to the user so the app doesn't appear frozen.<br>
 How to send updates:
 - send `str` types to change displayed text. e.g
 <br>`if pipe is not None: pipe.send("tokenizing...")`

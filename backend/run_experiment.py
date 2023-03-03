@@ -38,8 +38,9 @@ class Experiment:
 		self.module_names = module_names
 		#self.dpi_setting = options.get("dpi")
 		self.q = q
+		self.default_mp = api.default_mp
 
-	def run_pre_processing(self):
+	def run_pre_processing(self, **options):
 		"""
 		Run pre-processing on all documents:
 		Canonicizers, event drivers, event cullers.
@@ -47,8 +48,15 @@ class Experiment:
 		# doc: the document passed in.
 		# dump_queue: when multi-processing,
 		# the shared queue to temporarily store the documents.
-		if self.pipe_here is not None: self.pipe_here.send("Running canonicizers")
+		print("Default multiprocessing:", self.default_mp)
+		verbose = options.get("verbose", False)
+		if verbose and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
+			print("Canonicizers processing ...")
 		for c in self.backend_API.modulesInUse["Canonicizers"]:
+			if verbose: print("Running", c.__class__.displayName())
+			if self.pipe_here is not None:
+				self.pipe_here.send("Running canonicizers\n"+str(c.__class__.displayName()))
+			c._default_multiprocessing = self.default_mp
 			c._global_parameters = self.backend_API.global_parameters
 			c.process(self.backend_API.documents, self.pipe_here)
 
@@ -58,18 +66,29 @@ class Experiment:
 			if doc.canonicized == "" or doc.canonicized is None:
 				no_canon += 1
 				doc.canonicized = doc.text
-		print("! %s/%s docs had no canonicized texts, defaulting to original texts. Expected if no canonicizers used."
-        	% (str(no_canon), str(len(self.backend_API.documents))))
+		if no_canon > 0:
+			print("! %s/%s docs had no canonicized texts, defaulting to original texts. Expected if no canonicizers used."
+				% (str(no_canon), str(len(self.backend_API.documents))))
 
-		if self.pipe_here is not None: self.pipe_here.send("Running event drivers")
+		if verbose: print("Event drivers processing ...")
 		for e in self.backend_API.modulesInUse["EventDrivers"]:
+			if verbose: print("Running", e.__class__.displayName())
+			if self.pipe_here is not None:
+				self.pipe_here.send("Running event drivers\n"+str(e.__class__.displayName()))
+			e._default_multiprocessing = self.default_mp
 			e._global_parameters = self.backend_API.global_parameters
 			e.process(self.backend_API.documents, self.pipe_here)
 
-		if self.pipe_here is not None: self.pipe_here.send("Running event cullers")
+		if verbose and len(self.backend_API.modulesInUse["EventCulling"]) > 0:
+			print("Event Cullers processing ...")
 		for ec in self.backend_API.modulesInUse["EventCulling"]:
+			ec._default_multiprocessing = self.default_mp
+			if verbose: print("Running", ec.__class__.displayName())
+			if self.pipe_here is not None:
+				self.pipe_here.send("Running event culling\n"+str(ec.__class__.displayName()))
 			ec._global_parameters = self.backend_API.global_parameters
 			ec.process(self.backend_API.documents, self.pipe_here)
+		if verbose: print()
 		return
 
 	def run_experiment(self, **options):
@@ -79,9 +98,11 @@ class Experiment:
 		input: unknown authors, known authors, all listboxes.
 		"""
 		return_results = options.get("return_results", False)
+		verbose = options.get("verbose", False)
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
+		if verbose: print("Getting documents")
 
 		if not options.get("skip_loading_docs", False):
 
@@ -111,7 +132,7 @@ class Experiment:
 			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
 			docs = known_docs + unknown_docs
 
-		self.run_pre_processing()
+		self.run_pre_processing(verbose=verbose)
 
 		if self.pipe_here != None: self.pipe_here.send(0)
 
@@ -124,7 +145,10 @@ class Experiment:
 			"""
 			nc._global_parameters = self.backend_API.global_parameters
 
-			if self.pipe_here is not None: self.pipe_here.send("Running number converters")
+			if self.pipe_here is not None:
+				self.pipe_here.send("Running number converters")
+				self.pipe_here.send(True)
+			if verbose: print("Embedding ... running", nc.__class__.displayName())
 			all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
 			known_docs_numbers_aggregate = all_data[:len(known_docs)]
 			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
@@ -133,6 +157,9 @@ class Experiment:
 			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
 			if self.pipe_here is not None: self.pipe_here.send("Running analysis")
 			for am_df_index in range(number_of_classifiers):
+				if verbose:
+					print("Classifying ... running",
+						self.backend_API.modulesInUse["AnalysisMethods"][am_df_index].__class__.displayName())
 				am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
 							self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
 				am_df_pair[0]._global_parameters = self.backend_API.global_parameters
@@ -151,7 +178,9 @@ class Experiment:
 				am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
 				# then for each unknown document, analyze and output results
 				
-				if self.pipe_here != None: self.pipe_here.send("Analyzing - %s" % am_df_names_display)
+				if self.pipe_here != None:
+					self.pipe_here.send("Analyzing - %s" % am_df_names_display)
+					self.pipe_here.send(True)
 
 				doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
 
@@ -175,7 +204,7 @@ class Experiment:
 			results_text += str(r + "\n")
 
 		if self.pipe_here != None: self.pipe_here.send(-1)
-		
+		print("Experiment done.")
 		if self.q != None:
 			self.q.put(results_text)
 			return 0

@@ -5,6 +5,7 @@ from nltk import WordNetLemmatizer
 from json import load as json_load
 from pathlib import Path
 from importlib import import_module
+from multiprocessing import Pool, cpu_count
 # import spacy
 
 language_codes = json_load(f:=open(Path("./resources/languages.json"), "r"))
@@ -15,6 +16,7 @@ del f
 class EventDriver(ABC):
 
 	_global_parameters = dict()
+	_default_multiprocessing = True
 
 	def __init__(self, **options):
 		try:
@@ -60,11 +62,18 @@ class EventDriver(ABC):
 	
 	def process(self, docs, pipe=None):
 		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
-		l = len(docs)
-		for i, d in enumerate(docs):
-			if pipe is not None: pipe.send(100*i/l)
-			event_set = self.process_single(d.canonicized)
-			d.setEventSet(event_set)
+		if self._default_multiprocessing:
+			if pipe is not None: pipe.send(True)
+			with Pool(cpu_count()-1) as p:
+				events = p.map(self.process_single, [d.canonicized for d in docs])
+			for i in range(len(events)):
+				docs[i].setEventSet(events[i])
+		else:
+			for i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*i/len(docs))
+				event_set = self.process_single(d.canonicized)
+				d.setEventSet(event_set)
+		return
 	
 	def process_single(self, procText):
 		'''
@@ -267,22 +276,48 @@ class WordNGram(EventDriver):
 	def setParams(self, params):
 		self.n, self.tokenizer, self.lemmatize = params
 
+	def spacy_single(self, doc):
+		'''spacy tokenize single doc'''
+		# doc is the Document object.
+		events = [str(token) for token in self._lang_module.tokenizer(doc.text)]
+		return events
+
+	def nltk_single(self, text):
+		'''nltk tokenize single doc'''
+		events = word_tokenize(text, language=self._nltk_lang)
+		return events
+
 	def process(self, docs, pipe):
 		l = len(docs)
+		if pipe is not None: pipe.send(True)
 		if self.tokenizer == "SpaCy":
 			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
 			lang = language_codes.get(lang, "unk").get("spacy", "xx.MultiLanguage")
-			lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
-			lang_module = getattr(lang_module, lang.split(".")[1])()
-			for i, d in enumerate(docs):
-				if pipe is not None: pipe.send(100*i/l)
-				d.setEventSet([str(token) for token in lang_module.tokenizer(d.text)])
+			self._lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
+			self._lang_module = getattr(self._lang_module, lang.split(".")[1])()
+			if self._default_multiprocessing:
+				with Pool(cpu_count()-1) as p:
+					events = p.map(self.spacy_single, docs)
+				for i in range(len(docs)):
+					docs[i].setEventSet(events[i])
+			else:
+				for i, d in enumerate(docs):
+					if pipe is not None: pipe.send(100*i/l)
+					d.setEventSet([str(token) for token in self._lang_module.tokenizer(d.text)])
+
 		elif self.tokenizer == "NLTK":
 			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
-			lang = language_codes.get(lang, "unk").get("nltk", "english")
-			for i, d in enumerate(docs):
-				if pipe is not None: pipe.send(100*i/l)
-				d.setEventSet(word_tokenize(d.text, language=lang))
+			self._nltk_lang = language_codes.get(lang, "unk").get("nltk", "english")
+			if self._default_multiprocessing:
+				with Pool(cpu_count()-1) as p:
+					events = p.map(word_tokenize, [d.text for d in docs])
+				for i in range(len(docs)):
+					docs[i].setEventSet(events[i])
+			else:
+				for i, d in enumerate(docs):
+					if pipe is not None: pipe.send(100*i/l)
+					d.setEventSet(word_tokenize(d.text, language=self._nltk_lang))
+
 		elif self.tokenizer == "Space delimiter":
 			for i, d in enumerate(docs):
 				d.setEventSet(d.text.split())
