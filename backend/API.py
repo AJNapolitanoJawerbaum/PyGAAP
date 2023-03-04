@@ -53,6 +53,7 @@ class API:
 	known_authors: list = [] # list used in GUI2 to keep track of known documents. LIST OF STRINGS
 	unknown_docs: list = [] # list of unknown documents "Documents" (backend.Document). LIST OF DOCUMENTS
 
+	default_mp = True # toggle built-in multiprocessing
 
 	def __init__(self, documents):
 

@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from importlib import import_module
-
+from multiprocessing import Pool, cpu_count
 
 # An abstract Event Culling class.
 class EventCulling(ABC):
 
 	_global_parameters = dict()
+	_default_multiprocessing = True
 
 	def __init__(self, **options):
 		try:
@@ -22,9 +23,7 @@ class EventCulling(ABC):
 
 	def set_attr(self, var, value):
 		"""Custom way to set attributes"""
-		if var not in self.__dict__: return False
 		self.__dict__[var] = value
-		return True
 
 	def validate_parameter(self, param_name: str, param_value):
 		"""validating parameter expects param_value to already been correctly typed"""
@@ -40,16 +39,23 @@ class EventCulling(ABC):
 
 	def process(self, docs, pipe):
 		"""Process all docs"""
-		for d_i in range(l:=len(docs)):
-			if pipe is not None: pipe.send(100*d_i/l)
-			d = docs[d_i]
-			new_events = self.process_single(d.eventSet)
-			d.setEventSet(new_events)
+		if self._default_multiprocessing:
+			if pipe is not None: pipe.send(True)
+			with Pool(cpu_count()-1) as p:
+				events = p.map(self.process_single, [d.eventSet for d in docs])
+			for d in range(len(events)):
+				docs[d].setEventSet(events[d], append=False)
+		else:
+			for d_i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*d_i/len(docs))
+				new_events = self.process_single(d.eventSet)
+				d.setEventSet(new_events, append=False)
 		return
 			
 		
 	def process_single(self, eventSet):
 		"""Process a single document"""
+		raise NotImplementedError
 		
 	@abstractmethod
 	def displayName():
@@ -64,7 +70,7 @@ class EventCulling(ABC):
 class N_Occurrences(EventCulling):
 	_variable_options = {
 		"Mode": {"options": ["Cull more freq.", "Cull less freq."], "type": "OptionMenu", "default": 0},
-		"Frequency": {"options": list(range(1, 10)), "default": 0, "type": "OptionMenu", "default": 0},
+		"Frequency": {"options": range(1, 201), "default": 0, "type": "Slider", "default": 10},
 	}
 
 	Frequency = _variable_options["Frequency"]["options"][_variable_options["Frequency"]["default"]]

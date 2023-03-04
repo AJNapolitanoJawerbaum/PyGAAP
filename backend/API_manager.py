@@ -24,10 +24,11 @@ def manager_run_exp(api, pipe_mainproc: Connection, pipe_subproc: Connection,
 	api_process = Process(target=API_process, args=(pipe_subproc, pipe_mainproc, progress_report_there, mod_names, q))
 	api_process.start()
 
-
+	# add parameters to pass here.
 	pipe_mainproc.send(("known_authors", api.known_authors))
 	pipe_mainproc.send(("unknown_docs", api.unknown_docs))
 	pipe_mainproc.send(("global_parameters", api.global_parameters))
+	pipe_mainproc.send(("default_mp", api.default_mp))
 	pipe_mainproc.send("End docs and global params")
 
 	for mod_type in mod_names:

@@ -17,6 +17,7 @@ class AnalysisMethod(ABC):
 	distance = None
 	_variable_options = dict()
 	_global_parameters = dict()
+	_NoDistanceFunction_ = False
 	
 	def __init__(self, **options):
 		try:
@@ -53,9 +54,7 @@ class AnalysisMethod(ABC):
 
 	def set_attr(self, var, value):
 		"""Custom way to set attributes"""
-		if var not in self.__dict__: return False
 		self.__dict__[var] = value
-		return True
 
 	def validate_parameter(self, param_name: str, param_value):
 		"""validating parameter expects param_value to already been correctly typed"""
@@ -166,7 +165,7 @@ class KNearestNeighbor(AnalysisMethod):
 	k = 5
 	tie_breaker = "average"
 	_variable_options = {
-		"k": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 4, "displayed_name": "K"},
+		"k": {"options": range(1, 21), "type": "Slider", "default": 4, "displayed_name": "K"},
 		"tie_breaker": {"options": ["average", "minimum"], "type": "OptionMenu", "default": 0, "displayed_name": "Tie breaker"}
 	}
 	def displayName():

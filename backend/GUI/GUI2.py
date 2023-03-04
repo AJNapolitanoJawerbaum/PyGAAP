@@ -183,6 +183,12 @@ class PyGAAP_GUI:
 		Label(self.error_window, text=error_text).pack(padx=30, pady=30)
 		return
 
+	def toggle_mp(self):
+		self.backend_API.default_mp = not self.backend_API.default_mp
+		print("Built-in multiprocessing:", self.backend_API.default_mp)
+		self.status_update("Built-in MP: "+str(self.backend_API.default_mp))
+		return
+
 	def run_experiment(self):
 		if GUI_debug >= 3: print("run_experiment()")
 
@@ -214,9 +220,10 @@ class PyGAAP_GUI:
 			self.results_queue = Queue()
 			experiment = run_experiment.Experiment(
 				self.backend_API, module_names, progress_report_there, self.results_queue,
-				dpi=self.dpi_setting
+				dpi=self.dpi_setting,
+				default_mp = self.backend_API.default_mp,
 			)
-			self.experiment_process = Process(target=experiment.run_experiment)
+			self.experiment_process = Process(target=experiment.run_experiment, kwargs={"verbose": True})
 			self.experiment_process.start()
 		else:
 			if __name__ == "backend.GUI.GUI2":
@@ -1167,7 +1174,7 @@ class PyGAAP_GUI:
 			for driver in sorted(list(self.backend_API.eventDrivers.keys())):
 				self.generated_widgets["EventDrivers"]["available_listboxes"][0][2].insert(END, driver)
 			for distancefunc in sorted(list(self.backend_API.distanceFunctions.keys())):
-				assert distancefunc != "NA", 'Distance Function cannot have a name of "NA" ' \
+				assert distancefunc != "NA", 'Distance Function cannot have the name "NA" ' \
 				+ '(Reserved for Analysis methods that do not use a distance function).\n' \
 				+ 'Please check the file containing the definition of the distance function class, ' \
 				+ 'most likely in or imported to DistanceFunction.py,\nand change the return of displayName().'
@@ -1421,89 +1428,114 @@ class PyGAAP_GUI:
 		param_options = []
 		# list of StringVars.
 		if type(listbox) == Listbox:
-			number_of_modules = len(this_module._variable_options)
+			n_params = sum([1 for k in this_module._variable_options
+				if this_module._variable_options[k].get("show", True)])
 		else:
 			try:
 				df_variables = this_df_module._variable_options
 			except AttributeError:
 				df_variables = []
-			number_of_modules = len(this_module._variable_options) \
+			n_params = sum([1 for k in this_module._variable_options
+				if this_module._variable_options[k].get("show", True)]) \
 							+ len(df_variables)
-			number_of_am = len(this_module._variable_options)
-		if number_of_modules == 0:
+			number_of_am = sum([1 for k in this_module._variable_options
+				if this_module._variable_options[k].get("show", True)])
+		if n_params == 0:
 			# if this module does not have parameters to be set, say so.
 			displayed_params.append(Label(param_frame,
 									text = "No parameters for this module."))
 			displayed_params[-1].pack()
-		else:
-			# if this module has parameters, find and display parameters.
-			rowshift = 0
-			# this is the row shift for widgets below the second tkinter.Label.
-			# It's non-zero for when there are two groups of parameters to display.
-			# (Analysis + DF)
-			displayed_params.append(Label(param_frame,
-										text = str(this_module_name) + ":",
-										font = ("Helvetica", 14)))
-			displayed_params[-1].grid(row = 0, column = 0, columnspan = 2, sticky = W)
-			for i in range(number_of_modules):
-				if type(listbox) == Listbox:
+			return
+		# if this module has parameters, find and display parameters.
+		rowshift = 0
+		# this is the row shift for widgets below the second tkinter.Label.
+		# It's non-zero for when there are two groups of parameters to display.
+		# (Analysis + DF)
+		displayed_params.append(Label(param_frame,
+									text = str(this_module_name) + ":",
+									font = ("Helvetica", 14)))
+		displayed_params[-1].grid(row = 0, column = 0, columnspan = 2, sticky = W)
+		for i in range(len(this_module._variable_options)):
+			if type(listbox) == Listbox:
+				parameter_i = list(this_module._variable_options.keys())[i]
+				# skip hidden parameters. good for dynamic param changes
+				if not this_module._variable_options.get(parameter_i, {}).get("show", True): continue
+				param_options.append(StringVar(
+					value = str(this_module.__dict__.get(parameter_i)))
+				)
+			elif type(listbox) == ttk.Treeview:
+				if i < number_of_am:
 					parameter_i = list(this_module._variable_options.keys())[i]
+					if not this_module._variable_options.get(parameter_i, {}).get("show", True): continue
 					param_options.append(StringVar(
-						value = str(this_module.__dict__.get(parameter_i)))
-					)
-				elif type(listbox) == ttk.Treeview:
-					if i < number_of_am:
-						parameter_i = list(this_module._variable_options.keys())[i]
-						param_options.append(StringVar(
-						value = str(this_module.__dict__.get(parameter_i)))
-					)
-					else:
-						rowshift = 1
-						if this_df_module == "NA": break
-						parameter_i = list(this_df_module._variable_options.keys())[i - number_of_am]
-						param_options.append(StringVar(
-						value = str(this_df_module._variable_options[parameter_i]["options"]\
-							[this_df_module._variable_options[parameter_i]["default"]]))
-					)
-				displayed_param_name = this_module._variable_options[parameter_i].get("displayed_name", parameter_i)
-				displayed_params.append(Label(param_frame, text = displayed_param_name))
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 0)
+					value = str(this_module.__dict__.get(parameter_i)))
+				)
+				else:
+					rowshift = 1
+					if this_df_module == "NA": break
+					parameter_i = list(this_df_module._variable_options.keys())[i - number_of_am]
+					if not this_df_module._variable_options.get(parameter_i, {}).get("show", True): continue
+					param_options.append(StringVar(
+					value = str(this_df_module._variable_options[parameter_i]["options"]\
+						[this_df_module._variable_options[parameter_i]["default"]]))
+				)
+			displayed_param_name = this_module._variable_options[parameter_i].get("displayed_name", parameter_i)
+			displayed_params.append(Label(param_frame, text = displayed_param_name))
+			displayed_params[-1].grid(row = i + 1 + rowshift, column = 0)
 
-				menu_type = this_module._variable_options[parameter_i].get("type", "OptionMenu")
-				if menu_type == 'Entry':
-					raise NotImplementedError
-					# TODO 2 priority low:
-					# implement text entry for parameters.
-					displayed_params.append(Entry(param_frame))
-					displayed_params[-1].insert(
-						0, str(parameter_i['options'][parameter_i])
+			menu_type = this_module._variable_options[parameter_i].get("type", "OptionMenu")
+			if menu_type == 'Entry':
+				raise NotImplementedError
+				# TODO 2 priority low:
+				# implement text entry for parameters.
+				displayed_params.append(Entry(param_frame))
+				displayed_params[-1].insert(
+					0, str(parameter_i['options'][parameter_i])
+				)
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+			elif menu_type == "OptionMenu":
+				displayed_params.append(
+					OptionMenu(
+						param_frame, 
+						param_options[-1],
+						*this_module._variable_options[parameter_i]['options']
 					)
-					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
-				elif menu_type == "OptionMenu":
-					displayed_params.append(
-						OptionMenu(
-							param_frame, 
-							param_options[-1],
-							*this_module._variable_options[parameter_i]['options']
+				)
+				displayed_params[-1].config(width = self.dpi_setting["dpi_option_menu_width"])
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+				param_options[-1].trace_add(("write"),
+					lambda v1, v2, v3, stringvar = param_options[-1],
+					module = this_module, var = parameter_i:\
+						self.set_parameters(stringvar, module, var,
+						param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type))
+			elif menu_type == "Slider":
+				scale_begin = this_module._variable_options[parameter_i]["options"][0]
+				scale_end = this_module._variable_options[parameter_i]["options"][-1]
+				displayed_params.append(
+					Scale(param_frame,
+						orient="horizontal", tickinterval=scale_end-scale_begin,
+						from_=scale_begin, to=scale_end, length=200,
+						resolution=this_module._variable_options[parameter_i].get("resolution", 1),
+						command=lambda value, module=this_module, var=parameter_i: self.set_parameters(
+							value, module, var,
+							param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type,
 						)
 					)
-					displayed_params[-1].config(width = self.dpi_setting["dpi_option_menu_width"])
-					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
-					param_options[-1].trace_add(("write"),
-						lambda v1, v2, v3, stringvar = param_options[-1],
-						module = this_module, var = parameter_i:\
-							self.set_parameters(stringvar, module, var,
-							param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type))
-			if rowshift == 1:
-				# if the rows are shifted, there is an extra label for the DF parameters.
-				displayed_params.append(Label(param_frame,
-					text = str(this_df_module_name) + ":",
-					font = ("Helvetica", 14)))
-				displayed_params[-1].grid(
-					row = number_of_am + 1,
-					column = 0,
-					columnspan = 2,
-					sticky = W)
+				)
+				displayed_params[-1].set(this_module.__dict__.get(parameter_i))
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+			else:
+				raise ValueError("Unknown input widget type", menu_type)
+		if rowshift == 1:
+			# if the rows are shifted, there is an extra label for the DF parameters.
+			displayed_params.append(Label(param_frame,
+				text = str(this_df_module_name) + ":",
+				font = ("Helvetica", 14)))
+			displayed_params[-1].grid(
+				row = number_of_am + 1,
+				column = 0,
+				columnspan = 2,
+				sticky = W)
 
 
 		param_frame.columnconfigure(0, weight = 1)
@@ -1556,23 +1588,24 @@ class PyGAAP_GUI:
 	def set_parameters(self, stringvar, module, variable_name, **options):
 		# ctrl-f: change_params change params edit params
 		"""sets parameters whenever the widget is touched."""
+		# stringvar: the value to set the parameter
 		if GUI_debug >= 3:
 			print("set_parameters(module = %s, variable_name = %s)"
 			%(module, variable_name))
-
-		value_to = stringvar.get()
+		value_to = stringvar.get() if type(stringvar) == StringVar else stringvar
 		if type(value_to) != bool:
 			try: # to identify numbers
 				value_to = float(value_to)
 				# if value is a number, try converting to a number.
-				if abs(int(value_to) - value_to) < 0.0000001:
+				if abs(int(value_to) - value_to) < 1e-63:
 					value_to = int(value_to)
 			except ValueError:
 				pass
 		#setattr(module, variable_name, value_to)
-		if not module.set_attr(variable_name, value_to):
-			raise ValueError("Set param failed") # TODO make louder
-		self.find_parameters(options.get("param_frame"), options.get("listbox"), options.get("dp"), module_type=options.get("module_type"))
+		set_param_return = module.set_attr(variable_name, value_to)
+		if set_param_return:
+			self.find_parameters(options.get("param_frame"), options.get("listbox"), options.get("dp"),
+				module_type=options.get("module_type"))
 		return
 
 	def set_API_global_parameters(self, parameter, stringvar):
@@ -1700,8 +1733,10 @@ class PyGAAP_GUI:
 		menubar.add_cascade(label = "Help", menu = menu_help)
 
 		menu_dev = Menu(menubar, tearoff=0)
+		#menu_dev.add_command(label="Instant experiment", command=self.instant_experiment)
 		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
 		menu_dev.add_command(label="Show process content", command=self.show_API_process_content)
+		menu_dev.add_command(label="Toggle built-in multiprocessing", command=self.toggle_mp)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
 
 		topwindow.config(menu = menubar)

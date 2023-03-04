@@ -1,6 +1,7 @@
 from generics.NumberConverter import NumberConverter
 from backend.Histograms import generateAbsoluteHistogram as gh
 from backend import PrepareNumbers as pn
+from multiprocessing import Pool, cpu_count
 import numpy as np
 
 class Frequency(NumberConverter):
@@ -12,9 +13,11 @@ class Frequency(NumberConverter):
 		"displayed_name": "Statistical normalization"}
 	}
 
-	def convert(self, docs):
+	def convert(self, docs, pipe=None):
 		"""Convert and assign to Documents.numbers"""
-		raw_frequency = [gh(d) for d in docs]
+		#raw_frequency = [gh(d) for d in docs]
+		with Pool(cpu_count()-1) as p:
+			raw_frequency = p.map(gh, docs)
 		numbers = pn.dicts_to_array(raw_frequency)
 		if self.normalization == "none": pass
 		elif self.normalization == "zero-max scaling":

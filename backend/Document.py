@@ -18,6 +18,7 @@ class Document:
 		self.title = title
 		self.text = text
 		self.filepath = filepath
+		self.canonicized = extras.get("canonicized", None)
 		self.numbers = extras.get("numbers", None)
 		self.eventSet = extras.get("eventSet", list())
 

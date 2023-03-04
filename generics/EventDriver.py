@@ -5,6 +5,7 @@ from nltk import WordNetLemmatizer
 from json import load as json_load
 from pathlib import Path
 from importlib import import_module
+from multiprocessing import Pool, cpu_count
 # import spacy
 
 language_codes = json_load(f:=open(Path("./resources/languages.json"), "r"))
@@ -15,6 +16,7 @@ del f
 class EventDriver(ABC):
 
 	_global_parameters = dict()
+	_default_multiprocessing = True
 
 	def __init__(self, **options):
 		try:
@@ -31,9 +33,7 @@ class EventDriver(ABC):
 
 	def set_attr(self, var, value):
 		"""Custom way to set attributes"""
-		if var not in self.__dict__: return False
 		self.__dict__[var] = value
-		return True
 
 	def validate_parameter(self, param_name: str, param_value):
 		"""validating parameter expects param_value to already been correctly typed"""
@@ -62,26 +62,33 @@ class EventDriver(ABC):
 	
 	def process(self, docs, pipe=None):
 		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
-		l = len(docs)
-		for i, d in enumerate(docs):
-			if pipe is not None: pipe.send(100*i/l)
-			event_set = self.process_single(d.text)
-			d.setEventSet(event_set)
+		if self._default_multiprocessing:
+			if pipe is not None: pipe.send(True)
+			with Pool(cpu_count()-1) as p:
+				events = p.map(self.process_single, [d.canonicized for d in docs])
+			for i in range(len(events)):
+				docs[i].setEventSet(events[i])
+		else:
+			for i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*i/len(docs))
+				event_set = self.process_single(d.canonicized)
+				d.setEventSet(event_set)
+		return
 	
 	def process_single(self, procText):
 		'''
 		Processes a single document.
 		This is no longer an abstract method because
-		some modules may choose to deal with all documents in "process".
+		some modules may choose to ignore this function and deal with all documents instead in "process".
 		'''
-		pass
+		raise NotImplementedError
 
 	
 # REFERENCE CLASS FOR PyGAAP GUI.
 class CharacterNGramEventDriver(EventDriver):
 	'''Event Driver for Character N-Grams'''
 	n = 2
-	_variable_options={"n": {"options": list(range(1, 21)), "default": 1, "type": "OptionMenu"}}
+	_variable_options={"n": {"options": range(1, 21), "default": 1, "type": "Slider"}}
 	# for PyGAAP GUI to know which options to list/are valid
 		
 	def process_single(self, procText):
@@ -231,8 +238,8 @@ class CharacterPositionEventDriver(EventDriver):
 
 class KSkipNGramCharacterEventDriver(EventDriver):
 	_variable_options = {
-		"k": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Skips (k)"},
-		"n": {"options": list(range(1, 21)), "type": "OptionMenu", "default": 0, "displayed_name": "n-gram length (n)"}
+		"k": {"options": range(1, 11), "type": "Slider", "default": 0, "displayed_name": "Skips (k)"},
+		"n": {"options": range(1, 21), "type": "Slider", "default": 0, "displayed_name": "n-gram length (n)"}
 	}
 	k = 1
 	n = 1
@@ -261,7 +268,7 @@ class WordNGram(EventDriver):
 	#lemmatize = "No"
 
 	_variable_options = {
-		"n": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
+		"n": {"options": range(1, 11), "type": "Slider", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
 		"tokenizer": {"options": ["Space delimiter", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 1},
 		#"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"}
 	}
@@ -269,22 +276,48 @@ class WordNGram(EventDriver):
 	def setParams(self, params):
 		self.n, self.tokenizer, self.lemmatize = params
 
+	def spacy_single(self, doc):
+		'''spacy tokenize single doc'''
+		# doc is the Document object.
+		events = [str(token) for token in self._lang_module.tokenizer(doc.text)]
+		return events
+
+	def nltk_single(self, text):
+		'''nltk tokenize single doc'''
+		events = word_tokenize(text, language=self._nltk_lang)
+		return events
+
 	def process(self, docs, pipe):
 		l = len(docs)
+		if pipe is not None: pipe.send(True)
 		if self.tokenizer == "SpaCy":
 			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
 			lang = language_codes.get(lang, "unk").get("spacy", "xx.MultiLanguage")
-			lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
-			lang_module = getattr(lang_module, lang.split(".")[1])()
-			for i, d in enumerate(docs):
-				if pipe is not None: pipe.send(100*i/l)
-				d.setEventSet([str(token) for token in lang_module.tokenizer(d.text)])
+			self._lang_module = import_module("spacy.lang.%s" % lang.split(".")[0])
+			self._lang_module = getattr(self._lang_module, lang.split(".")[1])()
+			if self._default_multiprocessing:
+				with Pool(cpu_count()-1) as p:
+					events = p.map(self.spacy_single, docs)
+				for i in range(len(docs)):
+					docs[i].setEventSet(events[i])
+			else:
+				for i, d in enumerate(docs):
+					if pipe is not None: pipe.send(100*i/l)
+					d.setEventSet([str(token) for token in self._lang_module.tokenizer(d.text)])
+
 		elif self.tokenizer == "NLTK":
 			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
-			lang = language_codes.get(lang, "unk").get("nltk", "english")
-			for i, d in enumerate(docs):
-				if pipe is not None: pipe.send(100*i/l)
-				d.setEventSet(word_tokenize(d.text, language=lang))
+			self._nltk_lang = language_codes.get(lang, "unk").get("nltk", "english")
+			if self._default_multiprocessing:
+				with Pool(cpu_count()-1) as p:
+					events = p.map(word_tokenize, [d.text for d in docs])
+				for i in range(len(docs)):
+					docs[i].setEventSet(events[i])
+			else:
+				for i, d in enumerate(docs):
+					if pipe is not None: pipe.send(100*i/l)
+					d.setEventSet(word_tokenize(d.text, language=self._nltk_lang))
+
 		elif self.tokenizer == "Space delimiter":
 			for i, d in enumerate(docs):
 				d.setEventSet(d.text.split())

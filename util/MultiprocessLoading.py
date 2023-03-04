@@ -59,7 +59,13 @@ def receive_info(
 			if type(info) == str:
 				text_label.configure(text=info)
 			elif type(info) == float or type(info) == int:
+				progressbar["mode"] = "determinate"
+				progressbar.stop()
 				progressbar["value"] = info
+			elif type(info) == bool:
+				progressbar["mode"] = "indeterminate"
+				progressbar.stop()
+				if info: progressbar.start()
 			return
 
 def process_window(geometry: str, mode: str, pto, **options):
