@@ -142,13 +142,13 @@ class Experiment:
 			exp_return = self.return_exp_results(
 				results_text="", message="No documents in the test set", status=1,
 			)
-			return experiment_return if self.return_results else 1
+			return exp_return if self.return_results else 1
 		# check train set
 		if len(known_docs) == 0:
 			exp_return = self.return_exp_results(
 				results_text="", message="No documents in the train set", status=1,
 			)
-			return experiment_return if self.return_results else 1
+			return exp_return if self.return_results else 1
 		else:
 			# train set: check if a class has no train files
 			empty_authors = {d.author for d in known_docs if d.text.strip()==""}
@@ -156,17 +156,17 @@ class Experiment:
 				results_message += "Empty train set for these authors:\n" +\
 					"\n".join(str(x) for x in empty_authors) + "\n"
 				exp_return = self.return_exp_results(results_text="", message=results_message, status=1)
-				return experiment_return if self.return_results else 1
+				return exp_return if self.return_results else 1
 			elif sum([1 for x in known_docs if x.text.strip()==""]):
 				exp_return = self.return_exp_results(results_text="", message="No documents in the train set", status=1)
-				return experiment_return if self.return_results else 1
+				return exp_return if self.return_results else 1
 		# check if any required mods are abscent
 		if self.backend_API.modulesInUse["EventDrivers"] == [] or\
 				self.backend_API.modulesInUse["NumberConverters"] == [] or\
 				self.backend_API.modulesInUse["AnalysisMethods"] == []:
 			exp_return = self.return_exp_results(results_text="",
 				message="Missing Event drivers, number converters, or analysis methods", status=1)
-			return experiment_return if self.return_results else 1
+			return exp_return if self.return_results else 1
 		# check for analysis & distance functions mismatch.
 		for i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
 			if (am._NoDistanceFunction_ and self.backend_API.modulesInUse["DistanceFunctions"][i] != "NA") or\
@@ -174,6 +174,7 @@ class Experiment:
 				exp_return = self.return_exp_results(results_text="",
 					message="Distance functions mismatch for %s." % am.displayName(),
 				status=1)
+				return exp_return if self.return_results else 1
 
 		self.run_pre_processing(verbose=verbose)
 
