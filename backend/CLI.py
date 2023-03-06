@@ -150,7 +150,7 @@ def cliMain():
 			}
 
 			experiment_runner = run_experiment.Experiment(api, module_names)
-			results = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)
+			exp_return = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)
 
 			# Create the directories that the results will be stored in.
 			outPath = os.path.join(Path.cwd(), "tmp",
@@ -162,7 +162,7 @@ def cliMain():
 			out_filepath = os.path.join(outPath, (exp_name + str(int(time()))) + ".txt")
 			print(out_filepath)
 			expFile=open(out_filepath, 'w')
-			expFile.write(results)
+			expFile.write(exp_return["results_text"])
 			expFile.close()
 	print("Finished")
 

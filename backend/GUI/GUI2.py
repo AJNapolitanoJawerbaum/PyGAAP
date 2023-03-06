@@ -244,10 +244,19 @@ class PyGAAP_GUI:
 		"""Displays results in new window"""
 		# show process results
 
-		results_text = self.results_queue.get()
+		exp_return = self.results_queue.get()
+		results_text = exp_return["results_text"]
 
-		if results_text.strip() == "":
-			print("no results")
+		if exp_return["status"] != 0:
+			error_window = Toplevel()
+			error_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
+			error_window.title("Experiment failed")
+
+			error_text = "Experiment failed.\n"
+			error_text += exp_return["message"]
+			error_label = Label(error_window, text=error_text)
+			error_label.pack(pady=20)
+			error_window.after(10, error_window.lift)
 			return
 
 		self.status_update("")
@@ -255,7 +264,7 @@ class PyGAAP_GUI:
 		self.results_window.title("Results")
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
 		
-		self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
+		#self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
 
 		
 		# create space to display results, release focus of process window.

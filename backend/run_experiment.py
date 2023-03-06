@@ -97,8 +97,11 @@ class Experiment:
 		Process all input files with the parameters in all tabs.
 		input: unknown authors, known authors, all listboxes.
 		"""
-		return_results = options.get("return_results", False)
+		self.return_results = options.get("return_results", False)
 		verbose = options.get("verbose", False)
+
+		results_message = ""
+		status = 0
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
@@ -132,6 +135,46 @@ class Experiment:
 			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
 			docs = known_docs + unknown_docs
 
+		if verbose: print("checking params")
+		# validate modules, documents:
+		# check test set
+		if len(unknown_docs) == 0:
+			exp_return = self.return_exp_results(
+				results_text="", message="No documents in the test set", status=1,
+			)
+			return experiment_return if self.return_results else 1
+		# check train set
+		if len(known_docs) == 0:
+			exp_return = self.return_exp_results(
+				results_text="", message="No documents in the train set", status=1,
+			)
+			return experiment_return if self.return_results else 1
+		else:
+			# train set: check if a class has no train files
+			empty_authors = {d.author for d in known_docs if d.text.strip()==""}
+			if len(empty_authors) > 0:
+				results_message += "Empty train set for these authors:\n" +\
+					"\n".join(str(x) for x in empty_authors) + "\n"
+				exp_return = self.return_exp_results(results_text="", message=results_message, status=1)
+				return experiment_return if self.return_results else 1
+			elif sum([1 for x in known_docs if x.text.strip()==""]):
+				exp_return = self.return_exp_results(results_text="", message="No documents in the train set", status=1)
+				return experiment_return if self.return_results else 1
+		# check if any required mods are abscent
+		if self.backend_API.modulesInUse["EventDrivers"] == [] or\
+				self.backend_API.modulesInUse["NumberConverters"] == [] or\
+				self.backend_API.modulesInUse["AnalysisMethods"] == []:
+			exp_return = self.return_exp_results(results_text="",
+				message="Missing Event drivers, number converters, or analysis methods", status=1)
+			return experiment_return if self.return_results else 1
+		# check for analysis & distance functions mismatch.
+		for i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
+			if (am._NoDistanceFunction_ and self.backend_API.modulesInUse["DistanceFunctions"][i] != "NA") or\
+				(not am._NoDistanceFunction_ and self.backend_API.modulesInUse["DistanceFunctions"][i] == "NA"):
+				exp_return = self.return_exp_results(results_text="",
+					message="Distance functions mismatch for %s." % am.displayName(),
+				status=1)
+
 		self.run_pre_processing(verbose=verbose)
 
 		if self.pipe_here != None: self.pipe_here.send(0)
@@ -144,6 +187,7 @@ class Experiment:
 			This means for N number converters and M methods, there will be (N x M) analyses.
 			"""
 			nc._global_parameters = self.backend_API.global_parameters
+			nc._default_multiprocessing = self.default_mp
 
 			if self.pipe_here is not None:
 				self.pipe_here.send("Running number converters")
@@ -203,12 +247,28 @@ class Experiment:
 		for r in results:
 			results_text += str(r + "\n")
 
-		if self.pipe_here != None: self.pipe_here.send(-1)
-		print("Experiment done.")
-		if self.q != None:
-			self.q.put(results_text)
-			return 0
-		if return_results:
-			return results_text
-		#print(results_text)
+		# if self.pipe_here != None: self.pipe_here.send(-1)
 
+		exp_return = self.return_exp_results(
+			results_text=results_text,
+			message=results_message,
+			status=status,
+		)
+		print("Experiment done.")
+		if self.return_results:
+			return exp_return
+		return
+		
+
+	def return_exp_results(self, **kwa):
+		experiment_return = {
+			"results_text": kwa.get("results_text", ""),
+			"message": kwa.get("message", "No message provided."),
+			"status": kwa.get("status", 1),
+		}
+		if self.pipe_here != None: self.pipe_here.send(-1)
+		if self.q != None:
+			self.q.put(experiment_return)
+			return
+		if self.return_results:
+			return experiment_return

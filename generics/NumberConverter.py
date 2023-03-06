@@ -7,6 +7,7 @@ class NumberConverter(ABC):
 	and set the docs' representations directly to Document.numbers
 	"""
 	_global_parameters = dict()
+	_default_multiprocessing = False
 
 	def __init__(self, **options):
 		try:
