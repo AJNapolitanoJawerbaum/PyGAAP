@@ -254,8 +254,9 @@ class PyGAAP_GUI:
 
 			error_text = "Experiment failed.\n"
 			error_text += exp_return["message"]
-			error_label = Label(error_window, text=error_text)
-			error_label.pack(pady=20)
+			error_text_field = Text(error_window)
+			error_text_field.pack(fill=BOTH, expand=True)
+			error_text_field.insert("end", error_text)
 			error_window.after(10, error_window.lift)
 			return
 

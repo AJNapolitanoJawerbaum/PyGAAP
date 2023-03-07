@@ -20,7 +20,7 @@ from backend.Document import Document
 
 
 class Experiment:
-	
+
 	"""An experiment class to be invoked by either the GUI or the CLI."""
 
 	backend_API = None
@@ -39,6 +39,7 @@ class Experiment:
 		#self.dpi_setting = options.get("dpi")
 		self.q = q
 		self.default_mp = api.default_mp
+		self.results_message = ""
 
 	def run_pre_processing(self, **options):
 		"""
@@ -58,7 +59,12 @@ class Experiment:
 				self.pipe_here.send("Running canonicizers\n"+str(c.__class__.displayName()))
 			c._default_multiprocessing = self.default_mp
 			c._global_parameters = self.backend_API.global_parameters
-			c.process(self.backend_API.documents, self.pipe_here)
+			try:
+				c.process(self.backend_API.documents, self.pipe_here)
+			except Exception as error:
+				this_error = "\nCanonicizer failed:" + c.__class__.displayName() + str(error)
+				self.results_message += this_error
+				if verbose: print(this_error)
 
 		# if Document.canonicized is empty, default to original text
 		no_canon = 0
@@ -66,8 +72,8 @@ class Experiment:
 			if doc.canonicized == "" or doc.canonicized is None:
 				no_canon += 1
 				doc.canonicized = doc.text
-		if no_canon > 0:
-			print("! %s/%s docs had no canonicized texts, defaulting to original texts. Expected if no canonicizers used."
+		if no_canon > 0 and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
+			print("! %s/%s docs had no canonicized texts, defaulting to original texts."
 				% (str(no_canon), str(len(self.backend_API.documents))))
 
 		if verbose: print("Event drivers processing ...")
@@ -77,7 +83,22 @@ class Experiment:
 				self.pipe_here.send("Running event drivers\n"+str(e.__class__.displayName()))
 			e._default_multiprocessing = self.default_mp
 			e._global_parameters = self.backend_API.global_parameters
-			e.process(self.backend_API.documents, self.pipe_here)
+			try:
+				e.process(self.backend_API.documents, self.pipe_here)
+			except Exception as error:
+				this_error = "\nEvent driver failed:" + e.__class__.displayName() + str(error)
+				self.results_message += this_error
+				if verbose: print(this_error)
+		if sum([1 for d in self.backend_API.documents if len(d.eventSet) == 0]):
+			exp_return = self.return_exp_results(
+				results_text="", message="No event set found for at least 1 document.", status=1,
+			)
+			return exp_return if self.return_results else 1
+
+		empty_event_sets = [doc.title for doc in self.backend_API.documents if len(doc.eventSet)==0]
+		if len(empty_event_sets) > 0:
+			print("! %s/%s docs had no event sets after event extraction."
+				% (str(len(empty_event_sets)), str(len(self.backend_API.documents))))
 
 		if verbose and len(self.backend_API.modulesInUse["EventCulling"]) > 0:
 			print("Event Cullers processing ...")
@@ -87,9 +108,17 @@ class Experiment:
 			if self.pipe_here is not None:
 				self.pipe_here.send("Running event culling\n"+str(ec.__class__.displayName()))
 			ec._global_parameters = self.backend_API.global_parameters
-			ec.process(self.backend_API.documents, self.pipe_here)
-		if verbose: print()
-		return
+			try:
+				ec.process(self.backend_API.documents, self.pipe_here)
+			except Exception as error:
+				this_error = "\nEvent culler failed:" + ec.__class__.displayName() + str(error)
+				self.results_message += this_error
+				if verbose: print(this_error)
+
+		empty_event_sets = [doc.title for doc in self.backend_API.documents if len(doc.eventSet)==0]
+		if len(empty_event_sets) > 0:
+			print("! %s/%s docs had no event sets after event culling."
+				% (str(len(empty_event_sets)), str(len(self.backend_API.documents))))
 
 	def run_experiment(self, **options):
 
@@ -100,7 +129,7 @@ class Experiment:
 		self.return_results = options.get("return_results", False)
 		verbose = options.get("verbose", False)
 
-		results_message = ""
+		self.results_message = ""
 		status = 0
 
 		# LOADING DOCUMENTS
@@ -153,9 +182,9 @@ class Experiment:
 			# train set: check if a class has no train files
 			empty_authors = {d.author for d in known_docs if d.text.strip()==""}
 			if len(empty_authors) > 0:
-				results_message += "Empty train set for these authors:\n" +\
+				self.results_message += "\nEmpty train set for these authors:\n" +\
 					"\n".join(str(x) for x in empty_authors) + "\n"
-				exp_return = self.return_exp_results(results_text="", message=results_message, status=1)
+				exp_return = self.return_exp_results(results_text="", message=self.results_message, status=1)
 				return exp_return if self.return_results else 1
 			elif sum([1 for x in known_docs if x.text.strip()==""]):
 				exp_return = self.return_exp_results(results_text="", message="No documents in the train set", status=1)
@@ -182,6 +211,7 @@ class Experiment:
 
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
 		results = []
+		nc_success_count = 0
 		for nc in self.backend_API.modulesInUse["NumberConverters"]:
 			"""
 			Only one number converter used for one analysis method
@@ -194,13 +224,22 @@ class Experiment:
 				self.pipe_here.send("Running number converters")
 				self.pipe_here.send(True)
 			if verbose: print("Embedding ... running", nc.__class__.displayName())
-			all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
+
+			try:
+				all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
+			except Exception as error:
+				this_error = "\nNumber Converter failed:" + nc.__class__.displayName() + str(error)
+				self.results_message += this_error
+				if verbose: print(this_error)
+				continue
 			known_docs_numbers_aggregate = all_data[:len(known_docs)]
 			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
 			del all_data
 
 			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
 			if self.pipe_here is not None: self.pipe_here.send("Running analysis")
+
+			am_success_count = 0
 			for am_df_index in range(number_of_classifiers):
 				if verbose:
 					print("Classifying ... running",
@@ -218,16 +257,28 @@ class Experiment:
 				if self.pipe_here != None: self.pipe_here.send("Training - %s" % str(am_df_names_display))
 
 				am_df_pair[0].setDistanceFunction(am_df_pair[1])
-				
-				# for each method: first train models on known docs
-				am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
-				# then for each unknown document, analyze and output results
-				
+
+				try:
+					# for each method: first train models on known docs
+					am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
+					# then for each unknown document, analyze and output results
+				except Exception as e:
+					this_error = "\n" + am_df_pair[0].__class__.displayName() + "\n" + str(e)
+					self.results_message += this_error
+					if verbose: print(this_error)
+					continue
+
 				if self.pipe_here != None:
 					self.pipe_here.send("Analyzing - %s" % am_df_names_display)
 					self.pipe_here.send(True)
 
-				doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
+				try:
+					doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
+				except Exception as e:
+					this_error = "\n" + am_df_pair[0].__class__.displayName() + "\n" + str(e)
+					self.results_message += this_error
+					if verbose: print(this_error)
+					continue
 
 				for d_index in range(len(unknown_docs)):
 
@@ -243,6 +294,21 @@ class Experiment:
 							doc_results[d_index]
 						)
 					results.append(formatted_results)
+				am_success_count += 1
+
+			if am_success_count <= 0:
+				continue
+				exp_return = self.return_exp_results(results_text="",
+					message=self.results_message, status=1)
+				return exp_return if self.return_results else 1
+			else:
+				nc_success_count += 1
+
+		if nc_success_count <= 0:
+			exp_return = self.return_exp_results(results_text="",
+				message=self.results_message, status=1)
+			return exp_return if self.return_results else 1
+
 
 		results_text = ""
 		for r in results:
@@ -252,7 +318,7 @@ class Experiment:
 
 		exp_return = self.return_exp_results(
 			results_text=results_text,
-			message=results_message,
+			message=self.results_message,
 			status=status,
 		)
 		print("Experiment done.")
