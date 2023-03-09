@@ -269,7 +269,6 @@ class PyGAAP_GUI:
 
 		self.status_update("")
 		self.results_window = Toplevel()
-		self.results_window.title("Results")
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
 		
 		#self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
@@ -287,7 +286,10 @@ class PyGAAP_GUI:
 		results_display.config(yscrollcommand = results_scrollbar.set)
 		results_scrollbar.pack(side = LEFT, fill = BOTH)
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
-		self.results_window.title(str(datetime.now()))
+		if exp_return["message"].strip() == "":
+			self.results_window.title("Results "+str(datetime.now()))
+		else:
+			self.results_window.title("Results "+str(datetime.now()) + " [Partial. See Error]")
 
 		self.change_style(self.results_window)
 

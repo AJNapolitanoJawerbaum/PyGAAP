@@ -65,6 +65,7 @@ class Experiment:
 			try:
 				c.process(self.backend_API.documents, self.pipe_here)
 			except Exception as error:
+				# allow exp to continue if any or all canonicizers failed, but raise warning.
 				this_error = "\nCanonicizer failed: " + c.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
@@ -79,7 +80,9 @@ class Experiment:
 			print("! %s/%s docs had no canonicized texts, defaulting to original texts."
 				% (str(no_canon), str(len(self.backend_API.documents))))
 
+
 		if verbose: print("Event drivers processing ...")
+		succeeded_event_drivers = 0
 		for e in self.backend_API.modulesInUse["EventDrivers"]:
 			if verbose: print("Running", e.__class__.displayName())
 			if self.pipe_here is not None:
@@ -88,20 +91,33 @@ class Experiment:
 			e._global_parameters = self.backend_API.global_parameters
 			try:
 				e.process(self.backend_API.documents, self.pipe_here)
+				succeeded_event_drivers += 1
 			except Exception as error:
 				this_error = "\nEvent driver failed:" + e.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
-		if sum([1 for d in self.backend_API.documents if len(d.eventSet) == 0]):
+
+		# check if any event drivers ran successfully. If all failed, stop.
+		if succeeded_event_drivers == 0:
+			this_error = "All event drivers failed."
+			self.results_message += "\n" + this_error
+			if verbose: print(this_error)
 			exp_return = self.return_exp_results(
-				results_text="", message="No event set found for at least 1 document.", status=1,
+				results_text="", message=self.results_message, status=1,
 			)
 			return exp_return if self.return_results else 1
 
+		# abort if any doc ends up having no events.
 		empty_event_sets = [doc.title for doc in self.backend_API.documents if len(doc.eventSet)==0]
 		if len(empty_event_sets) > 0:
-			print("! %s/%s docs had no event sets after event extraction."
+			this_error = ("%s/%s docs had no event sets after event extraction."
 				% (str(len(empty_event_sets)), str(len(self.backend_API.documents))))
+			self.results_message += this_error
+			exp_return = self.return_exp_results(
+				results_text="", message=self.results_message, status=1,
+			)
+			return exp_return if self.return_results else 1
+
 
 		if verbose and len(self.backend_API.modulesInUse["EventCulling"]) > 0:
 			print("Event Cullers processing ...")
@@ -118,10 +134,16 @@ class Experiment:
 				self.results_message += this_error
 				if verbose: print(this_error)
 
-		empty_event_sets = [doc.title for doc in self.backend_API.documents if len(doc.eventSet)==0]
+		# allow the exp to continue if any or all cullers failed, but raise warning.
+		empty_event_sets = [doc for doc in self.backend_API.documents if len(doc.eventSet)==0]
 		if len(empty_event_sets) > 0:
-			print("! %s/%s docs had no event sets after event culling."
-				% (str(len(empty_event_sets)), str(len(self.backend_API.documents))))
+			this_error = "! %s/%s docs had no event sets after event culling:\n"\
+				% (str(len(empty_event_sets)), str(len(self.backend_API.documents)))
+			this_error += "\n".join([d.filepath for d in empty_event_sets]) + "\n"
+			exp_return = self.return_exp_results(
+				results_text="", message=self.results_message + this_error, status=1,
+			)
+			return exp_return if self.return_results else 1
 
 	def run_experiment(self, **options):
 
@@ -161,7 +183,14 @@ class Experiment:
 			docs += self.backend_API.unknown_docs
 			unknown_docs = self.backend_API.unknown_docs
 
-			for d in docs: d.text = readDocument(d.filepath)
+			for d in docs:
+				try:
+					d.text = readDocument(d.filepath)
+				except:
+					exp_return = self.return_exp_results(
+						results_text="", message="Error reading file at:\n" + str(d.filepath), status=1,
+					)
+					return exp_return if self.return_results else 1
 			self.backend_API.documents = docs
 		else:
 			known_docs = [d for d in self.backend_API.documents if d.author != ""]
@@ -235,6 +264,7 @@ class Experiment:
 				this_error = "\nNumber Converter failed:" + nc.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
+				# if an NC failed, allow to continue because the next may work. But raise a warning.
 				continue
 			known_docs_numbers_aggregate = all_data[:len(known_docs)]
 			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
@@ -281,6 +311,7 @@ class Experiment:
 
 					formatted_results = \
 						self.backend_API.prettyFormatResults(
+							nc.__class__.displayName(),
 							self.module_names["AnalysisMethods"][am_df_index],
 							self.module_names["DistanceFunctions"][am_df_index],
 							unknown_docs[d_index],
@@ -290,14 +321,15 @@ class Experiment:
 				am_success_count += 1
 
 			if am_success_count <= 0:
+				# if all analysis methods failed for one type of embedding,
+				# allow to continue, because some analyses may work for the next
+				# embedding method.
 				continue
-				exp_return = self.return_exp_results(results_text="",
-					message=self.results_message, status=1)
-				return exp_return if self.return_results else 1
 			else:
 				nc_success_count += 1
 
 		if nc_success_count <= 0:
+			# if all analysis failed for all NCs, abort.
 			exp_return = self.return_exp_results(results_text="",
 				message=self.results_message, status=1)
 			return exp_return if self.return_results else 1

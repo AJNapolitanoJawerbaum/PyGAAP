@@ -164,7 +164,7 @@ class API:
 	# 	analysis.train(knownDocs)
 	# 	return unknownDoc, analysis.analyze(unknownDoc)
 
-	def prettyFormatResults(self, analysisMethod, distanceFunc, unknownDoc, results):
+	def prettyFormatResults(self, numberConverter, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.
 		formattedResults = str(unknownDoc.title) + ' ' + str(unknownDoc.filepath) + "\nCanonicizers:\n"
@@ -177,8 +177,8 @@ class API:
 		for eventCuller in self.modulesInUse["EventCulling"]:
 			formattedResults += "Event Culler:\n\t" + eventCuller.__class__.displayName() + '\n'
 
-		for numberConverter in self.modulesInUse["NumberConverters"]:
-			formattedResults += "Number Converter:\n\t" + numberConverter.__class__.displayName() + '\n'
+		#for numberConverter in self.modulesInUse["NumberConverters"]:
+		formattedResults += "Number Converter:\n\t" + numberConverter + '\n'
 
 		formattedResults += "Analysis Method:\n\t" + analysisMethod +\
 			" with " + distanceFunc + '\n'
