@@ -164,25 +164,24 @@ class API:
 	# 	analysis.train(knownDocs)
 	# 	return unknownDoc, analysis.analyze(unknownDoc)
 
-	def prettyFormatResults(self, canonicizers, eventDrivers, eventCullers, numberConverters, analysisMethod, distanceFunc, unknownDoc, results):
+	def prettyFormatResults(self, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.
 		formattedResults = str(unknownDoc.title) + ' ' + str(unknownDoc.filepath) + "\nCanonicizers:\n"
-		for canonicizer in canonicizers:
-			formattedResults += '\t' + canonicizer + '\n'
-		if type(eventDrivers) == list:
-			for eventDriver in eventDrivers:
-				formattedResults += "Event Drivers:\n\t" + eventDriver + '\n'
-		else:
-			formattedResults += "Event Driver:\n\t" + eventDrivers + '\n'
+		for canonicizer in self.modulesInUse["Canonicizers"]:
+			formattedResults += '\t' + canonicizer.__class__.displayName() + '\n'
 
-		for eventCuller in eventCullers:
-			formattedResults += "Event Culler:\n\t" + eventCuller + '\n'
+		for eventDriver in self.modulesInUse["EventDrivers"]:
+			formattedResults += "Event Drivers:\n\t" + eventDriver.__class__.displayName() + '\n'
 
-		for numberConverter in numberConverters:
-			formattedResults += "Number Converter:\n\t" + numberConverter + '\n'
+		for eventCuller in self.modulesInUse["EventCulling"]:
+			formattedResults += "Event Culler:\n\t" + eventCuller.__class__.displayName() + '\n'
 
-		formattedResults += "Analysis Method:\n\t" + analysisMethod + " with " + distanceFunc + '\n'
+		for numberConverter in self.modulesInUse["NumberConverters"]:
+			formattedResults += "Number Converter:\n\t" + numberConverter.__class__.displayName() + '\n'
+
+		formattedResults += "Analysis Method:\n\t" + analysisMethod +\
+			" with " + distanceFunc + '\n'
 		
 		# Sort the dictionary in ascending order by distance values and build the results listing.
 		orderedResults = {k: results[k] for k in sorted(results, key=results.get)}

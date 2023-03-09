@@ -34,7 +34,7 @@ def receive_info(
 
 	if not pipe_connection.poll():
 		# if nothing heard from pipe, listen again later.
-		tkinter_user.after(poll_frequency, lambda
+		options.get("after_user", tkinter_user).after(poll_frequency, lambda
 			p=pipe_connection,
 			u=tkinter_user,
 			o=options:
@@ -50,7 +50,7 @@ def receive_info(
 				end_run(*end_run_args, **end_run_kwargs)
 			return
 		else:
-			tkinter_user.after(poll_frequency, lambda
+			options.get("after_user", tkinter_user).after(poll_frequency, lambda
 				p=pipe_connection,
 				u=tkinter_user,
 				o=options:

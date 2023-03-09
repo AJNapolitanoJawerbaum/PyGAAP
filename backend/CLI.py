@@ -140,16 +140,7 @@ def cliMain():
 				params = params[1:]
 				setParams(mod, params, df)
 
-			module_names = {
-				"Canonicizers": canonicizers,
-				"EventDrivers": eventDrivers,
-				"EventCulling": eventCulling,
-				"NumberConverters": numberConverters,
-				"AnalysisMethods": analysisMethods,
-				"DistanceFunctions": distanceFunctions,
-			}
-
-			experiment_runner = run_experiment.Experiment(api, module_names)
+			experiment_runner = run_experiment.Experiment(api)
 			exp_return = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)
 
 			# Create the directories that the results will be stored in.

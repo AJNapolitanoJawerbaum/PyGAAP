@@ -213,13 +213,14 @@ class PyGAAP_GUI:
 			progress_report_here,
 			starting_text="...",
 			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
-			end_run=self.display_results
+			end_run=self.display_results,
+			after_user=self.topwindow
 		)
 
 		if platform != "win32" and not TEST_WIN:
 			self.results_queue = Queue()
 			experiment = run_experiment.Experiment(
-				self.backend_API, module_names, progress_report_there, self.results_queue,
+				self.backend_API, progress_report_there, self.results_queue,
 				dpi=self.dpi_setting,
 				default_mp = self.backend_API.default_mp,
 			)
@@ -247,18 +248,24 @@ class PyGAAP_GUI:
 		exp_return = self.results_queue.get()
 		results_text = exp_return["results_text"]
 
-		if exp_return["status"] != 0:
+		if exp_return["status"] != 0 or exp_return["message"].strip() != "":
 			error_window = Toplevel()
 			error_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
-			error_window.title("Experiment failed")
 
-			error_text = "Experiment failed.\n"
+			error_text = ""
+			if exp_return["status"] == 1:
+				error_window.title("Experiment failed")
+				error_text += "Experiment failed.\n"
+			else:
+				error_window.title("Warning")
 			error_text += exp_return["message"]
 			error_text_field = Text(error_window)
 			error_text_field.pack(fill=BOTH, expand=True)
 			error_text_field.insert("end", error_text)
-			error_window.after(10, error_window.lift)
-			return
+			error_text_field.configure(state="disabled")
+			error_window.lift
+			if exp_return["status"] != 0:
+				return
 
 		self.status_update("")
 		self.results_window = Toplevel()
@@ -329,7 +336,7 @@ class PyGAAP_GUI:
 			# do not check if the status text is the same as "ifsame"
 			if self.statusbar_label['text'] == displayed_text:
 				self.statusbar_label.config(text = " ")
-				self.statusbar_label.after(20,
+				self.topwindow.after(20,
 									lambda t = displayed_text:self.status_update(t))
 			else: self.statusbar_label.config(text = displayed_text)
 		else: # only change label if the text is the same as "ifsame"
@@ -602,7 +609,7 @@ class PyGAAP_GUI:
 				else:
 					this_author_list.append(doc.filepath)
 			self.status_update("Loaded corpus")
-			self.statusbar_label.after(3000, lambda:self.status_update("", "Loaded corpus"))
+			self.topwindow.after(3000, lambda:self.status_update("", "Loaded corpus"))
 			return
 
 		elif function == "save":
@@ -624,7 +631,7 @@ class PyGAAP_GUI:
 						elif filepath[0] != "/": filepath = getcwd() + filepath
 						write_to.write(auth_list[0]+","+filepath+","+doc.split("/")[-1]+"\n")
 			self.status_update("Saved corpus to %s" % filepath)
-			self.statusbar_label.after(5000, lambda:self.status_update("", ("Saved corpus to %s" % filepath)))
+			self.topwindow.after(5000, lambda:self.status_update("", ("Saved corpus to %s" % filepath)))
 			return
 
 
@@ -1024,7 +1031,7 @@ class PyGAAP_GUI:
 		welcome_message = "By David Berdik and Michael Fang. Version date: %s." %(Constants.versiondate)
 		self.statusbar_label = Label(statusbar, text = welcome_message, anchor = W)
 		self.statusbar_label.pack(anchor = "e")
-		self.statusbar_label.after(3000, lambda:self.status_update("", welcome_message))
+		self.topwindow.after(3000, lambda:self.status_update("", welcome_message))
 
 	def displayAbout(self):
 		"""Displays the About Page"""
@@ -1208,7 +1215,7 @@ class PyGAAP_GUI:
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
 			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload all modules"'
 			error_text_field.insert(END, error_text)
-			error_window.after(1200, error_window.lift)
+			topwindow.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
 			#exc_type, exc_obj, exc_tb = exc_info()
 			return

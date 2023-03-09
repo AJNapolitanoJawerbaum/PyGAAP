@@ -26,7 +26,7 @@ class Experiment:
 	backend_API = None
 	module_names: dict = {}
 
-	def __init__(self, api, module_names: dict, pipe_here=None, q:Queue=None, **options):
+	def __init__(self, api, pipe_here=None, q:Queue=None, **options):
 		"""
 		Copies API in a different process (GUI)
 		receives an end of a pipe to send info back to main process.
@@ -35,7 +35,10 @@ class Experiment:
 		f.close()
 		self.backend_API = shallowcopy(api)
 		self.pipe_here = pipe_here
-		self.module_names = module_names
+
+		self.module_names = {mod_type:[(mod.__class__.displayName() if mod != "NA" else "NA")
+			for mod in self.backend_API.modulesInUse[mod_type]]
+			for mod_type in self.backend_API.modulesInUse}
 		#self.dpi_setting = options.get("dpi")
 		self.q = q
 		self.default_mp = api.default_mp
@@ -62,7 +65,7 @@ class Experiment:
 			try:
 				c.process(self.backend_API.documents, self.pipe_here)
 			except Exception as error:
-				this_error = "\nCanonicizer failed:" + c.__class__.displayName() + str(error)
+				this_error = "\nCanonicizer failed: " + c.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
 
@@ -86,7 +89,7 @@ class Experiment:
 			try:
 				e.process(self.backend_API.documents, self.pipe_here)
 			except Exception as error:
-				this_error = "\nEvent driver failed:" + e.__class__.displayName() + str(error)
+				this_error = "\nEvent driver failed:" + e.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
 		if sum([1 for d in self.backend_API.documents if len(d.eventSet) == 0]):
@@ -111,7 +114,7 @@ class Experiment:
 			try:
 				ec.process(self.backend_API.documents, self.pipe_here)
 			except Exception as error:
-				this_error = "\nEvent culler failed:" + ec.__class__.displayName() + str(error)
+				this_error = "\nEvent culler failed:" + ec.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
 
@@ -134,7 +137,8 @@ class Experiment:
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
-		if verbose: print("Getting documents")
+		if verbose:
+			print("\n\nStarting experiment.\nGetting documents")
 
 		if not options.get("skip_loading_docs", False):
 
@@ -228,7 +232,7 @@ class Experiment:
 			try:
 				all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
 			except Exception as error:
-				this_error = "\nNumber Converter failed:" + nc.__class__.displayName() + str(error)
+				this_error = "\nNumber Converter failed:" + nc.__class__.displayName() + "\n" + str(error)
 				self.results_message += this_error
 				if verbose: print(this_error)
 				continue
@@ -254,28 +258,21 @@ class Experiment:
 											self.module_names["DistanceFunctions"][am_df_index]]
 				if am_df_names_display[1] == "NA": am_df_names_display = am_df_names_display[0]
 				else: am_df_names_display = am_df_names_display[0] + ', ' + am_df_names_display[1]
-				if self.pipe_here != None: self.pipe_here.send("Training - %s" % str(am_df_names_display))
 
 				am_df_pair[0].setDistanceFunction(am_df_pair[1])
 
-				try:
-					# for each method: first train models on known docs
-					am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
-					# then for each unknown document, analyze and output results
-				except Exception as e:
-					this_error = "\n" + am_df_pair[0].__class__.displayName() + "\n" + str(e)
-					self.results_message += this_error
-					if verbose: print(this_error)
-					continue
-
 				if self.pipe_here != None:
-					self.pipe_here.send("Analyzing - %s" % am_df_names_display)
+					self.pipe_here.send("Running - %s" % am_df_names_display)
 					self.pipe_here.send(True)
 
 				try:
+        			# for each method: first train models on known docs
+					am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
+					# then for each unknown document, analyze and output results
 					doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
 				except Exception as e:
-					this_error = "\n" + am_df_pair[0].__class__.displayName() + "\n" + str(e)
+					this_error = "\n" + "Analysis or distance function failed:\n" + am_df_pair[0].__class__.displayName() + "\n"+\
+						am_df_pair[1].__class__.displayName() + "\n" + str(e)
 					self.results_message += this_error
 					if verbose: print(this_error)
 					continue
@@ -284,10 +281,6 @@ class Experiment:
 
 					formatted_results = \
 						self.backend_API.prettyFormatResults(
-							self.module_names["Canonicizers"],
-							self.module_names["EventDrivers"],
-							self.module_names["EventCulling"],
-							self.module_names["NumberConverters"],
 							self.module_names["AnalysisMethods"][am_df_index],
 							self.module_names["DistanceFunctions"][am_df_index],
 							unknown_docs[d_index],
