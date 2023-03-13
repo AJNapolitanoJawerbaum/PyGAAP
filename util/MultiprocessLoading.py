@@ -13,12 +13,16 @@ from datetime import datetime
 
 poll_frequency = 1
 
+def receive_info_text(pipe, **options):
+	if not pipe.poll():
+		return
+	info = pipe.recv()
+	return info
 
 def receive_info(
 		pipe_connection,
 		tkinter_user,
 		**options,
-		#text_label=None,
 		):
 	if not tkinter_user.winfo_exists():
 		return

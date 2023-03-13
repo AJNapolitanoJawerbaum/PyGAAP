@@ -124,46 +124,6 @@ class API:
 		print("Modules-in-use\n" + str(self.modulesInUse))
 		return
 
-	# def runCanonicizer(self, canonicizerString):
-	# 	'''Runs the canonicizer specified by the string against all documents.'''
-	# 	canonicizer = self.canonicizers.get(canonicizerString)()
-	# 	for doc in self.documents:
-	# 		doc.text = canonicizer.process(doc.text)
-			
-	# def runEventDriver(self, eventDriverString, **options):
-	# 	'''Runs the event driver specified by the string against all documents.'''
-	# 	eventDriver = self.eventDrivers.get(eventDriverString.split('|')[0])()
-	# 	eventDriver.setParams(self._buildParamList(eventDriverString))
-	# 	append = options.get("append", False)
-	# 	for doc in self.documents:
-	# 		doc.setEventSet(eventDriver.createEventSet(doc.text), append=append)
-	
-	# def runEventCuller(self):
-	# 	raise NotImplementedError
-
-	# def runNumberConverter(self):
-	# 	raise NotImplementedError
-			
-	# def runAnalysis(self, analysisMethodString, distanceFunctionString):
-	# 	'''Runs the specified analysis method with the specified distance function and returns the results.'''
-	# 	analysis = self.analysisMethods.get(analysisMethodString)()
-		
-	# 	# Set the distance function to be used by the analysis method.
-	# 	analysis.setDistanceFunction(self.distanceFunctions.get(distanceFunctionString))
-		
-	# 	# Identify the unknown document in the set of documents. The unknown document's author field will be an empty string.
-	# 	unknownDoc = None
-	# 	for document in self.documents:
-	# 		if document.author == "":
-	# 			unknownDoc = document
-	# 			break
-	# 	knownDocs = self.documents.copy()
-	# 	knownDocs.remove(unknownDoc)
-		
-	# 	# Use the analysis to train and return the results of performing the analysis.
-	# 	analysis.train(knownDocs)
-	# 	return unknownDoc, analysis.analyze(unknownDoc)
-
 	def prettyFormatResults(self, numberConverter, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.

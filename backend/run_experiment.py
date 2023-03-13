@@ -11,6 +11,8 @@ from multiprocessing import Process, Queue, Pipe, Pool
 from copy import deepcopy
 from copy import copy as shallowcopy
 
+from traceback import format_exc
+
 import datetime
 from json import load as json_load
 
@@ -52,7 +54,6 @@ class Experiment:
 		# doc: the document passed in.
 		# dump_queue: when multi-processing,
 		# the shared queue to temporarily store the documents.
-		print("Default multiprocessing:", self.default_mp)
 		verbose = options.get("verbose", False)
 		if verbose and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
 			print("Canonicizers processing ...")
@@ -66,7 +67,8 @@ class Experiment:
 				c.process(self.backend_API.documents, self.pipe_here)
 			except Exception as error:
 				# allow exp to continue if any or all canonicizers failed, but raise warning.
-				this_error = "\nCanonicizer failed: " + c.__class__.displayName() + "\n" + str(error)
+				this_error = "\nCanonicizer failed: %s\n%s\n%s\n" %\
+					(c.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
 
@@ -93,7 +95,8 @@ class Experiment:
 				e.process(self.backend_API.documents, self.pipe_here)
 				succeeded_event_drivers += 1
 			except Exception as error:
-				this_error = "\nEvent driver failed:" + e.__class__.displayName() + "\n" + str(error)
+				this_error = "\nEvent driver failed: %s\n%s\n%s\n" %\
+					(e.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
 
@@ -130,7 +133,8 @@ class Experiment:
 			try:
 				ec.process(self.backend_API.documents, self.pipe_here)
 			except Exception as error:
-				this_error = "\nEvent culler failed:" + ec.__class__.displayName() + "\n" + str(error)
+				this_error = "\nEvent culler failed: %s\n%s\n%s\n" %\
+					(ec.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
 
@@ -144,6 +148,8 @@ class Experiment:
 				results_text="", message=self.results_message + this_error, status=1,
 			)
 			return exp_return if self.return_results else 1
+
+		return 0
 
 	def run_experiment(self, **options):
 
@@ -159,8 +165,9 @@ class Experiment:
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
+		print()
 		if verbose:
-			print("\n\nStarting experiment.\nGetting documents")
+			print("\nStarting experiment.\nGetting documents")
 
 		if not options.get("skip_loading_docs", False):
 
@@ -234,11 +241,14 @@ class Experiment:
 			if (am._NoDistanceFunction_ and self.backend_API.modulesInUse["DistanceFunctions"][i] != "NA") or\
 				(not am._NoDistanceFunction_ and self.backend_API.modulesInUse["DistanceFunctions"][i] == "NA"):
 				exp_return = self.return_exp_results(results_text="",
-					message="Distance functions mismatch for %s." % am.displayName(),
+					message='Distance functions mismatch for %s. Distance function: "%s"' %
+					(am.displayName(), self.backend_API.modulesInUse["DistanceFunctions"][i]),
 				status=1)
 				return exp_return if self.return_results else 1
 
-		self.run_pre_processing(verbose=verbose)
+		preproc_results = self.run_pre_processing(verbose=verbose)
+		if preproc_results != 0:
+			return preproc_results if self.return_results else 1
 
 		if self.pipe_here != None: self.pipe_here.send(0)
 
@@ -261,7 +271,8 @@ class Experiment:
 			try:
 				all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
 			except Exception as error:
-				this_error = "\nNumber Converter failed:" + nc.__class__.displayName() + "\n" + str(error)
+				this_error = "\nNumber Converter failed: %s\n%s\n%s\n" %\
+					(nc.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
 				# if an NC failed, allow to continue because the next may work. But raise a warning.
@@ -301,8 +312,9 @@ class Experiment:
 					# then for each unknown document, analyze and output results
 					doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
 				except Exception as e:
-					this_error = "\n" + "Analysis or distance function failed:\n" + am_df_pair[0].__class__.displayName() + "\n"+\
-						am_df_pair[1].__class__.displayName() + "\n" + str(e)
+					this_error = "\n" + "Analysis or distance function failed:\n" %\
+						(am_df_pair[0].__class__.displayName(),
+						am_df_pair[1].__class__.displayName(), str(e), format_exc())
 					self.results_message += this_error
 					if verbose: print(this_error)
 					continue

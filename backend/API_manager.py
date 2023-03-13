@@ -19,9 +19,12 @@ the modules are not picklable.
 
 
 def manager_run_exp(api, pipe_mainproc: Connection, pipe_subproc: Connection,
-		progress_report_there: Connection, mod_names, q):
+		progress_report_there: Connection, mod_names, q, **options):
 	"""a static method that creates a process"""
-	api_process = Process(target=API_process, args=(pipe_subproc, pipe_mainproc, progress_report_there, mod_names, q))
+	api_process = Process(target=API_process,
+		args=(pipe_subproc, pipe_mainproc, progress_report_there, mod_names, q),
+		kwargs={"exp_args": options.get("exp_args", {"args": [], "kwargs": {}})}
+	)
 	api_process.start()
 
 	# add parameters to pass here.
@@ -57,7 +60,8 @@ def API_process(pipe_subproc: Connection,
 		pipe_mainproc: Connection,
 		prog_report_pipe: Connection,
 		mod_names: dict,
-		results_queue):
+		results_queue,
+		**options):
 	api = API.API("")
 	# first eceive documents, and create modules
 	pipe_subproc: Connection = pipe_subproc
@@ -86,8 +90,10 @@ def API_process(pipe_subproc: Connection,
 				"Module name mismatch while communicating between processes. %s != %s" % (mod_name, mod_name2)
 			setattr(mod_obj, mod_attribute, mod_attribute_value)
 			heard = pipe_subproc.recv()
-	exp = run_experiment.Experiment(api, prog_report_pipe, results_queue)
-	exp.run_experiment()
+	exp_args = options.get("exp_args", {"args": [], "kwargs": {}})
+	exp = run_experiment.Experiment(
+		api, prog_report_pipe, results_queue)
+	exp.run_experiment(*exp_args["args"], **exp_args["kwargs"])
 
 	return
 

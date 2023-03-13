@@ -1,3 +1,4 @@
 test_exp_batch
 test_exp1,,Character NGrams,Centroid Driver,Histogram Distance,resources/aaac/problemA/loadA.csv
 test_exp1,,Character NGrams,Centroid Driver,Histogram Distance,resources/aaac/problemB/loadB.csv
+test_exp1,,Character NGrams,Linear SVM (sklearn)|iterations:3102,Histogram Distance,resources/aaac/problemB/loadB.csv

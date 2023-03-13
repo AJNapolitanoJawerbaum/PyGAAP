@@ -9,7 +9,7 @@
 # Style note: if-print checks using the GUI_debug variable
 # are condensed into one line where possible.
 
-TEST_WIN = False
+TEST_WIN = True
 GUI_debug = 0
 # GUI debug level:
 #   0 = no debug info.
@@ -53,9 +53,11 @@ else:
 import util.MultiprocessLoading as MultiprocessLoading
 
 if TEST_WIN:
-	try: set_start_method("spawn")
+	try:
+		set_start_method("spawn")
+		if platform != "win32": print("Testing using spawn.")
 	except RuntimeError: pass
-
+if GUI_debug > 0: print("GUI_debug:", GUI_debug)
 
 def todofunc():
 	"""Place-holder function for not-yet implemented features."""
@@ -217,6 +219,11 @@ class PyGAAP_GUI:
 			after_user=self.topwindow
 		)
 
+		exp_args = {
+			"args": [],
+			"kwargs": {"verbose": True}
+		}
+
 		if platform != "win32" and not TEST_WIN:
 			self.results_queue = Queue()
 			experiment = run_experiment.Experiment(
@@ -224,9 +231,13 @@ class PyGAAP_GUI:
 				dpi=self.dpi_setting,
 				default_mp = self.backend_API.default_mp,
 			)
-			self.experiment_process = Process(target=experiment.run_experiment, kwargs={"verbose": True})
+			self.experiment_process = Process(
+				target=experiment.run_experiment,
+				args=exp_args["args"], kwargs=exp_args["kwargs"]
+			)
 			self.experiment_process.start()
 		else:
+			if platform != "win32": print("Testing using spawn.")
 			if __name__ == "backend.GUI.GUI2":
 				self.results_queue = Queue()
 				self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
@@ -236,7 +247,8 @@ class PyGAAP_GUI:
 					self.pipe_subproc,
 					progress_report_there,
 					module_names,
-					self.results_queue
+					self.results_queue,
+					exp_args=exp_args
 				)
 		return
 
@@ -250,7 +262,7 @@ class PyGAAP_GUI:
 
 		if exp_return["status"] != 0 or exp_return["message"].strip() != "":
 			error_window = Toplevel()
-			error_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
+			error_window.geometry(self.dpi_setting["dpi_process_window_error"])
 
 			error_text = ""
 			if exp_return["status"] == 1:
@@ -289,7 +301,7 @@ class PyGAAP_GUI:
 		if exp_return["message"].strip() == "":
 			self.results_window.title("Results "+str(datetime.now()))
 		else:
-			self.results_window.title("Results "+str(datetime.now()) + " [Partial. See Error]")
+			self.results_window.title("Results "+str(datetime.now()) + " [Partial. See warning window]")
 
 		self.change_style(self.results_window)
 
@@ -319,7 +331,11 @@ class PyGAAP_GUI:
 					activebackground = "light grey", bg = "light grey")
 				# if something is missing
 			else: # if all is ready
-				check_labels[lb_index].config(fg = "black", activeforeground = "black")
+				check_labels[lb_index].config(
+					fg = "black", activeforeground = "black",
+					activebackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"],
+					bg = self.gui_params["styles"][self.style_choice]["accent_color_mid"]
+				)
 		self.Tab_RP_Process_Button.config(fg = "black")
 		return
 
@@ -1876,22 +1892,23 @@ class PyGAAP_GUI:
 
 	def test_run(self):
 		"""It initializes the GUI in the background but doesn't show it. Good for testing."""
+		print("Loading API")
 		from backend.API import API
 		self.backend_API = API("place-holder")
+		print("Loading GUI")
 		self.gui()
+		print("done")
 		return
 
 
 	def run(self):
 		# open a loading window so the app doesn't appear frozen.
 		pipe_from, pipe_to = Pipe(duplex=True)
-		if platform != "win32" and not TEST_WIN:
+		if __name__ == "backend.GUI.GUI2":
 			p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
 			p.start()
 		else:
-			if __name__ == "backend.GUI.GUI2":
-				p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
-				p.start()
+			print("Please run PyGAAP.py instead of the GUI directly.")
 
 		pipe_from.send("Loading API")
 		# LOCAL IMPORTS
@@ -1905,11 +1922,4 @@ class PyGAAP_GUI:
 		self.gui()
 		pipe_from.send(-1)
 		pipe_from.close()
-		#self.load_aaac("problemM")
 		self.topwindow.mainloop()
-
-
-
-if __name__ == "__main__":
-	app = PyGAAP_GUI()
-	app.run()

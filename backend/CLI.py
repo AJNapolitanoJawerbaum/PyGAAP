@@ -5,6 +5,8 @@ from backend.Document import Document
 from pathlib import Path
 from time import time
 from backend import run_experiment
+from util.MultiprocessLoading import receive_info_text
+from multiprocessing import Queue
 
 def setParams(module_object, params_list: list, mod_name=""):
 	for param in params_list:
@@ -31,14 +33,13 @@ def cliMain():
 	# because it may take a long time to load depending on the modules,
 	# and to also make the splash screen of the GUI work.
 	# The GUI splash screen appears while API is loading so the app doesn't appear unresponsive.
-	from backend.API import API
-	api = API("")
 	args = _parse_args()
 
 	print("starting experiment(s)")
 	# If a CSV file has been specified, process it.
 	if args.experimentengine:
-
+		from backend.API import API
+		api = API([])
 		# Get a list of experiments in the CSV.
 		expCsvPath = args.experimentengine[0]
 		experiments = readExperimentCSV(expCsvPath)
@@ -76,9 +77,10 @@ def cliMain():
 
 			elif len(exp) == 6 or len(exp) == 7:
 				# JGAAP format
-				api.modulesInUse["NumberConverters"] = ["Frequency"]
+				api.modulesInUse["NumberConverters"] = [api.numberConverters["Frequency"]()]
 				canonicizers = exp[1].split('&')
 				eventDrivers = exp[2].split('&')
+				eventCulling = []
 				analysisMethods = [exp[3]]
 				distanceFunctions = [exp[4]]
 
@@ -113,14 +115,15 @@ def cliMain():
 					params = params[1:]
 					setParams(mod, params, ec)
 
-			nmc = numberConverters[0]
-			params = nmc.split("|")
-			nc = params[0]
-			mod = api.numberConverters[nc]()
-			api.modulesInUse["NumberConverters"].append(mod)
-			if len(params) > 1:
-				params = params[1:]
-				setParams(mod, params, nc)
+			if len(exp) == 8 or len(exp) == 9:
+				nmc = numberConverters[0]
+				params = nmc.split("|")
+				nc = params[0]
+				mod = api.numberConverters[nc]()
+				api.modulesInUse["NumberConverters"].append(mod)
+				if len(params) > 1:
+					params = params[1:]
+					setParams(mod, params, nc)
 
 			anm = analysisMethods[0]
 			params = anm.split("|")
@@ -131,14 +134,21 @@ def cliMain():
 				params = params[1:]
 				setParams(mod, params, am)
 
-			dis = distanceFunctions[0]
-			params = dis.split("|")
-			df = params[0]
-			mod = api.distanceFunctions[df]()
-			api.modulesInUse["DistanceFunctions"].append(mod)
-			if len(params) > 1:
-				params = params[1:]
-				setParams(mod, params, df)
+			if mod._NoDistanceFunction_:
+				api.modulesInUse["DistanceFunctions"].append("NA")
+				if distanceFunctions != [""]:
+					print("CLI: Warning:", mod.__class__.displayName(),
+					"does not accept a distance function but one is specified. It will be ignored."
+				)
+			else:
+				dis = distanceFunctions[0]
+				params = dis.split("|")
+				df = params[0]
+				mod = api.distanceFunctions[df]()
+				api.modulesInUse["DistanceFunctions"].append(mod)
+				if len(params) > 1:
+					params = params[1:]
+					setParams(mod, params, df)
 
 			experiment_runner = run_experiment.Experiment(api)
 			exp_return = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)

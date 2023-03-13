@@ -35,14 +35,16 @@ print("done. starting exp.")
 #     "DistanceFunctions": ["Histogram Distance"]
 # }
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Word n-grams"]())
-api.modulesInUse["NumberConverters"].append(api.numberConverters["RoBERTa"]())
+api.modulesInUse["EventCulling"].append(api.eventCulling["Coefficient of Variation"]())
+api.modulesInUse["NumberConverters"].append(api.numberConverters["Frequency"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
 
-api.modulesInUse["NumberConverters"][-1].convert_from = "features"
-api.modulesInUse["NumberConverters"][-1].long_text_method = "average every 64"
+#api.modulesInUse["NumberConverters"][-1].convert_from = "features"
+#api.modulesInUse["NumberConverters"][-1].long_text_method = "average every 64"
 
 exp = run_experiment.Experiment(api)
 results = exp.run_experiment(return_results=True)
 
-print(results)
+print(results["results_text"])
+print(results["message"])
