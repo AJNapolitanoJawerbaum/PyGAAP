@@ -9,7 +9,7 @@
 # Style note: if-print checks using the GUI_debug variable
 # are condensed into one line where possible.
 
-TEST_WIN = True
+TEST_WIN = False
 GUI_debug = 0
 # GUI debug level:
 #   0 = no debug info.
@@ -333,6 +333,8 @@ class PyGAAP_GUI:
 			else: # if all is ready
 				check_labels[lb_index].config(
 					fg = "black", activeforeground = "black",
+				)
+				self.Tab_RP_Process_Button.config(
 					activebackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"],
 					bg = self.gui_params["styles"][self.style_choice]["accent_color_mid"]
 				)
@@ -792,7 +794,7 @@ class PyGAAP_GUI:
 	def _documents_tab(self):
 
 		Tab_Documents_Language_label = Label(
-			self.tabs_frames["Tab_Documents"],text = "Language", font = ("helvetica", 15), anchor = 'nw'
+			self.tabs_frames["Tab_Documents"],text = "Document Language", font = ("helvetica", 15), anchor = 'nw'
 		)
 		Tab_Documents_Language_label.grid(row = 1, column = 0, sticky = 'NW', pady = (10, 5))
 

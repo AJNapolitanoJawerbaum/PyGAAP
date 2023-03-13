@@ -157,7 +157,8 @@ def cliMain():
 			outPath = os.path.join(Path.cwd(), "tmp",
 				'&'.join(canonicizers).replace('|', '_').replace(':', '_'),
 				'&'.join(eventDrivers).replace('|', '_').replace(':', '_'),
-				analysisMethods[0] + '-' + distanceFunctions[0])
+				analysisMethods[0].replace('|', '_').replace(':', '_')
+				+ '-' + distanceFunctions[0].replace('|', '_').replace(':', '_'))
 			if not os.path.exists(outPath):
 				os.makedirs(outPath)
 			out_filepath = os.path.join(outPath, (exp_name + str(int(time()))) + ".txt")
