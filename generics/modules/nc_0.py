@@ -7,7 +7,7 @@ import numpy as np
 class Frequency(NumberConverter):
 
 	normalization = "zero-max scaling"
-
+	_default_multiprocessing = False
 	_variable_options = {
 		"normalization": {"options": ["none", "zero-max scaling"], "type": "OptionMenu", "default": 1,
 		"displayed_name": "Statistical normalization"}
@@ -15,9 +15,11 @@ class Frequency(NumberConverter):
 
 	def convert(self, docs, pipe=None):
 		"""Convert and assign to Documents.numbers"""
-		#raw_frequency = [gh(d) for d in docs]
-		with Pool(cpu_count()-1) as p:
-			raw_frequency = p.map(gh, docs)
+		if self._default_multiprocessing:
+			with Pool(cpu_count()-1) as p:
+				raw_frequency = p.map(gh, docs)
+		else:
+			raw_frequency = [gh(d) for d in docs]
 		numbers = pn.dicts_to_array(raw_frequency)
 		if self.normalization == "none": pass
 		elif self.normalization == "zero-max scaling":

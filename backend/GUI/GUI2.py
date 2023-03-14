@@ -53,9 +53,11 @@ else:
 import util.MultiprocessLoading as MultiprocessLoading
 
 if TEST_WIN:
-	try: set_start_method("spawn")
+	try:
+		set_start_method("spawn")
+		if platform != "win32": print("Testing using spawn.")
 	except RuntimeError: pass
-
+if GUI_debug > 0: print("GUI_debug:", GUI_debug)
 
 def todofunc():
 	"""Place-holder function for not-yet implemented features."""
@@ -213,19 +215,29 @@ class PyGAAP_GUI:
 			progress_report_here,
 			starting_text="...",
 			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
-			end_run=self.display_results
+			end_run=self.display_results,
+			after_user=self.topwindow
 		)
+
+		exp_args = {
+			"args": [],
+			"kwargs": {"verbose": True}
+		}
 
 		if platform != "win32" and not TEST_WIN:
 			self.results_queue = Queue()
 			experiment = run_experiment.Experiment(
-				self.backend_API, module_names, progress_report_there, self.results_queue,
+				self.backend_API, progress_report_there, self.results_queue,
 				dpi=self.dpi_setting,
 				default_mp = self.backend_API.default_mp,
 			)
-			self.experiment_process = Process(target=experiment.run_experiment, kwargs={"verbose": True})
+			self.experiment_process = Process(
+				target=experiment.run_experiment,
+				args=exp_args["args"], kwargs=exp_args["kwargs"]
+			)
 			self.experiment_process.start()
 		else:
+			if platform != "win32": print("Testing using spawn.")
 			if __name__ == "backend.GUI.GUI2":
 				self.results_queue = Queue()
 				self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
@@ -235,7 +247,8 @@ class PyGAAP_GUI:
 					self.pipe_subproc,
 					progress_report_there,
 					module_names,
-					self.results_queue
+					self.results_queue,
+					exp_args=exp_args
 				)
 		return
 
@@ -244,18 +257,33 @@ class PyGAAP_GUI:
 		"""Displays results in new window"""
 		# show process results
 
-		results_text = self.results_queue.get()
+		exp_return = self.results_queue.get()
+		results_text = exp_return["results_text"]
 
-		if results_text.strip() == "":
-			print("no results")
-			return
+		if exp_return["status"] != 0 or exp_return["message"].strip() != "":
+			error_window = Toplevel()
+			error_window.geometry(self.dpi_setting["dpi_process_window_error"])
+
+			error_text = ""
+			if exp_return["status"] == 1:
+				error_window.title("Experiment failed")
+				error_text += "Experiment failed.\n"
+			else:
+				error_window.title("Warning")
+			error_text += exp_return["message"]
+			error_text_field = Text(error_window)
+			error_text_field.pack(fill=BOTH, expand=True)
+			error_text_field.insert("end", error_text)
+			error_text_field.configure(state="disabled")
+			error_window.lift
+			if exp_return["status"] != 0:
+				return
 
 		self.status_update("")
 		self.results_window = Toplevel()
-		self.results_window.title("Results")
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
 		
-		self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
+		#self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
 
 		
 		# create space to display results, release focus of process window.
@@ -270,7 +298,10 @@ class PyGAAP_GUI:
 		results_display.config(yscrollcommand = results_scrollbar.set)
 		results_scrollbar.pack(side = LEFT, fill = BOTH)
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
-		self.results_window.title(str(datetime.now()))
+		if exp_return["message"].strip() == "":
+			self.results_window.title("Results "+str(datetime.now()))
+		else:
+			self.results_window.title("Results "+str(datetime.now()) + " [Partial. See warning window]")
 
 		self.change_style(self.results_window)
 
@@ -300,7 +331,13 @@ class PyGAAP_GUI:
 					activebackground = "light grey", bg = "light grey")
 				# if something is missing
 			else: # if all is ready
-				check_labels[lb_index].config(fg = "black", activeforeground = "black")
+				check_labels[lb_index].config(
+					fg = "black", activeforeground = "black",
+				)
+				self.Tab_RP_Process_Button.config(
+					activebackground = self.gui_params["styles"][self.style_choice]["accent_color_mid"],
+					bg = self.gui_params["styles"][self.style_choice]["accent_color_mid"]
+				)
 		self.Tab_RP_Process_Button.config(fg = "black")
 		return
 
@@ -319,7 +356,7 @@ class PyGAAP_GUI:
 			# do not check if the status text is the same as "ifsame"
 			if self.statusbar_label['text'] == displayed_text:
 				self.statusbar_label.config(text = " ")
-				self.statusbar_label.after(20,
+				self.topwindow.after(20,
 									lambda t = displayed_text:self.status_update(t))
 			else: self.statusbar_label.config(text = displayed_text)
 		else: # only change label if the text is the same as "ifsame"
@@ -592,7 +629,7 @@ class PyGAAP_GUI:
 				else:
 					this_author_list.append(doc.filepath)
 			self.status_update("Loaded corpus")
-			self.statusbar_label.after(3000, lambda:self.status_update("", "Loaded corpus"))
+			self.topwindow.after(3000, lambda:self.status_update("", "Loaded corpus"))
 			return
 
 		elif function == "save":
@@ -614,7 +651,7 @@ class PyGAAP_GUI:
 						elif filepath[0] != "/": filepath = getcwd() + filepath
 						write_to.write(auth_list[0]+","+filepath+","+doc.split("/")[-1]+"\n")
 			self.status_update("Saved corpus to %s" % filepath)
-			self.statusbar_label.after(5000, lambda:self.status_update("", ("Saved corpus to %s" % filepath)))
+			self.topwindow.after(5000, lambda:self.status_update("", ("Saved corpus to %s" % filepath)))
 			return
 
 
@@ -757,7 +794,7 @@ class PyGAAP_GUI:
 	def _documents_tab(self):
 
 		Tab_Documents_Language_label = Label(
-			self.tabs_frames["Tab_Documents"],text = "Language", font = ("helvetica", 15), anchor = 'nw'
+			self.tabs_frames["Tab_Documents"],text = "Document Language", font = ("helvetica", 15), anchor = 'nw'
 		)
 		Tab_Documents_Language_label.grid(row = 1, column = 0, sticky = 'NW', pady = (10, 5))
 
@@ -1014,7 +1051,7 @@ class PyGAAP_GUI:
 		welcome_message = "By David Berdik and Michael Fang. Version date: %s." %(Constants.versiondate)
 		self.statusbar_label = Label(statusbar, text = welcome_message, anchor = W)
 		self.statusbar_label.pack(anchor = "e")
-		self.statusbar_label.after(3000, lambda:self.status_update("", welcome_message))
+		self.topwindow.after(3000, lambda:self.status_update("", welcome_message))
 
 	def displayAbout(self):
 		"""Displays the About Page"""
@@ -1198,7 +1235,7 @@ class PyGAAP_GUI:
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
 			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload all modules"'
 			error_text_field.insert(END, error_text)
-			error_window.after(1200, error_window.lift)
+			topwindow.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
 			#exc_type, exc_obj, exc_tb = exc_info()
 			return
@@ -1857,22 +1894,23 @@ class PyGAAP_GUI:
 
 	def test_run(self):
 		"""It initializes the GUI in the background but doesn't show it. Good for testing."""
+		print("Loading API")
 		from backend.API import API
 		self.backend_API = API("place-holder")
+		print("Loading GUI")
 		self.gui()
+		print("done")
 		return
 
 
 	def run(self):
 		# open a loading window so the app doesn't appear frozen.
 		pipe_from, pipe_to = Pipe(duplex=True)
-		if platform != "win32" and not TEST_WIN:
+		if __name__ == "backend.GUI.GUI2":
 			p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
 			p.start()
 		else:
-			if __name__ == "backend.GUI.GUI2":
-				p = Process(target=MultiprocessLoading.splash, args=(pipe_to,))
-				p.start()
+			print("Please run PyGAAP.py instead of the GUI directly.")
 
 		pipe_from.send("Loading API")
 		# LOCAL IMPORTS
@@ -1886,11 +1924,4 @@ class PyGAAP_GUI:
 		self.gui()
 		pipe_from.send(-1)
 		pipe_from.close()
-		#self.load_aaac("problemM")
 		self.topwindow.mainloop()
-
-
-
-if __name__ == "__main__":
-	app = PyGAAP_GUI()
-	app.run()

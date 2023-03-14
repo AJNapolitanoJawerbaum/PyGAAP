@@ -13,12 +13,16 @@ from datetime import datetime
 
 poll_frequency = 1
 
+def receive_info_text(pipe, **options):
+	if not pipe.poll():
+		return
+	info = pipe.recv()
+	return info
 
 def receive_info(
 		pipe_connection,
 		tkinter_user,
 		**options,
-		#text_label=None,
 		):
 	if not tkinter_user.winfo_exists():
 		return
@@ -34,7 +38,7 @@ def receive_info(
 
 	if not pipe_connection.poll():
 		# if nothing heard from pipe, listen again later.
-		tkinter_user.after(poll_frequency, lambda
+		options.get("after_user", tkinter_user).after(poll_frequency, lambda
 			p=pipe_connection,
 			u=tkinter_user,
 			o=options:
@@ -50,7 +54,7 @@ def receive_info(
 				end_run(*end_run_args, **end_run_kwargs)
 			return
 		else:
-			tkinter_user.after(poll_frequency, lambda
+			options.get("after_user", tkinter_user).after(poll_frequency, lambda
 				p=pipe_connection,
 				u=tkinter_user,
 				o=options:
