@@ -8,7 +8,9 @@ from importlib import import_module
 from multiprocessing import Pool, cpu_count
 # import spacy
 
-language_codes = json_load(f:=open(Path("./resources/languages.json"), "r"))
+language_codes = dict()
+with open(Path("./resources/languages.json"), "r") as f:
+	language_codes = json_load(f)
 f.close()
 del f
 

@@ -33,6 +33,7 @@ from time import sleep
 from pathlib import Path
 from os import getcwd
 from gc import collect as collect_garbage
+from traceback import format_exc
 
 # local modules
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
@@ -41,9 +42,10 @@ from backend.Document import Document
 from backend import CSVIO
 import Constants
 
-
-# closely coupled modules
+# create tabs
 from backend.GUI import GUI_unified_tabs
+
+# Windows compatibility
 if platform != "win32" and not TEST_WIN:
 	from backend import run_experiment
 else:
@@ -134,14 +136,16 @@ class PyGAAP_GUI:
 
 	def __init__(self):
 		# no internal error handling because fatal error.
-		params = json_load(f:=open(Path("./backend/GUI/gui_params.json"), "r"))
-		self.gui_params = params
-		self.gui_params["styles"]["JGAAP_blue"]
-		self.backend_API = None
-		f.close()
+		with open(Path("./backend/GUI/gui_params.json"), "r") as f:
+			params = json_load(f)
+			self.gui_params = params
+			self.gui_params["styles"]["JGAAP_blue"]
+			self.backend_API = None
 
 		try:
-			self.search_dictionary = json_load(f:=open(Path("./backend/GUI/search_dictionary.json"), "r"))
+			f = open(Path("./backend/GUI/search_dictionary.json"), "r")
+			self.search_dictionary = json_load(f)
+			f.close()
 		except FileNotFoundError:
 			self.search_dictionary = dict()
 			print("Search dictionary not found.")
@@ -1381,10 +1385,10 @@ class PyGAAP_GUI:
 				self.status_update("Nothing selected or missing selection.")
 				if GUI_debug > 0: print("add to list: nothing selected")
 				return
-			except TypeError:
+			except Exception as e:
 				self.show_error_window(
 					"Something went wrong while adding the module.\n\n"
-					+ "\n\n".join([str(x) for x in exc_info()[:2]])
+					+ format_exc()
 				)
 				return
 
