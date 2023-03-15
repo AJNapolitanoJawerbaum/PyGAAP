@@ -78,7 +78,7 @@ class PyGAAP_GUI:
 		"Tab_Canonicizers",
 		"Tab_EventDrivers",
 		"Tab_EventCulling",
-		"Tab_NumberConverters",
+		"Tab_Embeddings",
 		"Tab_AnalysisMethods",
 		"Tab_ReviewProcess"
 	]
@@ -202,7 +202,7 @@ class PyGAAP_GUI:
 			"Canonicizers": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
 			"EventDrivers": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
 			"EventCulling": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
-			"NumberConverters": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
+			"Embeddings": list(self.Tab_RP_Embeddings_Listbox.get(0, END)),
 			"AnalysisMethods": [x[0] for x in am_df_names],
 			"DistanceFunctions": [x[1] for x in am_df_names]
 		}
@@ -684,8 +684,8 @@ class PyGAAP_GUI:
 			row = 0, column = 2, sticky = "wens", padx = 10, pady = 10
 		)
 		
-		Tab_ReviewProcess_NumberConverters = Frame(self.tabs_frames["Tab_ReviewProcess"])
-		Tab_ReviewProcess_NumberConverters.grid(
+		Tab_ReviewProcess_Embeddings = Frame(self.tabs_frames["Tab_ReviewProcess"])
+		Tab_ReviewProcess_Embeddings.grid(
 			row = 1, column = 0, sticky = "wens", padx = 10, pady = 10
 		)
 
@@ -743,19 +743,19 @@ class PyGAAP_GUI:
 		self.Tab_RP_EventCulling_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
 		self.Tab_RP_EventCulling_Listbox.config(yscrollcommand = self.Tab_RP_EventCulling_Listbox_scrollbar.set)
 
-		Tab_RP_NumberConverters_Button = Button(
-			Tab_ReviewProcess_NumberConverters, text = "Number Converters",font = ("helvetica", 16), relief = FLAT,
+		Tab_RP_Embeddings_Button = Button(
+			Tab_ReviewProcess_Embeddings, text = "Embedders",font = ("helvetica", 16), relief = FLAT,
 			command = lambda:self.switch_tabs(tabs, "choose", 4))
-		Tab_RP_NumberConverters_Button.pack(anchor = "n")
-		Tab_RP_NumberConverters_Button.excludestyle = True
+		Tab_RP_Embeddings_Button.pack(anchor = "n")
+		Tab_RP_Embeddings_Button.excludestyle = True
 
-		self.Tab_RP_NumberConverters_Listbox = Listbox(Tab_ReviewProcess_NumberConverters)
-		self.Tab_RP_NumberConverters_Listbox.pack(side = LEFT, expand = True, fill = BOTH)
-		self.Tab_RP_NumberConverters_Listbox_scrollbar = Scrollbar(
-			Tab_ReviewProcess_NumberConverters, width = self.dpi_setting["dpi_scrollbar_width"],
-			command = self.Tab_RP_NumberConverters_Listbox.yview)
-		self.Tab_RP_NumberConverters_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
-		self.Tab_RP_NumberConverters_Listbox.config(yscrollcommand = self.Tab_RP_NumberConverters_Listbox_scrollbar.set)
+		self.Tab_RP_Embeddings_Listbox = Listbox(Tab_ReviewProcess_Embeddings)
+		self.Tab_RP_Embeddings_Listbox.pack(side = LEFT, expand = True, fill = BOTH)
+		self.Tab_RP_Embeddings_Listbox_scrollbar = Scrollbar(
+			Tab_ReviewProcess_Embeddings, width = self.dpi_setting["dpi_scrollbar_width"],
+			command = self.Tab_RP_Embeddings_Listbox.yview)
+		self.Tab_RP_Embeddings_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
+		self.Tab_RP_Embeddings_Listbox.config(yscrollcommand = self.Tab_RP_Embeddings_Listbox_scrollbar.set)
 
 		Tab_RP_AnalysisMethods_Button = Button(
 			Tab_ReviewProcess_AnalysisMethods, text = "Analysis Methods",font = ("helvetica", 16), relief = FLAT,
@@ -782,8 +782,8 @@ class PyGAAP_GUI:
 		self.Tab_RP_Process_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 5, padx = 20)
 
 		self.Tab_RP_Process_Button.bind("<Map>",
-			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_NumberConverters_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
-			labels = [Tab_RP_EventDrivers_Button, Tab_RP_NumberConverters_Button, Tab_RP_AnalysisMethods_Button]:
+			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_Embeddings_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
+			labels = [Tab_RP_EventDrivers_Button, Tab_RP_Embeddings_Button, Tab_RP_AnalysisMethods_Button]:
 			self.process_check(lb, labels)
 		)
 		
@@ -829,7 +829,7 @@ class PyGAAP_GUI:
 
 		#documents-unknown authors
 		Tab_Documents_UnknownAuthors_label =\
-			Label(self.tabs_frames["Tab_Documents"], text = "Unknown Authors", font = ("helvetica", 15), anchor = 'nw')
+			Label(self.tabs_frames["Tab_Documents"], text = "Documents of unknown authors", font = ("helvetica", 15), anchor = 'nw')
 		Tab_Documents_UnknownAuthors_label.grid(row = 4, column = 0, sticky = "W", pady = (10, 5))
 
 
@@ -968,13 +968,13 @@ class PyGAAP_GUI:
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
 
-		self.Tab_NumberConverters_parameters_displayed = []
-		self.generated_widgets['NumberConverters'] = GUI_unified_tabs.create_module_tab(
-			self.tabs_frames["Tab_NumberConverters"],
-			["Number Converters"],
-			"NumberConverters",
-			displayed_parameters = self.Tab_NumberConverters_parameters_displayed,
-			RP_listbox = self.Tab_RP_NumberConverters_Listbox,
+		self.Tab_Embeddings_parameters_displayed = []
+		self.generated_widgets['Embeddings'] = GUI_unified_tabs.create_module_tab(
+			self.tabs_frames["Tab_Embeddings"],
+			["Embedders"],
+			"Embeddings",
+			displayed_parameters = self.Tab_Embeddings_parameters_displayed,
+			RP_listbox = self.Tab_RP_Embeddings_Listbox,
 			list_of_functions=self.list_of_functions,
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
@@ -993,7 +993,7 @@ class PyGAAP_GUI:
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
 
-		for mtype in ['Canonicizers', "EventDrivers", "EventCulling", "NumberConverters", "AnalysisMethods"]:
+		for mtype in ['Canonicizers', "EventDrivers", "EventCulling", "Embeddings", "AnalysisMethods"]:
 			self.search_entry_query[mtype] = StringVar()
 			self.generated_widgets[mtype]['search_entry']\
 				.configure(textvariable=self.search_entry_query[mtype])
@@ -1189,13 +1189,13 @@ class PyGAAP_GUI:
 
 		# first clear everthing in listboxes.
 		# the "DistanceFunctions" Treeview is in the "AnalysisMethods" tkinter frame.
-		for module_type in ["Canonicizers", "EventDrivers", "EventCulling", "NumberConverters"]:
+		for module_type in ["Canonicizers", "EventDrivers", "EventCulling", "Embeddings"]:
 			self.generated_widgets[module_type]["available_listboxes"][0][2].delete(0, END)
 			self.generated_widgets[module_type]["selected_listboxes"][0][2].delete(0, END)
 		for listbox in [self.Tab_RP_Canonicizers_Listbox,
 						self.Tab_RP_EventDrivers_Listbox,
 						self.Tab_RP_EventCulling_Listbox,
-						self.Tab_RP_NumberConverters_Listbox]:
+						self.Tab_RP_Embeddings_Listbox]:
 			listbox.delete(0, END)
 
 		self.Tab_RP_AnalysisMethods_Listbox.delete(*self.Tab_RP_AnalysisMethods_Listbox.get_children())
@@ -1218,8 +1218,8 @@ class PyGAAP_GUI:
 				self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2].insert(END, distancefunc)
 			for culling in sorted(list(self.backend_API.eventCulling.keys())):
 				self.generated_widgets["EventCulling"]["available_listboxes"][0][2].insert(END, culling)
-			for converter in sorted(list(self.backend_API.numberConverters.keys())):
-				self.generated_widgets["NumberConverters"]["available_listboxes"][0][2].insert(END, converter)
+			for converter in sorted(list(self.backend_API.embeddings.keys())):
+				self.generated_widgets["Embeddings"]["available_listboxes"][0][2].insert(END, converter)
 			for method in sorted(list(self.backend_API.analysisMethods.keys())):
 				self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][2].insert(END, method)
 			if startup == False: self.status_update("Modules reloaded")
@@ -1800,7 +1800,7 @@ class PyGAAP_GUI:
 		self.tabs.add(self.tabs_frames["Tab_Canonicizers"], text = "Canonicizers")
 		self.tabs.add(self.tabs_frames["Tab_EventDrivers"], text = "Event Drivers")
 		self.tabs.add(self.tabs_frames["Tab_EventCulling"], text = "Event Culling")
-		self.tabs.add(self.tabs_frames["Tab_NumberConverters"], text = "Number Converters")
+		self.tabs.add(self.tabs_frames["Tab_Embeddings"], text = "Embedders")
 		self.tabs.add(self.tabs_frames["Tab_AnalysisMethods"], text = "Analysis Methods")
 		self.tabs.add(self.tabs_frames["Tab_ReviewProcess"], text = "Review & Process")
 
@@ -1863,7 +1863,7 @@ class PyGAAP_GUI:
 		sys_modules_pop = [m for m in sys_modules if (
 				"generics.modules" in m or "GUI_unified_tabs" in m or "run_experiment" in m or
 				"AnalysisMethod" in m or "Canonicizer" in m or "DistanceFunction" in m or
-				"EventCulling" in m or "EventDriver" in m or "NumberConverter" in m or
+				"EventCulling" in m or "EventDriver" in m or "Embedding" in m or
 				"MultiprocessLoading" in m or ("API" in m and "manager" not in m)
 			)
 		]

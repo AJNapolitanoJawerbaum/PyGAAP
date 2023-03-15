@@ -30,13 +30,13 @@ print("done. starting exp.")
 # add modules here
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Word n-grams"]())
 api.modulesInUse["EventCulling"].append(api.eventCulling["Coefficient of Variation"]())
-api.modulesInUse["NumberConverters"].append(api.numberConverters["Frequency"]())
+api.modulesInUse["Embeddings"].append(api.embeddings["Frequency"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
 
 # set module parameters here
-#api.modulesInUse["NumberConverters"][-1].convert_from = "features"
-#api.modulesInUse["NumberConverters"][-1].long_text_method = "average every 64"
+#api.modulesInUse["Embeddings"][-1].convert_from = "features"
+#api.modulesInUse["Embeddings"][-1].long_text_method = "average every 64"
 
 exp = run_experiment.Experiment(api)
 results = exp.run_experiment(return_results=True)

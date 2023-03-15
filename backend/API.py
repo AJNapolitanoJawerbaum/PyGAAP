@@ -10,14 +10,14 @@ class API:
 	analysisMethods = dict()
 	distanceFunctions = dict()
 	eventCulling = dict()
-	numberConverters = dict()
+	embeddings = dict()
 	documents = []
 
 	moduleTypeDict = {
 		"Canonicizers": canonicizers,
 		"EventDrivers": eventDrivers,
 		"EventCulling": eventCulling,
-		"NumberConverters": numberConverters,
+		"Embeddings": embeddings,
 		"AnalysisMethods": analysisMethods,
 		"DistanceFunctions": distanceFunctions,
 	}
@@ -29,7 +29,7 @@ class API:
 		"Canonicizers": [],
 		"EventDrivers": [],
 		"EventCulling": [],
-		"NumberConverters": [],
+		"Embeddings": [],
 		"AnalysisMethods": [],
 		"DistanceFunctions": []
 	}
@@ -61,7 +61,7 @@ class API:
 		from generics.Canonicizer import Canonicizer
 		from generics.EventCulling import EventCulling
 		from generics.EventDriver import EventDriver
-		from generics.NumberConverter import NumberConverter
+		from generics.Embedding import Embedding
 		from generics.AnalysisMethod import AnalysisMethod
 		from generics.DistanceFunction import DistanceFunction
 
@@ -90,10 +90,10 @@ class API:
 				raise ValueError("Two event cullers can't both have the same displayed name: %s" % cls.displayName())
 			self.eventCulling[cls.displayName()] = cls
 
-		for cls in NumberConverter.__subclasses__():
-			if self.numberConverters.get(cls.displayName()) != None:
-				raise ValueError("Two number converters can't both have the same displayed name: %s" % cls.displayName())
-			self.numberConverters[cls.displayName()] = cls
+		for cls in Embedding.__subclasses__():
+			if self.embeddings.get(cls.displayName()) != None:
+				raise ValueError("Two embedders can't both have the same displayed name: %s" % cls.displayName())
+			self.embeddings[cls.displayName()] = cls
 		
 		# Populate dictionary of analysis methods.
 		for cls in AnalysisMethod.__subclasses__():
@@ -124,7 +124,7 @@ class API:
 		print("Modules-in-use\n" + str(self.modulesInUse))
 		return
 
-	def prettyFormatResults(self, numberConverter, analysisMethod, distanceFunc, unknownDoc, results):
+	def prettyFormatResults(self, embedding, analysisMethod, distanceFunc, unknownDoc, results):
 		'''Returns a string of the results in a pretty, formatted structure.'''
 		# Build a string the contains general information about the experiment.
 		formattedResults = str(unknownDoc.title) + ' ' + str(unknownDoc.filepath) + "\nCanonicizers:\n"
@@ -137,8 +137,8 @@ class API:
 		for eventCuller in self.modulesInUse["EventCulling"]:
 			formattedResults += "Event Culler:\n\t" + eventCuller.__class__.displayName() + '\n'
 
-		#for numberConverter in self.modulesInUse["NumberConverters"]:
-		formattedResults += "Number Converter:\n\t" + numberConverter + '\n'
+		#for embedding in self.modulesInUse["Embeddings"]:
+		formattedResults += "Embedding:\n\t" + embedding + '\n'
 
 		formattedResults += "Analysis Method:\n\t" + analysisMethod +\
 			" with " + distanceFunc + '\n'

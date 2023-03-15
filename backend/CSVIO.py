@@ -18,7 +18,7 @@ def readExperimentCSV(csvPath, delimiter=","):
 	Read the experiment CSV at the given path in to a list of lists and return it.
 	Does some basic error checking.
 	This is also compatible with JGAAP's experiment csv format.
-	If number converter is missing, default to Frequency.
+	If an embedder is missing, default to Frequency.
 	'''
 	csvRows = []
 	with open(csvPath, "r") as file:

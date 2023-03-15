@@ -231,10 +231,10 @@ class Experiment:
 				return exp_return if self.return_results else 1
 		# check if any required mods are abscent
 		if self.backend_API.modulesInUse["EventDrivers"] == [] or\
-				self.backend_API.modulesInUse["NumberConverters"] == [] or\
+				self.backend_API.modulesInUse["Embeddings"] == [] or\
 				self.backend_API.modulesInUse["AnalysisMethods"] == []:
 			exp_return = self.return_exp_results(results_text="",
-				message="Missing Event drivers, number converters, or analysis methods", status=1)
+				message="Missing one or more of Event drivers, embedders, or analysis methods", status=1)
 			return exp_return if self.return_results else 1
 		# check for analysis & distance functions mismatch.
 		for i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
@@ -255,23 +255,23 @@ class Experiment:
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
 		results = []
 		nc_success_count = 0
-		for nc in self.backend_API.modulesInUse["NumberConverters"]:
+		for nc in self.backend_API.modulesInUse["Embeddings"]:
 			"""
-			Only one number converter used for one analysis method
-			This means for N number converters and M methods, there will be (N x M) analyses.
+			Only one embedder used for one analysis method
+			This means for N embedders and M methods, there will be (N x M) analyses.
 			"""
 			nc._global_parameters = self.backend_API.global_parameters
 			nc._default_multiprocessing = self.default_mp
 
 			if self.pipe_here is not None:
-				self.pipe_here.send("Running number converters")
+				self.pipe_here.send("Running embedders")
 				self.pipe_here.send(True)
 			if verbose: print("Embedding ... running", nc.__class__.displayName())
 
 			try:
 				all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
 			except Exception as error:
-				this_error = "\nNumber Converter failed: %s\n%s\n%s\n" %\
+				this_error = "\nembedder failed: %s\n%s\n%s\n" %\
 					(nc.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)

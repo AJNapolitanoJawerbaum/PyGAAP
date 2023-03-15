@@ -1,4 +1,4 @@
-from generics.NumberConverter import NumberConverter
+from generics.Embedding import Embedding
 from backend.Histograms import generateAbsoluteHistogram as gh
 from backend import PrepareNumbers as pn
 import numpy as np
@@ -10,7 +10,7 @@ from gc import collect as collect_garbage
 from multiprocessing import Pipe
 from tqdm import tqdm
 
-class Roberta(NumberConverter):
+class Roberta(Embedding):
 
 	convert_from = "canonicized text"
 	model_variant = "roberta-base"

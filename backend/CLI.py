@@ -64,9 +64,9 @@ def cliMain():
 				canonicizers = exp[1].split('&')
 				eventDrivers = exp[2].split('&')
 				eventCulling = exp[3].split('&')
-				numberConverters = [exp[4]]
-				if '&' in numberConverters:
-					raise ValueError("There can only be 1 number converter per experiment")
+				embeddings = [exp[4]]
+				if '&' in embeddings:
+					raise ValueError("There can only be 1 embedder per experiment")
 				analysisMethods = [exp[5]]
 				if '&' in analysisMethods:
 					raise ValueError("There can only be 1 analysis method per experiment")
@@ -77,7 +77,7 @@ def cliMain():
 
 			elif len(exp) == 6 or len(exp) == 7:
 				# JGAAP format
-				api.modulesInUse["NumberConverters"] = [api.numberConverters["Frequency"]()]
+				api.modulesInUse["Embeddings"] = [api.embeddings["Frequency"]()]
 				canonicizers = exp[1].split('&')
 				eventDrivers = exp[2].split('&')
 				eventCulling = []
@@ -116,11 +116,11 @@ def cliMain():
 					setParams(mod, params, ec)
 
 			if len(exp) == 8 or len(exp) == 9:
-				nmc = numberConverters[0]
+				nmc = embeddings[0]
 				params = nmc.split("|")
 				nc = params[0]
-				mod = api.numberConverters[nc]()
-				api.modulesInUse["NumberConverters"].append(mod)
+				mod = api.embeddings[nc]()
+				api.modulesInUse["Embeddings"].append(mod)
 				if len(params) > 1:
 					params = params[1:]
 					setParams(mod, params, nc)

@@ -1,10 +1,10 @@
-from generics.NumberConverter import NumberConverter
+from generics.Embedding import Embedding
 from backend.Histograms import generateAbsoluteHistogram as gh
 from backend import PrepareNumbers as pn
 from multiprocessing import Pool, cpu_count
 import numpy as np
 
-class Frequency(NumberConverter):
+class Frequency(Embedding):
 
 	normalization = "zero-max scaling"
 	_default_multiprocessing = False

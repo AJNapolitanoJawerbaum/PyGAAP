@@ -127,7 +127,7 @@ class AnalysisMethod(ABC):
 # 		return "Computes one centroid per Author.\nCentroids are the average relative frequency of events over all documents provided.\ni=1 to n ΣfrequencyIn_i(event)."
 
 class CentroidDriver(AnalysisMethod):
-	"""The version of centroid driver that pairs with the number converters"""
+	"""The version of centroid driver that pairs with the embedders"""
 
 	_labels_to_categories = dict()
 	_mean_per_author = dict()
