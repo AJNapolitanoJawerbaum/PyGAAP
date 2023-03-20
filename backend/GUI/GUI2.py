@@ -136,14 +136,14 @@ class PyGAAP_GUI:
 
 	def __init__(self):
 		# no internal error handling because fatal error.
-		with open(Path("./backend/GUI/gui_params.json"), "r") as f:
+		with open(Path("./resources/gui_params.json"), "r") as f:
 			params = json_load(f)
 			self.gui_params = params
 			self.gui_params["styles"]["JGAAP_blue"]
 			self.backend_API = None
 
 		try:
-			f = open(Path("./backend/GUI/search_dictionary.json"), "r")
+			f = open(Path("./resources/search_dictionary.json"), "r")
 			self.search_dictionary = json_load(f)
 			f.close()
 		except FileNotFoundError:

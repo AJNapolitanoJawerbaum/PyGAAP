@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import re
 from multiprocessing import Pool, cpu_count
+import c_cc_0
 
 # An abstract Canonicizer class.
 class Canonicizer(ABC):
@@ -15,8 +16,10 @@ class Canonicizer(ABC):
 		except AttributeError:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
-		try: self.after_init(**options)
-		except (AttributeError, NameError): pass
+		self.after_init(**options)
+		try: self.after_init
+		except (AttributeError, NameError): return
+		self.after_init(**options)
 
 	def after_init(self, **options):
 		pass
@@ -73,15 +76,40 @@ class Canonicizer(ABC):
 		'''Returns the display description for the canonicizer.'''
 		
 class NormalizeWhitespace(Canonicizer):
+	imp = "py"
+	_variable_options = {"imp": {"options": ["py", "C++"], "default": 0, "displayed_name": "Implementation"}}
+	_ps = {}
+
 	def process_single(self, procText):
 		'''Convert procText in to a string where all whitespace characters are the same.'''
 		return ' '.join(procText.split())
+
+	def process_single_C(self, text):
+		return c_cc_0.normalize_ws_process_single(text)
+
+	def after_init(self, **options):
+		self._ps = {"py": self.process_single, "C++": self.process_single_C}
+
+	def process(self, docs, pipe=None):
+		if self._default_multiprocessing:
+			if pipe is not None: pipe.send(True)
+			with Pool(cpu_count()-1) as p:
+				canon = p.map(self._ps[self.imp], [d.text for d in docs])
+			for d in range(len(canon)):
+				docs[d].canonicized = canon[d]
+		else:
+			for i, d in enumerate(docs):
+				if pipe is not None: pipe.send(100*i/len(docs))
+				d.canonicized = self._ps[self.imp](d.text)
+		return
 
 	def displayName():
 		return "Normalize Whitespace"
 
 	def displayDescription():
-		return "Converts all whitespace characters (newline, space and tab) to a single space.  Uses Java Character.isWhitespace for classification."
+		return "Converts whitespace characters to a single space.\n" +\
+		"The py implementation uses Python's white-space char list for str.split()\n" +\
+		"The C++ implementation checks for ascii white space characters."
 
 class UnifyCase(Canonicizer):
 	def process_single(self, procText):

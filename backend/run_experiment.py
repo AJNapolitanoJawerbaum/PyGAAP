@@ -34,7 +34,7 @@ class Experiment:
 		receives an end of a pipe to send info back to main process.
 		"""
 		self.gui_params = None
-		with open("./backend/GUI/gui_params.json", "r") as f:
+		with open("./resources/gui_params.json", "r") as f:
 			self.gui_params = json_load(f)
 		self.backend_API = shallowcopy(api)
 		self.pipe_here = pipe_here
