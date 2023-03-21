@@ -205,11 +205,11 @@ class StripAlphanumeric(Canonicizer):
 		return ''.join([char for char in procText if char in leave])
 
 	def displayDescription():
-		return "Strips all non-whitespace, non-punctuation marks. i.e. leaves only white spaces and punctuation marks."
+		return "Strips all non-whitespace, non-punctuation marks. i.e. leaves only white spaces and punctuation marks.\n"+\
+			'Full-width punctuations include:\n"，。？！“”‘’；：——（）、《》【】『』"'
 	
 	def displayName():
-		return "Strip Alpha-numeric\n"+\
-			'Full-width punctuations include:\n"，。？！“”‘’；：——（）、《》【】『』"'
+		return "Strip Alpha-numeric"
 
 class StripNullCharacters(Canonicizer):
 	def process_single(self, procText):
