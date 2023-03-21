@@ -6,11 +6,11 @@ import numpy as np
 
 class Frequency(Embedding):
 
-	normalization = "zero-max scaling"
+	normalization = "linear scale [0, 1]"
 	_default_multiprocessing = False
 	_variable_options = {
-		"normalization": {"options": ["none", "zero-max scaling"], "type": "OptionMenu", "default": 1,
-		"displayed_name": "Statistical normalization"}
+		"normalization": {"options": ["none", "linear scale [0, 1]"], "type": "OptionMenu", "default": 1,
+		"displayed_name": "Normalization"}
 	}
 
 	def convert(self, docs, pipe=None):
@@ -22,7 +22,7 @@ class Frequency(Embedding):
 			raw_frequency = [gh(d) for d in docs]
 		numbers = pn.dicts_to_array(raw_frequency)
 		if self.normalization == "none": pass
-		elif self.normalization == "zero-max scaling":
+		elif self.normalization == "linear scale [0, 1]":
 			numbers = numbers/np.max(numbers, axis=1, keepdims=1)
 		for d_index in range(len(docs)):
 			docs[d_index].numbers = numbers[d_index:d_index+1,:][0]
@@ -30,7 +30,7 @@ class Frequency(Embedding):
 
 	def displayDescription():
 		return ("Converts events to their frequencies.\n" +\
-			"Zero-max scaling in normalization means scaling values to [0, 1].\n\n" +\
+			"linear scale [0, 1] in normalization means scaling values to [0, 1].\n\n" +\
 			"If a doc's features are all zeros, normalization may result in NaNs.")
 
 	def displayName():

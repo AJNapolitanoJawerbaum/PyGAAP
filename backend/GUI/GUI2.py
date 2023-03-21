@@ -122,6 +122,8 @@ class PyGAAP_GUI:
 
 	Tab_Documents_UnknownAuthors_listbox: Listbox = None
 	Tab_Documents_KnownAuthors_treeview: ttk.Treeview = None
+	Tab_Documents_KnownAuthors_doc_stats = None
+	Tab_Documents_UnknownAuthors_doc_stats = None
 
 	Tab_RP_Canonicizers_Listbox: Listbox = None
 	Tab_RP_EventDrivers_Listbox: Listbox = None
@@ -876,9 +878,14 @@ class PyGAAP_GUI:
 			command=lambda: self._edit_unknown_docs("clear")
 		)
 
+		self.Tab_Documents_UnknownAuthors_doc_stats = Label(
+			Tab_Documents_doc_buttons, text="Documents: 0", anchor="e", justify="right"
+		)
+
 		Tab_Documents_UnknownAuthors_AddDoc_Button.grid(row = 1, column = 1, sticky = "W")
 		Tab_Documents_UnknownAuthors_RmvDoc_Button.grid(row = 1, column = 2, sticky = "W")
 		Tab_Documents_UnknownAuthors_clear_Button.grid(row = 1, column = 3, sticky = "W")
+		self.Tab_Documents_UnknownAuthors_doc_stats.grid(row = 1, column=4, sticky = "E", padx=(20, 0))
 
 		#documents-known authors
 		Tab_Documents_KnownAuthors_label = Label(
@@ -919,11 +926,15 @@ class PyGAAP_GUI:
 		Tab_Documents_KnownAuthors_ClrAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "CLEAR ALL", width = "15",
 			command = lambda:self.edit_known_authors("clear"))
+		self.Tab_Documents_KnownAuthors_doc_stats = Label(
+			Tab_Documents_knownauth_buttons, text="place holder stats", anchor="e", justify="right"
+		)
 
 		Tab_Documents_KnownAuthors_AddAuth_Button.grid(row=1, column=1, sticky="W")
 		Tab_Documents_KnownAuthors_EditAuth_Button.grid(row=1, column=2, sticky="W")
 		Tab_Documents_KnownAuthors_RmvAuth_Button.grid(row=1, column=3, sticky="W")
 		Tab_Documents_KnownAuthors_ClrAuth_Button.grid(row=1, column=4, sticky="W")
+		self.Tab_Documents_KnownAuthors_doc_stats.grid(row=1, column=5, sticky="E", padx=(20, 0))
 
 	def _unified_tabs(self):
 		"""
@@ -1187,6 +1198,7 @@ class PyGAAP_GUI:
 				self.backend_API.unknown_docs.append(item)
 			for item in self._docs_to_string_list()["unknown"]:
 				self.Tab_Documents_UnknownAuthors_listbox.insert(END, item)
+		self.Tab_Documents_UnknownAuthors_doc_stats["text"] = "Documents: " + str(len(self.backend_API.unknown_docs))
 
 
 	def _load_modules_to_GUI(self, startup=False):
@@ -1465,7 +1477,6 @@ class PyGAAP_GUI:
 			return
 		
 		
-		# currently only support OptionMenu variables
 		param_options = []
 		# list of StringVars.
 		if type(listbox) == Listbox:
@@ -1549,7 +1560,7 @@ class PyGAAP_GUI:
 					module = this_module, var = parameter_i:\
 						self.set_parameters(stringvar, module, var,
 						param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type))
-			elif menu_type == "Slider":
+			elif menu_type in ["Slider", "Scale"]:
 				scale_begin = this_module._variable_options[parameter_i]["options"][0]
 				scale_end = this_module._variable_options[parameter_i]["options"][-1]
 				displayed_params.append(
@@ -1564,6 +1575,17 @@ class PyGAAP_GUI:
 					)
 				)
 				displayed_params[-1].set(this_module.__dict__.get(parameter_i))
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+			elif menu_type in ["Tick", "Check"]:
+				displayed_params.append(
+					Checkbutton(
+						param_frame, variable=param_options[-1],
+						command=lambda value=param_options[-1], module=this_module, var=parameter_i:
+							self.set_parameters(value, module, var,
+								param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type	
+							)
+					)
+				)
 				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
 			else:
 				raise ValueError("Unknown input widget type", menu_type)

@@ -134,14 +134,29 @@ class StripPunctuation(Canonicizer):
 		return "Strip Punctuation"
 
 class StripNumbers(Canonicizer):
-	def process_single(self, procText):
+	chn_jpa = 0
+	_variable_options = {
+		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Chinese/Japanese"}
+	}
+
+	_regex_match = re.compile("0+")
+	# this over-covers cases, but the over-covered cases are malformed numerals.
+	_chn_regex = re.compile("((([一二两三四五六七八九]*亿)|零)*(([一二两三四五六七八九]*千)|零)*(([一二两三四五六七八九]*百)|零)*"
+		"(([一二两三四五六七八九]*十)|零)*(([一二两三四五六七八九]*万)|零)*(([一二两三四五六七八九]*千)|零)*"
+		"(([一二两三四五六七八九]*百)|零)*(([一二三四五六七八九]*十)|零)*([一二三四五六七八九])*)+")
+
+	def process_single(self, text):
 		"""Converts each digit string to a single zero."""
-		regex_match=re.compile("0+")
-		procText=''.join(["0" if char in "0123456789" else char for char in procText])
-		return re.subn(regex_match, "0", procText)[0]
+		text = ''.join(["0" if char in "0123456789" else char for char in text])
+		text = re.subn(self._regex_match, "0", text)[0]
+		if self.chn_jpa:
+			text = re.subn(self._chn_regex, "零", text)[0]
+		return text
 
 	def displayDescription():
-		return "Converts each simple digit string to a single 0"
+		return "Converts each simple digit string to a single 0.\n" +\
+			"Enabling Chinese/Japanese numerals converts all chinese-character numberals to the Chinese zero.\n" +\
+			"\tThis does not include numerical characters used in accounting."
 
 	def displayName():
 		return "Strip Numbers"
