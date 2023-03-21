@@ -123,12 +123,24 @@ class UnifyCase(Canonicizer):
 		return "Converts all text to lower case."
 
 class StripPunctuation(Canonicizer):
-	def process_single(self, procText):
+	full_width = 1
+	_variable_options = {
+		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
+	}
+	_punct = re.compile(",.?!\"'`;:-()&$")
+	_fw_punct = re.compile("，。？！“”‘’；：——（）、《》【】『』")
+	def process_single(self, text):
 		"""Gets rid of punctuation characters"""
-		return ''.join([char for char in procText if char not in ",.?!\"'`;:-()&$"])
+		text = re.subn(self._punct, "", text)[0]
+		#text = ''.join([char for char in text if char not in ",.?!\"'`;:-()&$"])
+		if self.full_width:
+			text = re.subn(self._fw_punct, "", text)[0]
+		return text
 	
 	def displayDescription():
-		return 'Strip all punctuation characters (,.?!"\'`;:-()&$) from the text.'
+		return 'Strip a list of punctuations from the text:\n' +\
+			',.?!"\'`;:-()&$\n' +\
+			'Full-width punctuations include:\n"，。？！“”‘’；：——（）、《》【】『』"'
 
 	def displayName():
 		return "Strip Punctuation"
@@ -162,26 +174,42 @@ class StripNumbers(Canonicizer):
 		return "Strip Numbers"
 
 class PunctuationSeparator(Canonicizer):
+	full_width = 1
+	_variable_options = {
+		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
+	}
+	_punct = ",.?!\"'`;:-()&$"
+	_fw_punct = "，。？！“”‘’；：——（）、《》【】『』"
 	def process_single(self, procText):
 		"""Adds whitespaces before and after punctuations."""
-		return ''.join([" "+char+" " if char in ",.?!\"'`;:-()&$" else char for char in procText])
+		punctuations = self._punct + (self._fw_punct if self.full_width else "")
+		return ''.join([" "+char+" " if char in punctuations else char for char in procText])
 	
 	def displayDescription():
-		return "Adds whitespaces before and after punctuations."
+		return "Adds whitespaces before and after punctuations.\n" +\
+			'Full-width punctuations include:\n"，。？！“”‘’；：——（）、《》【】『』"'
 	
 	def displayName():
 		return "Punctuation Separator"
 
 class StripAlphanumeric(Canonicizer):
+	full_width = 1
+	_variable_options = {
+		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
+	}
+	_punct = ",.?!\"'`;:-()&$"
+	_fw_punct = "，。？！“”‘’；：——（）、《》【】『』"
 	def process_single(self, procText):
 		"""Strips all non-whitespace, non-punctuation marks."""
-		return ''.join([char for char in procText if char in " ,.?!\"'`;:-()&$"])
+		leave = " " + self._punct + (self._fw_punct if self.full_width else "")
+		return ''.join([char for char in procText if char in leave])
 
 	def displayDescription():
 		return "Strips all non-whitespace, non-punctuation marks. i.e. leaves only white spaces and punctuation marks."
 	
 	def displayName():
-		return "Strip Alpha-numeric"
+		return "Strip Alpha-numeric\n"+\
+			'Full-width punctuations include:\n"，。？！“”‘’；：——（）、《》【】『』"'
 
 class StripNullCharacters(Canonicizer):
 	def process_single(self, procText):

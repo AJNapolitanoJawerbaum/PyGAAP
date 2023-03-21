@@ -419,6 +419,8 @@ class PyGAAP_GUI:
 		for entry in tv.get_children():
 			if opened_items.get(tv.item(entry)["text"], False):
 				tv.item(entry, open=True)
+		self.Tab_Documents_KnownAuthors_doc_stats["text"] = "Authors: "\
+			+ str(len(self.backend_API.known_authors)) + " Docs: " + str(sum([len(x[1]) for x in self.backend_API.known_authors]))
 		return
 
 	def author_save(self, author, documents_list, mode, window=None):
@@ -524,8 +526,9 @@ class PyGAAP_GUI:
 				return
 			return
 		elif mode == "clear":
-			self.Tab_Documents_KnownAuthors_treeview.delete(*self.Tab_Documents_KnownAuthors_treeview.get_children())
+			# self.Tab_Documents_KnownAuthors_treeview.delete(*self.Tab_Documents_KnownAuthors_treeview.get_children())
 			self.backend_API.known_authors = []
+			self.authors_list_updater()
 			return
 		else:
 			assert mode == "add" or mode == "remove" or mode == "edit", \
@@ -927,7 +930,7 @@ class PyGAAP_GUI:
 			Tab_Documents_knownauth_buttons, text = "CLEAR ALL", width = "15",
 			command = lambda:self.edit_known_authors("clear"))
 		self.Tab_Documents_KnownAuthors_doc_stats = Label(
-			Tab_Documents_knownauth_buttons, text="place holder stats", anchor="e", justify="right"
+			Tab_Documents_knownauth_buttons, text="Authors: 0 Docs: 0", anchor="e", justify="right"
 		)
 
 		Tab_Documents_KnownAuthors_AddAuth_Button.grid(row=1, column=1, sticky="W")
@@ -1426,7 +1429,7 @@ class PyGAAP_GUI:
 		if GUI_debug >= 3: print("check_DF_listbox()")
 		try:
 			if self.backend_API.analysisMethods[lbAv.get(lbAv.curselection())]\
-					.__dict__.get("_NoDistanceFunction_") == True:
+					.__dict__.get("_NoDistanceFunction_", False):
 				lbOp.config(state = DISABLED)
 			else:
 				lbOp.config(state = NORMAL)

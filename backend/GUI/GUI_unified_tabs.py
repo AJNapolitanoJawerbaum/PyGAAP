@@ -149,18 +149,15 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 	counter = 0
 
 
-
-
-	if parameters_content == "Canonicizers":
-		extra.get("canonicizers_format")
-		extra.get("canonicizers_format").set("All")
-		canonicizer_format_options = ["All", "Generic", "Doc", "PDF", "HTML"]
-		objects["Canonicizers_format"] = OptionMenu(objects["buttons_frame"],
-			extra.get("canonicizers_format"), *canonicizer_format_options)
-		objects["Canonicizers_format"].config(width = dpi_setting["dpi_option_menu_width"])
-		objects["Canonicizers_format"].pack(anchor = W)
-		counter = 1
-
+	# if parameters_content == "Canonicizers":
+	# 	extra.get("canonicizers_format")
+	# 	extra.get("canonicizers_format").set("All")
+	# 	canonicizer_format_options = ["All", "Generic", "Doc", "PDF", "HTML"]
+	# 	objects["Canonicizers_format"] = OptionMenu(objects["buttons_frame"],
+	# 		extra.get("canonicizers_format"), *canonicizer_format_options)
+	# 	objects["Canonicizers_format"].config(width = dpi_setting["dpi_option_menu_width"])
+	# 	objects["Canonicizers_format"].pack(anchor = W)
+	# 	counter = 1
 
 
 	objects["buttons_add"] = Button(
