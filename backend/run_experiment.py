@@ -13,7 +13,8 @@ from copy import copy as shallowcopy
 
 from traceback import format_exc
 
-import datetime
+from datetime import datetime
+from random import randint
 from json import load as json_load
 
 
@@ -253,8 +254,18 @@ class Experiment:
 
 		if self.pipe_here != None: self.pipe_here.send(0)
 
+		exp_params = dict()
+		for mod_type in ["Canonicizers", "EventDrivers", "EventCulling"]:
+			exp_params[mod_type] = []
+			# each mod type list is a list because some are applied in order.
+			for mod in self.backend_API.modulesInUse[mod_type]:
+				exp_params[mod_type].append({"name": mod.__class__.displayName(),
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}}
+				)
+
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
-		results = []
+		results = [] # list of text-formatted results
+		full_exp_dump = []# list of dict-formatted results
 		nc_success_count = 0
 		for nc in self.backend_API.modulesInUse["Embeddings"]:
 			"""
@@ -320,8 +331,31 @@ class Experiment:
 					if verbose: print(this_error)
 					continue
 
-				for d_index in range(len(unknown_docs)):
+				# by this line, both nc and am_df modules have successfully completed
+				# "embeddings", "analysis methods", and "distance functions" are lists here for consistency
+				# there should only be one of each of them.
+				exp_params_out = deepcopy(exp_params)
+				exp_params_out["Embeddings"] = [{
+					"name": nc.__class__.displayName(),
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
+				}]
+				exp_params_out["AnalysisMethods"] = [{
+					"name": am_df_pair[0].__class__.displayName(),
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
+				}]
+				exp_params_out["DistanceFunctions"] = [{
+					"name": am_df_pair[1].__class__.displayName() if am_df_pair[1] != "NA" else "NA",
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
+						if am_df_pair[1] != "NA" else "NA"
+				}]
 
+				full_exp_dump.append({
+					"modules": exp_params_out, "doc_results": {
+						unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
+					}
+				})
+
+				for d_index in range(len(unknown_docs)):
 					formatted_results = \
 						self.backend_API.prettyFormatResults(
 							nc.__class__.displayName(),
@@ -358,6 +392,8 @@ class Experiment:
 			results_text=results_text,
 			message=self.results_message,
 			status=status,
+			full_exp_dump=full_exp_dump,
+			exp_time=str(datetime.now())
 		)
 		print("Experiment done.")
 		if self.return_results:
@@ -370,6 +406,8 @@ class Experiment:
 			"results_text": kwa.get("results_text", ""),
 			"message": kwa.get("message", "No message provided."),
 			"status": kwa.get("status", 1),
+			"full_exp_dump": kwa.get("full_exp_dump", {}),
+			"exp_time": kwa.get("exp_time", str(hex(randint(0, 10000000)))[2:])
 		}
 		if self.pipe_here != None: self.pipe_here.send(-1)
 		if self.q != None:

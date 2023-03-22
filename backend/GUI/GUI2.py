@@ -28,12 +28,14 @@ from sys import modules as sys_modules
 from sys import exc_info
 from sys import platform
 from json import load as json_load
+from json import dump as json_dump
 from os import listdir as ls
 from time import sleep
 from pathlib import Path
 from os import getcwd
 from gc import collect as collect_garbage
 from traceback import format_exc
+from idlelib.tooltip import Hovertip
 
 # local modules
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
@@ -51,8 +53,6 @@ if platform != "win32" and not TEST_WIN:
 else:
 	if __name__ == "backend.GUI.GUI2":
 		from backend import API_manager
-
-import util.MultiprocessLoading as MultiprocessLoading
 
 if TEST_WIN:
 	try:
@@ -97,6 +97,7 @@ class PyGAAP_GUI:
 	# need to save because need tkinter to detect changes
 	search_entry_query = dict()
 	search_dictionary = dict()
+	tooltips = dict()
 
 	# list of functions
 	list_of_functions: dict = {}
@@ -151,6 +152,13 @@ class PyGAAP_GUI:
 		except FileNotFoundError:
 			self.search_dictionary = dict()
 			print("Search dictionary not found.")
+
+		try:
+			with open(Path("./resources/tooltips.json"), "r") as f:
+				self.tooltips = json_load(f)
+		except FileNotFoundError:
+			self.tooltips = dict()
+			print("Tooltip data not found.")
 
 		try:
 			self.icon = open(self.gui_params["icon"], "r")
@@ -291,27 +299,63 @@ class PyGAAP_GUI:
 		
 		#self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
 
-		
+		text_frame = Frame(self.results_window)
+		self.results_window.columnconfigure(0, weight=1)
+		self.results_window.rowconfigure(0, weight=1)
+		self.results_window.rowconfigure(1, weight=0)
+		text_frame.grid(row=0, column=0, sticky="swen")
+
 		# create space to display results, release focus of process window.
-		results_display = Text(self.results_window)
-		results_display.pack(fill = BOTH, expand = True, side = LEFT)
+		results_display = Text(text_frame)
+		results_display.pack(fill=BOTH, expand = True, side = LEFT)
 		results_display.insert(END, results_text)
 		#results_display.config(state = DISABLED)
 
-		results_scrollbar = Scrollbar(self.results_window,
+		results_scrollbar = Scrollbar(text_frame,
 									width = self.dpi_setting["dpi_scrollbar_width"],
 									command = results_display.yview)
 		results_display.config(yscrollcommand = results_scrollbar.set)
-		results_scrollbar.pack(side = LEFT, fill = BOTH)
+		results_scrollbar.pack(side = LEFT, fill = BOTH, anchor="nw")
+
+		export_buttons_frame = Frame(self.results_window)
+		export_buttons_frame.grid(row=1, column=0, sticky="swen")
+
+		results_export_json = Button(
+			export_buttons_frame, text="Save as json",
+			command = lambda file_types=(("JSON", "*.json"), ("Text File", "*.txt"), ("All Files", "*.*")),
+			title="Save experiment results as json":
+			json_dump(exp_return["full_exp_dump"], open(asksaveasfilename(
+				filetypes = file_types,
+				title = title
+			), "w+"), indent=4)
+		)
+		results_export_json.pack(side=RIGHT)
+
+		# results_export_text = Button(
+		# 	export_buttons_frame, text="Save as text",
+		# 	command = lambda file_types=(("Text File", "*.txt"), ("All Files", "*.*")),
+		# 	title="Save results as text":
+		# 	json_dump(exp_return["results_text"], open(asksaveasfilename(
+		# 		filetypes = file_types,
+		# 		title = title
+		# 	), "w+"), indent=4)
+		# )
+		# results_export_text.pack(side=RIGHT)
+
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
 		if exp_return["message"].strip() == "":
-			self.results_window.title("Results "+str(datetime.now()))
+			self.results_window.title("Results "+exp_return["exp_time"])
 		else:
-			self.results_window.title("Results "+str(datetime.now()) + " [Partial. See warning window]")
+			self.results_window.title("Results "+exp_return["exp_time"] + " [Partial. See warning window]")
 
 		self.change_style(self.results_window)
-
 		return
+
+	def export_exp_results(self, results, file_types, title):
+		save_to = asksaveasfilename(
+			filetypes = file_types,
+			title = title
+		)
 
 
 	def process_check(
@@ -961,6 +1005,8 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["Canonicizers"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("Canonicizers", "Canonicize/normalize texts"))
 
 		self.Tab_EventDrivers_parameters_displayed = []
 		self.generated_widgets['EventDrivers'] = GUI_unified_tabs.create_module_tab(
@@ -973,11 +1019,13 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["EventDrivers"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("EventDrivers", "Extract characteristic features/events"))
 
 		self.Tab_EventCulling_parameters_displayed = []
 		self.generated_widgets['EventCulling'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_EventCulling"],
-			["Event Culling"],
+			["Feature & Event filtering"],
 			"EventCulling",
 			displayed_parameters = self.Tab_EventCulling_parameters_displayed,
 			RP_listbox = self.Tab_RP_EventCulling_Listbox,
@@ -985,11 +1033,13 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["EventCulling"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("EventCulling", "Filter/discard irrelevant features/events"))
 
 		self.Tab_Embeddings_parameters_displayed = []
 		self.generated_widgets['Embeddings'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_Embeddings"],
-			["Embedders"],
+			["Embedding"],
 			"Embeddings",
 			displayed_parameters = self.Tab_Embeddings_parameters_displayed,
 			RP_listbox = self.Tab_RP_Embeddings_Listbox,
@@ -997,6 +1047,8 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["Embeddings"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("Embeddings", "Convert text features to numbers for analysis"))
 
 		self.Tab_AnalysisMethods_parameters_displayed = []
 		self.generated_widgets['AnalysisMethods'] = GUI_unified_tabs.create_module_tab(
@@ -1010,6 +1062,11 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("AnalysisMethods", "Use statistics/machine learning to classify documents"))
+		Hovertip(self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][1],
+			self.tooltips.get("mod_type", dict()).get("DistanceFunctions", "Specify a distance metric, if applicable"))
+
 
 		for mtype in ['Canonicizers', "EventDrivers", "EventCulling", "Embeddings", "AnalysisMethods"]:
 			self.search_entry_query[mtype] = StringVar()
@@ -1252,7 +1309,7 @@ class PyGAAP_GUI:
 			
 			error_text = "An error occurred while loading the modules:\n\n"
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
-			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload all modules"'
+			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload modules"'
 			error_text_field.insert(END, error_text)
 			topwindow.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
@@ -1800,7 +1857,7 @@ class PyGAAP_GUI:
 
 		menu_dev = Menu(menubar, tearoff=0)
 		#menu_dev.add_command(label="Instant experiment", command=self.instant_experiment)
-		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
+		menu_dev.add_command(label="Reload modules", command=self.reload_modules)
 		menu_dev.add_command(label="Show process content", command=self.show_API_process_content)
 		menu_dev.add_command(label="Toggle built-in multiprocessing", command=self.toggle_mp)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
@@ -1825,11 +1882,11 @@ class PyGAAP_GUI:
 			self.tabs_frames[t].pack(fill = 'both', expand = True, anchor = NW)
 
 
-		self.tabs.add(self.tabs_frames["Tab_Documents"], text = "Documents")
-		self.tabs.add(self.tabs_frames["Tab_Canonicizers"], text = "Canonicizers")
-		self.tabs.add(self.tabs_frames["Tab_EventDrivers"], text = "Event Drivers")
-		self.tabs.add(self.tabs_frames["Tab_EventCulling"], text = "Event Culling")
-		self.tabs.add(self.tabs_frames["Tab_Embeddings"], text = "Embedders")
+		self.tabs.add(self.tabs_frames["Tab_Documents"], text = "Data")
+		self.tabs.add(self.tabs_frames["Tab_Canonicizers"], text = "Normalization")
+		self.tabs.add(self.tabs_frames["Tab_EventDrivers"], text = "Feature Extraction")
+		self.tabs.add(self.tabs_frames["Tab_EventCulling"], text = "Feature Filtering")
+		self.tabs.add(self.tabs_frames["Tab_Embeddings"], text = "Embedding")
 		self.tabs.add(self.tabs_frames["Tab_AnalysisMethods"], text = "Analysis Methods")
 		self.tabs.add(self.tabs_frames["Tab_ReviewProcess"], text = "Review & Process")
 

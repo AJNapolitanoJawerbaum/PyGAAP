@@ -4,6 +4,7 @@
 
 from tkinter import *
 from tkinter import ttk
+from idlelib.tooltip import Hovertip
 
 # This function creates canonicizers, event drivers, event culling, and analysis methods tabs.
 def create_module_tab(tab_frame: Frame, available_content: list, parameters_content: str = None, **extra):
@@ -85,6 +86,7 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		# add a search box.
 		objects["search_entry"] = Entry(objects["available_frame"])
 		objects["search_entry"].grid(row = counter + 1, sticky = "swen")
+		Hovertip(objects["search_entry"], "Search by terms, initials, and alternative names")
 
 		objects["available_listboxes"][-1].append(
 			Label(objects["available_listboxes"][-1][0], text = name, font = ("Helvetica", 15))

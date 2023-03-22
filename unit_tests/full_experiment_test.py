@@ -29,7 +29,7 @@ print("done. starting exp.")
 
 # add modules here
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Word n-grams"]())
-api.modulesInUse["EventCulling"].append(api.eventCulling["Coefficient of Variation"]())
+#api.modulesInUse["EventCulling"].append(api.eventCulling["Coefficient of Variation"]())
 api.modulesInUse["Embeddings"].append(api.embeddings["Frequency"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
