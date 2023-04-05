@@ -3,7 +3,6 @@
 # For JGAAP see https://evllabs.github.io/JGAAP/
 #
 # See PyGAAP_developer_manual.md for a guide to the structure of the GUI
-# and how to add new modules.
 # @ author: Michael Fang
 #
 # Style note: if-print checks using the GUI_debug variable
@@ -223,27 +222,20 @@ class PyGAAP_GUI:
 
 		progress_report_here, progress_report_there = Pipe(duplex=True)
 
-		MultiprocessLoading.process_window(
-			self.dpi_setting["dpi_process_window_geometry"],
-			"determinate",
-			progress_report_here,
-			starting_text="...",
-			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
-			end_run=self.display_results,
-			after_user=self.topwindow
-		)
-
 		exp_args = {
 			"args": [],
 			"kwargs": {"verbose": True}
 		}
 
 		if platform != "win32" and not TEST_WIN:
+			# linux, mac
 			self.results_queue = Queue()
+
+			# this is an instance of the Experiment class
 			experiment = run_experiment.Experiment(
 				self.backend_API, progress_report_there, self.results_queue,
 				dpi=self.dpi_setting,
-				default_mp = self.backend_API.default_mp,
+				default_mp=self.backend_API.default_mp,
 			)
 			self.experiment_process = Process(
 				target=experiment.run_experiment,
@@ -251,19 +243,33 @@ class PyGAAP_GUI:
 			)
 			self.experiment_process.start()
 		else:
+			# windows
 			if platform != "win32": print("Testing using spawn.")
-			if __name__ == "backend.GUI.GUI2":
-				self.results_queue = Queue()
-				self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
-				API_manager.manager_run_exp(
-					self.backend_API,
-					self.pipe_mainproc,
-					self.pipe_subproc,
-					progress_report_there,
-					module_names,
-					self.results_queue,
-					exp_args=exp_args
-				)
+			if __name__ != "backend.GUI.GUI2":
+				raise RuntimeError("Process must be called from GUI.")
+			self.results_queue = Queue()
+			self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
+			self.experiment_process = API_manager.manager_run_exp(
+				self.backend_API,
+				self.pipe_mainproc,
+				self.pipe_subproc,
+				progress_report_there,
+				module_names,
+				self.results_queue,
+				exp_args=exp_args
+			)
+
+		MultiprocessLoading.process_window(
+			self.dpi_setting["dpi_process_window_geometry"],
+			"determinate",
+			progress_report_here,
+			starting_text="...",
+			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
+			end_run=self.display_results,
+			after_user=self.topwindow,
+			exp_process=self.experiment_process
+		)
+
 		return
 
 

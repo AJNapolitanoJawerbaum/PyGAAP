@@ -37,8 +37,7 @@ def manager_run_exp(api, pipe_mainproc: Connection, pipe_subproc: Connection,
 	for mod_type in mod_names:
 		for mod_i in range(len(mod_names[mod_type])):
 			mod_name = mod_names[mod_type][mod_i]
-			mod = \
-				api.modulesInUse[mod_type][mod_i]
+			mod = api.modulesInUse[mod_type][mod_i]
 
 			pipe_mainproc.send((mod_type, mod_name))
 			if mod_name == "NA": continue
@@ -51,7 +50,7 @@ def manager_run_exp(api, pipe_mainproc: Connection, pipe_subproc: Connection,
 	pipe_mainproc.send("End mods")
 	pipe_mainproc.close()
 	pipe_subproc.close()
-	return
+	return api_process
 
 
 
