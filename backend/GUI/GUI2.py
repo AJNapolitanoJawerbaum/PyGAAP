@@ -28,6 +28,7 @@ from sys import exc_info
 from sys import platform
 from json import load as json_load
 from json import dump as json_dump
+from pickle import dump as pickle_dump
 from os import listdir as ls
 from time import sleep
 from pathlib import Path
@@ -328,25 +329,20 @@ class PyGAAP_GUI:
 
 		results_export_json = Button(
 			export_buttons_frame, text="Save as json",
-			command = lambda file_types=(("JSON", "*.json"), ("Text File", "*.txt"), ("All Files", "*.*")),
-			title="Save experiment results as json":
-			json_dump(exp_return["full_exp_dump"], open(asksaveasfilename(
-				filetypes = file_types,
-				title = title
-			), "w+"), indent=4)
+			command=lambda file_types=(("JSON", "*.json"), ("Text File", "*.txt"), ("All Files", "*.*")),
+			title="Save experiment results as json", results=exp_return["full_exp_dump"]:
+			self.export_exp_results(results, file_types, title, "json")
 		)
 		results_export_json.pack(side=RIGHT)
 
-		# results_export_text = Button(
-		# 	export_buttons_frame, text="Save as text",
-		# 	command = lambda file_types=(("Text File", "*.txt"), ("All Files", "*.*")),
-		# 	title="Save results as text":
-		# 	json_dump(exp_return["results_text"], open(asksaveasfilename(
-		# 		filetypes = file_types,
-		# 		title = title
-		# 	), "w+"), indent=4)
-		# )
-		# results_export_text.pack(side=RIGHT)
+
+		results_export_pickle = Button(
+			export_buttons_frame, text="Save as serialized Python object",
+			command=lambda file_types=(("Pickle", "*.pkl"), ("All Files", "*.*")),
+			title="Save experiment results as serialized Python object", results=exp_return["full_exp_dump"]:
+			self.export_exp_results(results, file_types, title, "pkl")
+		)
+		results_export_pickle.pack(side=RIGHT)
 
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
 		if exp_return["message"].strip() == "":
@@ -357,12 +353,21 @@ class PyGAAP_GUI:
 		self.change_style(self.results_window)
 		return
 
-	def export_exp_results(self, results, file_types, title):
+	def export_exp_results(self, results, file_types, title, file_type):
 		save_to = asksaveasfilename(
 			filetypes = file_types,
 			title = title
 		)
-
+		if len(save_to) <= 0: return
+		if file_type == "json":
+			save_to_file = open(save_to, "w+")
+			json_dump(results, save_to_file, indent=4)
+		elif file_type == "pkl":
+			save_to_file = open(save_to, "wb")
+			pickle_dump(results, save_to_file)
+		else:
+			raise ValueError("Unknown file type")
+		save_to_file.close()
 
 	def process_check(
 			self,

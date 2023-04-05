@@ -124,7 +124,7 @@ class UnifyCase(Canonicizer):
 class StripPunctuation(Canonicizer):
 	full_width = 1
 	_variable_options = {
-		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
+		"full_width": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
 	}
 	_punct = re.compile(",.?!\"'`;:-()&$")
 	_fw_punct = re.compile("，。？！“”‘’；：——（）、《》【】『』")
@@ -175,7 +175,7 @@ class StripNumbers(Canonicizer):
 class PunctuationSeparator(Canonicizer):
 	full_width = 1
 	_variable_options = {
-		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
+		"full_width": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
 	}
 	_punct = ",.?!\"'`;:-()&$"
 	_fw_punct = "，。？！“”‘’；：——（）、《》【】『』"
@@ -194,7 +194,7 @@ class PunctuationSeparator(Canonicizer):
 class StripAlphanumeric(Canonicizer):
 	full_width = 1
 	_variable_options = {
-		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
+		"full_width": {"options": [0, 1], "type": "Tick", "default": 1, "displayed_name": "Include full-width"}
 	}
 	_punct = ",.?!\"'`;:-()&$"
 	_fw_punct = "，。？！“”‘’；：——（）、《》【】『』"
