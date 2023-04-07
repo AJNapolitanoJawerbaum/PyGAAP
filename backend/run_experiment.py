@@ -10,6 +10,7 @@
 from multiprocessing import Process, Queue, Pipe, Pool	
 from copy import deepcopy
 from copy import copy as shallowcopy
+import re
 
 from traceback import format_exc
 
@@ -59,6 +60,8 @@ class Experiment:
 		verbose = options.get("verbose", False)
 		if verbose and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
 			print("Canonicizers processing ...")
+		# for d in self.backend_API.documents:
+		# 	d.text = re.subn(re.compile("(?<!\r)\n"), "\r\n", d.text)[0]
 		for c in self.backend_API.modulesInUse["Canonicizers"]:
 			if verbose: print("Running", c.__class__.displayName())
 			if self.pipe_here is not None:
@@ -172,10 +175,7 @@ class Experiment:
 			print("\nStarting experiment.\nGetting documents")
 
 		if not options.get("skip_loading_docs", False):
-
-			# "loading docs" is skipped in CLI because
-			# the CLI will load the docs.
-
+			# GUI
 			# gathering the documents for pre-processing
 			# read documents here (at the last minute)
 			docs = []
@@ -202,9 +202,15 @@ class Experiment:
 					return exp_return if self.return_results else 1
 			self.backend_API.documents = docs
 		else:
+			# CLI
+			# "loading docs" is skipped in CLI because
+			# the CLI will load the docs.
 			known_docs = [d for d in self.backend_API.documents if d.author != ""]
 			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
 			docs = known_docs + unknown_docs
+			self.backend_API.documents = docs
+
+		# api documents: known texts first followed by unknown texts.
 
 		if verbose: print("checking params")
 		# validate modules, documents:

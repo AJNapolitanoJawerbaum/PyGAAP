@@ -49,7 +49,6 @@ def cliMain():
 			exp_name = exp[0]
 			for mod_type in api.modulesInUse:
 				api.modulesInUse[mod_type] = []
-			api.documents = []
 			# Get a list of entries in the specified corpus CSV.
 			corpusEntries = readCorpusCSV(findCorpusCSVPath(exp[-1]))
 			api.documents = []
