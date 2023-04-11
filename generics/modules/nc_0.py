@@ -39,16 +39,16 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 
 class Frequency(Embedding):
-	normalization = "Per-document max"
+	normalization = "Global max"
 	max_features = 0
 	binary = 0
-	events = "known only"
+	events = "All"
 	_default_multiprocessing = False
 	_variable_options = {
-		"normalization": {"options": ["None", "Per-document max", "Global max"], "type": "OptionMenu", "default": 1,
+		"normalization": {"options": ["None", "Per-document max", "Global max"], "type": "OptionMenu", "default": 2,
 		"displayed_name": "Normalization"},
 		"max_features": {"options": range(0, 101), "type": "Slider", "default": 0, "displayed_name": "Max features"},
-		"events": {"options": ["Known events only", "All"], "default": 0, "displayed_name": "Analyze events"},
+		"events": {"options": ["Known events only", "All"], "default": 1, "displayed_name": "Analyze events"},
 		"binary": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Binary"}
 	}
 

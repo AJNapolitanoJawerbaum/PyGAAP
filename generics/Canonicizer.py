@@ -220,20 +220,21 @@ class StripNullCharacters(Canonicizer):
 	def displayName():
 		return "Strip Null Characters"
 
-class NormalizeNewLine(Canonicizer):
+class ReplaceNewLines(Canonicizer):
 
-	_pattern = re.compile("(?<!\r)\n")
+	# _pattern = re.compile("(?<!\r)\n")
+	_pattern = re.compile("(\r)?\n")
 	character = "\\r\\n"
 	_variable_options = {
-		"character": {"options": ["\\r\\n", "\\n\\r"], "default": 0, "displayed_name": "Character"}
+		"character": {"options": ["\\r\\n", "\\n\\r", "<whitespace>"], "default": 2, "displayed_name": "Character"}
 	}
 
 	def process_single(self, text):
-		return re.subn(self._pattern, self.character, text)[0]
+		return re.subn(self._pattern, (self.character if self.character != "<whitespace>" else " "), text)[0]
 
 	def displayName():
-		return "Normalize newlines"
+		return "Replace New Lines"
 
 	def displayDescription():
-		return "Add carriage return characters to new line characters.\n" +\
-			"i.e. add \\r.\n\\r\\n is typically seen in Windows text files."
+		return "replace new line characters with a sequence of choice.\n" +\
+			"\\r.\n\\r\\n is typically seen in Windows text files."
