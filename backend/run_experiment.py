@@ -177,7 +177,6 @@ class Experiment:
 		if not options.get("skip_loading_docs", False):
 			# GUI
 			# gathering the documents for pre-processing
-			# read documents here (at the last minute)
 			docs = []
 			for author in self.backend_API.known_authors:
 				for authorDoc in author[1]:
@@ -191,15 +190,6 @@ class Experiment:
 			known_docs = shallowcopy(docs)
 			docs += self.backend_API.unknown_docs
 			unknown_docs = self.backend_API.unknown_docs
-
-			for d in docs:
-				try:
-					d.text = readDocument(d.filepath)
-				except:
-					exp_return = self.return_exp_results(
-						results_text="", message="Error reading file at:\n" + str(d.filepath), status=1,
-					)
-					return exp_return if self.return_results else 1
 			self.backend_API.documents = docs
 		else:
 			# CLI
@@ -209,6 +199,18 @@ class Experiment:
 			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
 			docs = known_docs + unknown_docs
 			self.backend_API.documents = docs
+
+		for d in self.backend_API.documents:
+			try:
+				# get the texts of the docs.
+				d.read_self()
+			except:
+				exp_return = self.return_exp_results(
+					results_text="", message="Error reading file at:\n" + str(d.filepath) + "\n" +
+					format_exc(), status=1,
+				)
+				return exp_return if self.return_results else 1
+			
 
 		# api documents: known texts first followed by unknown texts.
 

@@ -10,7 +10,7 @@ from backend import run_experiment
 
 print("load API...", end="")
 api = API.API("")
-corpus = CSVIO.readCorpusCSV("./resources/aaac/problemC/loadC.csv")
+corpus = CSVIO.readCorpusCSV("./resources/aaac/problemA/loadA.csv")
 print("done. Loading docs...", end="")
 for doc in corpus:
     if doc[0] == "":
@@ -28,18 +28,20 @@ del known_dict, corpus
 print("done. starting exp.")
 
 # add modules here
-api.modulesInUse["EventDrivers"].append(api.eventDrivers["Word n-grams"]())
+api.modulesInUse["EventDrivers"].append(api.eventDrivers["Character NGrams"]())
 #api.modulesInUse["EventCulling"].append(api.eventCulling["Coefficient of Variation"]())
 api.modulesInUse["Embeddings"].append(api.embeddings["Frequency"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
 
 # set module parameters here
+api.modulesInUse["EventDrivers"][0].n = 1
+api.modulesInUse["Embeddings"][0].normalization = "Per-document token count"
 #api.modulesInUse["Embeddings"][-1].convert_from = "features"
 #api.modulesInUse["Embeddings"][-1].long_text_method = "average every 64"
 
 exp = run_experiment.Experiment(api)
-results = exp.run_experiment(return_results=True)
+results = exp.run_experiment(return_results=1, verbose=1)
 
 print(results["results_text"])
 print(results["message"])

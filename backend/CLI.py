@@ -35,6 +35,8 @@ def cliMain():
 	# The GUI splash screen appears while API is loading so the app doesn't appear unresponsive.
 	args = _parse_args()
 
+	cross_compatibility_note = False
+
 	print("starting experiment(s)")
 	# If a CSV file has been specified, process it.
 	if args.experimentengine:
@@ -54,7 +56,7 @@ def cliMain():
 			api.documents = []
 			for doc in corpusEntries:
 				api.documents.append(Document(
-					doc[0], doc[2], readDocument(doc[1]), doc[1]
+					doc[0], doc[2], "", doc[1]
 				))
 
 			# now check for file format: whether PyGAAP exp csv or JGAAP exp csv
@@ -82,6 +84,12 @@ def cliMain():
 				eventCulling = []
 				analysisMethods = [exp[3]]
 				distanceFunctions = [exp[4]]
+				if analysisMethods[0].startswith("Absolute Centroid Driver"):
+					cross_compatibility_note = True
+					analysisMethods[0].replace("Absolute Centroid Driver", "Centroid Driver")
+					api.modulesInUse["Embeddings"][0].normalization = "None"
+				elif analysisMethods[0].startswith("Centroid Driver"):
+					api.modulesInUse["Embeddings"][0].normalization = "Per-document token count"
 
 			canonicizers = [x for x in canonicizers if x != ""]
 			eventCulling = [x for x in eventCulling if x != ""]
@@ -150,7 +158,7 @@ def cliMain():
 					setParams(mod, params, df)
 
 			experiment_runner = run_experiment.Experiment(api)
-			exp_return = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)
+			exp_return = experiment_runner.run_experiment(skip_loading_docs=1, return_results=1, verbose=1)
 
 			# Create the directories that the results will be stored in.
 			outPath = os.path.join(Path.cwd(), "tmp",
@@ -162,9 +170,11 @@ def cliMain():
 				os.makedirs(outPath)
 			out_filepath = os.path.join(outPath, (exp_name + str(int(time()))) + ".txt")
 			print(out_filepath)
-			expFile=open(out_filepath, 'w')
-			expFile.write(exp_return["results_text"])
-			expFile.close()
+			with open(out_filepath, 'w') as expFile:
+				expFile.write(exp_return["results_text"])
+			if cross_compatibility_note:
+				with open(os.path.join(Path.cwd(), "tmp", "compatibility_note.txt"), "w+") as cc_note:
+					cc_note.write("Some modules from JGAAP were substituted with similar ones in PyGAAP.")
 	print("Finished")
 
 def _parse_args(empty=False):
