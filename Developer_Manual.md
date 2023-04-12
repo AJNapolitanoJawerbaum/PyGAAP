@@ -83,7 +83,7 @@ Add new modules to ```./generics/modules``` for the API to pick up while loading
 from generics.Canonicizer import Canonicizer
 from generics.EventDriver import EventDriver
 from generics.EventCulling import EventCulling
-from generics.NumberConverter import NumberConverter
+from generics.Embedding import Embedding
 from generics.AnalysisMethod import AnalysisMethod
 from generics.DistanceFunction import DistanceFunction
 ```
@@ -93,7 +93,7 @@ As a readability consideration, it's recommended that the files in ```~/generics
 ```cc_``` for canonicizers\
 ```ed_``` for event drivers\
 ```ec_``` for event cullers\
-```nc_``` for number converters\
+```nc_``` for embedders\
 ```am_``` for analysis methods\
 ```df_``` for distance functions.
 
@@ -149,10 +149,10 @@ these can all be overwritten, but the input/output types must match the original
    - ```process_single(eventSet: list)```
 
    Event cullers are expected to call `Document.setEventSet(eventSet, append=False)` to overwrite document event sets in `process_single()` or `process()`.
-- Number Converters:
+- Embedders:
    - ```convert(docs: list[backend.Document]) -> np.ndarray of shape (len(docs), *, ...)```
    
-      Number Converters / text embedders are expected to **both** write to `Document.numbers` for each document **and** return an `np.ndarray` (or compatible type) where the first dimension is the number of all documents, known or unknown. For example, in the `roberta` module, each document is embedded in a 768-long vector. If `roberta` receives 23 documents in total, it returns an `ndarray` of `shape (23, 768)`.
+      Text embedders are expected to **both** write to `Document.numbers` for each document **and** return an `np.ndarray` (or compatible type) where the first dimension is the number of all documents, known or unknown. For example, in the `roberta` module, each document is embedded in a 768-long vector. If `roberta` receives 23 documents in total, it returns an `ndarray` of `shape (23, 768)`.
 - Analysis methods:
    - ```train(self, train: list[backend.Document], train_data: np.ndarray=None, **options) -> None```
    - ```analyze(self, test, test_data=None, **options) -> dict```
@@ -161,7 +161,7 @@ these can all be overwritten, but the input/output types must match the original
       Analysis methods are expected to return a list of dicts whose keys are authors and values are scores for each unknown category where a lower score is higher ranked.
 
 Canonicizers, Event drivers, and event cullers use multi-processing in `process()` if not over-written, with each process processing one file.
-Number converters and Analysis methods don't use multi-processing by default because their processing is commonly vectorized.<br>
+Embedders and Analysis methods don't use multi-processing by default because their processing is commonly vectorized.<br>
 To disable the built-in multi-processing, set `_default_multiprocessing` to `False`.
 
 \* `pipe` is an end of a multiprocessing Pipe to send `str`/`int`/`float` updates to the GUI while the module is running. The pipe connects between the experiment runner and the GUI. If a module  takes a long time to run, it's recommended that the author use `Pipe.send()` to regularly send updates to the GUI to be shown to the user so the app doesn't appear frozen.<br>

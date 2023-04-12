@@ -4,6 +4,7 @@
 
 from tkinter import *
 from tkinter import ttk
+from idlelib.tooltip import Hovertip
 
 # This function creates canonicizers, event drivers, event culling, and analysis methods tabs.
 def create_module_tab(tab_frame: Frame, available_content: list, parameters_content: str = None, **extra):
@@ -85,6 +86,7 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		# add a search box.
 		objects["search_entry"] = Entry(objects["available_frame"])
 		objects["search_entry"].grid(row = counter + 1, sticky = "swen")
+		Hovertip(objects["search_entry"], "Search by terms, initials, and alternative names")
 
 		objects["available_listboxes"][-1].append(
 			Label(objects["available_listboxes"][-1][0], text = name, font = ("Helvetica", 15))
@@ -149,18 +151,15 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 	counter = 0
 
 
-
-
-	if parameters_content == "Canonicizers":
-		extra.get("canonicizers_format")
-		extra.get("canonicizers_format").set("All")
-		canonicizer_format_options = ["All", "Generic", "Doc", "PDF", "HTML"]
-		objects["Canonicizers_format"] = OptionMenu(objects["buttons_frame"],
-			extra.get("canonicizers_format"), *canonicizer_format_options)
-		objects["Canonicizers_format"].config(width = dpi_setting["dpi_option_menu_width"])
-		objects["Canonicizers_format"].pack(anchor = W)
-		counter = 1
-
+	# if parameters_content == "Canonicizers":
+	# 	extra.get("canonicizers_format")
+	# 	extra.get("canonicizers_format").set("All")
+	# 	canonicizer_format_options = ["All", "Generic", "Doc", "PDF", "HTML"]
+	# 	objects["Canonicizers_format"] = OptionMenu(objects["buttons_frame"],
+	# 		extra.get("canonicizers_format"), *canonicizer_format_options)
+	# 	objects["Canonicizers_format"].config(width = dpi_setting["dpi_option_menu_width"])
+	# 	objects["Canonicizers_format"].pack(anchor = W)
+	# 	counter = 1
 
 
 	objects["buttons_add"] = Button(
@@ -263,7 +262,7 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 			"Canonicizers": backend_API.canonicizers,
 			"EventDrivers": backend_API.eventDrivers,
 			"EventCulling": backend_API.eventCulling,
-			"NumberConverters": backend_API.numberConverters
+			"Embeddings": backend_API.embeddings
 		}
 		for f in objects["available_listboxes"]:
 			f[2].bind("<<ListboxSelect>>",

@@ -10,10 +10,12 @@
 from multiprocessing import Process, Queue, Pipe, Pool	
 from copy import deepcopy
 from copy import copy as shallowcopy
+import re
 
 from traceback import format_exc
 
-import datetime
+from datetime import datetime
+from random import randint
 from json import load as json_load
 
 
@@ -33,8 +35,9 @@ class Experiment:
 		Copies API in a different process (GUI)
 		receives an end of a pipe to send info back to main process.
 		"""
-		self.gui_params = json_load(f:=open("./backend/GUI/gui_params.json", "r"))
-		f.close()
+		self.gui_params = None
+		with open("./resources/gui_params.json", "r") as f:
+			self.gui_params = json_load(f)
 		self.backend_API = shallowcopy(api)
 		self.pipe_here = pipe_here
 
@@ -57,6 +60,8 @@ class Experiment:
 		verbose = options.get("verbose", False)
 		if verbose and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
 			print("Canonicizers processing ...")
+		# for d in self.backend_API.documents:
+		# 	d.text = re.subn(re.compile("(?<!\r)\n"), "\r\n", d.text)[0]
 		for c in self.backend_API.modulesInUse["Canonicizers"]:
 			if verbose: print("Running", c.__class__.displayName())
 			if self.pipe_here is not None:
@@ -170,12 +175,8 @@ class Experiment:
 			print("\nStarting experiment.\nGetting documents")
 
 		if not options.get("skip_loading_docs", False):
-
-			# "loading docs" is skipped in CLI because
-			# the CLI will load the docs.
-
+			# GUI
 			# gathering the documents for pre-processing
-			# read documents here (at the last minute)
 			docs = []
 			for author in self.backend_API.known_authors:
 				for authorDoc in author[1]:
@@ -189,20 +190,29 @@ class Experiment:
 			known_docs = shallowcopy(docs)
 			docs += self.backend_API.unknown_docs
 			unknown_docs = self.backend_API.unknown_docs
-
-			for d in docs:
-				try:
-					d.text = readDocument(d.filepath)
-				except:
-					exp_return = self.return_exp_results(
-						results_text="", message="Error reading file at:\n" + str(d.filepath), status=1,
-					)
-					return exp_return if self.return_results else 1
 			self.backend_API.documents = docs
 		else:
+			# CLI
+			# "loading docs" is skipped in CLI because
+			# the CLI will load the docs.
 			known_docs = [d for d in self.backend_API.documents if d.author != ""]
 			unknown_docs = [d for d in self.backend_API.documents if d.author == ""]
 			docs = known_docs + unknown_docs
+			self.backend_API.documents = docs
+
+		for d in self.backend_API.documents:
+			try:
+				# get the texts of the docs.
+				d.read_self()
+			except:
+				exp_return = self.return_exp_results(
+					results_text="", message="Error reading file at:\n" + str(d.filepath) + "\n" +
+					format_exc(), status=1,
+				)
+				return exp_return if self.return_results else 1
+			
+
+		# api documents: known texts first followed by unknown texts.
 
 		if verbose: print("checking params")
 		# validate modules, documents:
@@ -231,10 +241,10 @@ class Experiment:
 				return exp_return if self.return_results else 1
 		# check if any required mods are abscent
 		if self.backend_API.modulesInUse["EventDrivers"] == [] or\
-				self.backend_API.modulesInUse["NumberConverters"] == [] or\
+				self.backend_API.modulesInUse["Embeddings"] == [] or\
 				self.backend_API.modulesInUse["AnalysisMethods"] == []:
 			exp_return = self.return_exp_results(results_text="",
-				message="Missing Event drivers, number converters, or analysis methods", status=1)
+				message="Missing one or more of Event drivers, embedders, or analysis methods", status=1)
 			return exp_return if self.return_results else 1
 		# check for analysis & distance functions mismatch.
 		for i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
@@ -252,26 +262,36 @@ class Experiment:
 
 		if self.pipe_here != None: self.pipe_here.send(0)
 
+		exp_params = dict()
+		for mod_type in ["Canonicizers", "EventDrivers", "EventCulling"]:
+			exp_params[mod_type] = []
+			# each mod type list is a list because some are applied in order.
+			for mod in self.backend_API.modulesInUse[mod_type]:
+				exp_params[mod_type].append({"name": mod.__class__.displayName(),
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}}
+				)
+
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
-		results = []
+		results = [] # list of text-formatted results
+		full_exp_dump = []# list of dict-formatted results
 		nc_success_count = 0
-		for nc in self.backend_API.modulesInUse["NumberConverters"]:
+		for nc in self.backend_API.modulesInUse["Embeddings"]:
 			"""
-			Only one number converter used for one analysis method
-			This means for N number converters and M methods, there will be (N x M) analyses.
+			Only one embedder used for one analysis method
+			This means for N embedders and M methods, there will be (N x M) analyses.
 			"""
 			nc._global_parameters = self.backend_API.global_parameters
 			nc._default_multiprocessing = self.default_mp
 
 			if self.pipe_here is not None:
-				self.pipe_here.send("Running number converters")
+				self.pipe_here.send("Running embedders")
 				self.pipe_here.send(True)
 			if verbose: print("Embedding ... running", nc.__class__.displayName())
 
 			try:
 				all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
 			except Exception as error:
-				this_error = "\nNumber Converter failed: %s\n%s\n%s\n" %\
+				this_error = "\nembedder failed: %s\n%s\n%s\n" %\
 					(nc.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
@@ -319,8 +339,31 @@ class Experiment:
 					if verbose: print(this_error)
 					continue
 
-				for d_index in range(len(unknown_docs)):
+				# by this line, both nc and am_df modules have successfully completed
+				# "embeddings", "analysis methods", and "distance functions" are lists here for consistency
+				# there should only be one of each of them.
+				exp_params_out = deepcopy(exp_params)
+				exp_params_out["Embeddings"] = [{
+					"name": nc.__class__.displayName(),
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
+				}]
+				exp_params_out["AnalysisMethods"] = [{
+					"name": am_df_pair[0].__class__.displayName(),
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
+				}]
+				exp_params_out["DistanceFunctions"] = [{
+					"name": am_df_pair[1].__class__.displayName() if am_df_pair[1] != "NA" else "NA",
+					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
+						if am_df_pair[1] != "NA" else "NA"
+				}]
 
+				full_exp_dump.append({
+					"modules": exp_params_out, "doc_results": {
+						unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
+					}
+				})
+
+				for d_index in range(len(unknown_docs)):
 					formatted_results = \
 						self.backend_API.prettyFormatResults(
 							nc.__class__.displayName(),
@@ -357,6 +400,8 @@ class Experiment:
 			results_text=results_text,
 			message=self.results_message,
 			status=status,
+			full_exp_dump=full_exp_dump,
+			exp_time=str(datetime.now())
 		)
 		print("Experiment done.")
 		if self.return_results:
@@ -369,6 +414,8 @@ class Experiment:
 			"results_text": kwa.get("results_text", ""),
 			"message": kwa.get("message", "No message provided."),
 			"status": kwa.get("status", 1),
+			"full_exp_dump": kwa.get("full_exp_dump", {}),
+			"exp_time": kwa.get("exp_time", str(hex(randint(0, 10000000)))[2:])
 		}
 		if self.pipe_here != None: self.pipe_here.send(-1)
 		if self.q != None:

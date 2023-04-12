@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 # An abstract DistanceFunction class.
-class NumberConverter(ABC):
+class Embedding(ABC):
 	"""
-	The number converter accepts the set of known documents
+	An embedder accepts the set of known documents
 	and set the docs' representations directly to Document.numbers
 	"""
 	_global_parameters = dict()
@@ -16,8 +16,10 @@ class NumberConverter(ABC):
 		except AttributeError:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
-		try: self.after_init(**options)
-		except (AttributeError, NameError): pass
+		try: self.after_init
+		except (AttributeError, NameError): return
+		self.after_init(**options)
+
 
 	def after_init(self, **options):
 		pass

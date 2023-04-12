@@ -36,15 +36,14 @@ class Document:
 			self.eventSet += eventSet
 	
 	def read_self(self, encoding=None):
-		f = open(Path(self.filepath), "r")
-		if encoding == None:
+		try:
+			self.text = Path(self.filepath).read_text()
+		except UnicodeError:
 			try:
-				self.text = f.read()
+				self.text = Path(self.filepath).read_text(encoding="UTF-8")
 			except UnicodeError:
-				try: self.text = f.read(encoding="UTF-8")
-				except UnicodeError: self.text = f.read(encoding="ISO-8859-15")
-		else: self.text = f.read(encoding=encoding)
-		f.close()
+				self.text = Path(self.filepath).read_text(encoding="ISO-8859-15")
+		self.text += "\n"
 		return self.text
 	
 	def __repr__(self):

@@ -35,6 +35,8 @@ def cliMain():
 	# The GUI splash screen appears while API is loading so the app doesn't appear unresponsive.
 	args = _parse_args()
 
+	cross_compatibility_note = False
+
 	print("starting experiment(s)")
 	# If a CSV file has been specified, process it.
 	if args.experimentengine:
@@ -49,13 +51,12 @@ def cliMain():
 			exp_name = exp[0]
 			for mod_type in api.modulesInUse:
 				api.modulesInUse[mod_type] = []
-			api.documents = []
 			# Get a list of entries in the specified corpus CSV.
 			corpusEntries = readCorpusCSV(findCorpusCSVPath(exp[-1]))
 			api.documents = []
 			for doc in corpusEntries:
 				api.documents.append(Document(
-					doc[0], doc[2], readDocument(doc[1]), doc[1]
+					doc[0], doc[2], "", doc[1]
 				))
 
 			# now check for file format: whether PyGAAP exp csv or JGAAP exp csv
@@ -64,9 +65,9 @@ def cliMain():
 				canonicizers = exp[1].split('&')
 				eventDrivers = exp[2].split('&')
 				eventCulling = exp[3].split('&')
-				numberConverters = [exp[4]]
-				if '&' in numberConverters:
-					raise ValueError("There can only be 1 number converter per experiment")
+				embeddings = [exp[4]]
+				if '&' in embeddings:
+					raise ValueError("There can only be 1 embedder per experiment")
 				analysisMethods = [exp[5]]
 				if '&' in analysisMethods:
 					raise ValueError("There can only be 1 analysis method per experiment")
@@ -77,12 +78,18 @@ def cliMain():
 
 			elif len(exp) == 6 or len(exp) == 7:
 				# JGAAP format
-				api.modulesInUse["NumberConverters"] = [api.numberConverters["Frequency"]()]
+				api.modulesInUse["Embeddings"] = [api.embeddings["Frequency"]()]
 				canonicizers = exp[1].split('&')
 				eventDrivers = exp[2].split('&')
 				eventCulling = []
 				analysisMethods = [exp[3]]
 				distanceFunctions = [exp[4]]
+				if analysisMethods[0].startswith("Absolute Centroid Driver"):
+					cross_compatibility_note = True
+					analysisMethods[0].replace("Absolute Centroid Driver", "Centroid Driver")
+					api.modulesInUse["Embeddings"][0].normalization = "None"
+				elif analysisMethods[0].startswith("Centroid Driver"):
+					api.modulesInUse["Embeddings"][0].normalization = "Per-document token count"
 
 			canonicizers = [x for x in canonicizers if x != ""]
 			eventCulling = [x for x in eventCulling if x != ""]
@@ -116,11 +123,11 @@ def cliMain():
 					setParams(mod, params, ec)
 
 			if len(exp) == 8 or len(exp) == 9:
-				nmc = numberConverters[0]
+				nmc = embeddings[0]
 				params = nmc.split("|")
 				nc = params[0]
-				mod = api.numberConverters[nc]()
-				api.modulesInUse["NumberConverters"].append(mod)
+				mod = api.embeddings[nc]()
+				api.modulesInUse["Embeddings"].append(mod)
 				if len(params) > 1:
 					params = params[1:]
 					setParams(mod, params, nc)
@@ -151,7 +158,7 @@ def cliMain():
 					setParams(mod, params, df)
 
 			experiment_runner = run_experiment.Experiment(api)
-			exp_return = experiment_runner.run_experiment(skip_loading_docs=True, return_results=True)
+			exp_return = experiment_runner.run_experiment(skip_loading_docs=1, return_results=1, verbose=1)
 
 			# Create the directories that the results will be stored in.
 			outPath = os.path.join(Path.cwd(), "tmp",
@@ -163,9 +170,11 @@ def cliMain():
 				os.makedirs(outPath)
 			out_filepath = os.path.join(outPath, (exp_name + str(int(time()))) + ".txt")
 			print(out_filepath)
-			expFile=open(out_filepath, 'w')
-			expFile.write(exp_return["results_text"])
-			expFile.close()
+			with open(out_filepath, 'w') as expFile:
+				expFile.write(exp_return["results_text"])
+			if cross_compatibility_note:
+				with open(os.path.join(Path.cwd(), "tmp", "compatibility_note.txt"), "w+") as cc_note:
+					cc_note.write("Some modules from JGAAP were substituted with similar ones in PyGAAP.")
 	print("Finished")
 
 def _parse_args(empty=False):

@@ -24,7 +24,7 @@ class Linear_SVM_sklearn(AnalysisMethod):
 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance",
 			"validator": (lambda x: (x > 0.000001 and x < 0.1))},
 		"penalty": {"options": ["L1", "L2"], "type": "OptionMenu", "default": 1, "displayed_name": "Penalty type"},
-		"reg_strength": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Regularization Strength"},
+		"reg_strength": {"options": range(1, 11), "type": "Slider", "default": 0, "displayed_name": "Regularization Strength"},
 		"opt": {"options": ["primal", "dual"], "type": "OptionMenu", "default": 1, "displayed_name": "Optimization Problem"},
 	}
 	_display_to_input = {"penalty": {"L1": "l1", "L2": "l2"}, "dual": {"dual": True, "primal": False}}
@@ -162,7 +162,7 @@ class MLP_sklearn(AnalysisMethod):
 			"displayed_name": "Maximum iterations", "validator": (lambda x: (x > 1 and x < 100001))},
 		"tol": {"options": [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance", "validator": (lambda x: (x >= 0.000001 and x <=0.1))},
-		"validation_fraction": {"options": [0.05, 0.1, 0.2, 0.3, 0.4], "default": 1, "displayed_name": "Fraction used for validation",
+		"validation_fraction": {"options": [0.05, 0.45], "type": "Slider", "resolution": 0.05, "default": 1, "displayed_name": "Fraction used for validation",
 			"validator": (lambda x: (x > 0.01 and x < 0.5))}
 	}
 

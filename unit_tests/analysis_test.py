@@ -6,7 +6,7 @@ from pathlib import Path
 sys_path.append(getcwd())
 
 from generics import AnalysisMethod as am
-from generics import NumberConverter as nc
+from generics import Embedding as nc
 from generics.modules import *
 from generics.modules.nc_0 import Frequency
 from generics.modules.df_0 import CosineDistance

@@ -1,0 +1,10 @@
+{
+	"mod_type": {
+		"Canonicizers": "Canonicize/normalize input texts with a few standard methods.\nThis may include replacing multiple white-spaces with a single white-space or conform all Latin letters to lower case",
+		"EventDrivers": "Turn texts into lists of characteristic features (if ordered, also called \"events\") to analyze",
+		"EventCulling": "Filter features or events such that\nonly those fitting certain criteria are analyzed",
+		"Embeddings": "Convert text features into numbers and vectors\nto pass to the classifiers",
+		"AnalysisMethods": "Use statistical inference tools including\nmachine learning algorithms to predict document category",
+		"DistanceFunctions": "For algorithms that use a distance metric,\nspecify which metric to use"
+	}
+}

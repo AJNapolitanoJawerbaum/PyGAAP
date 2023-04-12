@@ -24,10 +24,11 @@ class AnalysisMethod(ABC):
 			for variable in self._variable_options:
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except AttributeError:
-			self._variable_options = dict()	
+			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
-		try: self.after_init(**options)
-		except (AttributeError, NameError): pass
+		try: self.after_init
+		except (AttributeError, NameError): return
+		self.after_init(**options)
 
 	def after_init(self, **options):
 		pass
@@ -127,7 +128,7 @@ class AnalysisMethod(ABC):
 # 		return "Computes one centroid per Author.\nCentroids are the average relative frequency of events over all documents provided.\ni=1 to n ΣfrequencyIn_i(event)."
 
 class CentroidDriver(AnalysisMethod):
-	"""The version of centroid driver that pairs with the number converters"""
+	"""The version of centroid driver that pairs with the embedders"""
 
 	_labels_to_categories = dict()
 	_mean_per_author = dict()

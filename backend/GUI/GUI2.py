@@ -3,7 +3,6 @@
 # For JGAAP see https://evllabs.github.io/JGAAP/
 #
 # See PyGAAP_developer_manual.md for a guide to the structure of the GUI
-# and how to add new modules.
 # @ author: Michael Fang
 #
 # Style note: if-print checks using the GUI_debug variable
@@ -28,11 +27,15 @@ from sys import modules as sys_modules
 from sys import exc_info
 from sys import platform
 from json import load as json_load
+from json import dump as json_dump
+from pickle import dump as pickle_dump
 from os import listdir as ls
 from time import sleep
 from pathlib import Path
 from os import getcwd
 from gc import collect as collect_garbage
+from traceback import format_exc
+from idlelib.tooltip import Hovertip
 
 # local modules
 from backend.CSVIO import readDocument, readCorpusCSV, readExperimentCSV
@@ -41,16 +44,15 @@ from backend.Document import Document
 from backend import CSVIO
 import Constants
 
-
-# closely coupled modules
+# create tabs
 from backend.GUI import GUI_unified_tabs
+
+# Windows compatibility
 if platform != "win32" and not TEST_WIN:
 	from backend import run_experiment
 else:
 	if __name__ == "backend.GUI.GUI2":
 		from backend import API_manager
-
-import util.MultiprocessLoading as MultiprocessLoading
 
 if TEST_WIN:
 	try:
@@ -78,7 +80,7 @@ class PyGAAP_GUI:
 		"Tab_Canonicizers",
 		"Tab_EventDrivers",
 		"Tab_EventCulling",
-		"Tab_NumberConverters",
+		"Tab_Embeddings",
 		"Tab_AnalysisMethods",
 		"Tab_ReviewProcess"
 	]
@@ -95,6 +97,7 @@ class PyGAAP_GUI:
 	# need to save because need tkinter to detect changes
 	search_entry_query = dict()
 	search_dictionary = dict()
+	tooltips = dict()
 
 	# list of functions
 	list_of_functions: dict = {}
@@ -120,6 +123,8 @@ class PyGAAP_GUI:
 
 	Tab_Documents_UnknownAuthors_listbox: Listbox = None
 	Tab_Documents_KnownAuthors_treeview: ttk.Treeview = None
+	Tab_Documents_KnownAuthors_doc_stats = None
+	Tab_Documents_UnknownAuthors_doc_stats = None
 
 	Tab_RP_Canonicizers_Listbox: Listbox = None
 	Tab_RP_EventDrivers_Listbox: Listbox = None
@@ -134,17 +139,26 @@ class PyGAAP_GUI:
 
 	def __init__(self):
 		# no internal error handling because fatal error.
-		params = json_load(f:=open(Path("./backend/GUI/gui_params.json"), "r"))
-		self.gui_params = params
-		self.gui_params["styles"]["JGAAP_blue"]
-		self.backend_API = None
-		f.close()
+		with open(Path("./resources/gui_params.json"), "r") as f:
+			params = json_load(f)
+			self.gui_params = params
+			self.gui_params["styles"]["JGAAP_blue"]
+			self.backend_API = None
 
 		try:
-			self.search_dictionary = json_load(f:=open(Path("./backend/GUI/search_dictionary.json"), "r"))
+			f = open(Path("./resources/search_dictionary.json"), "r")
+			self.search_dictionary = json_load(f)
+			f.close()
 		except FileNotFoundError:
 			self.search_dictionary = dict()
 			print("Search dictionary not found.")
+
+		try:
+			with open(Path("./resources/tooltips.json"), "r") as f:
+				self.tooltips = json_load(f)
+		except FileNotFoundError:
+			self.tooltips = dict()
+			print("Tooltip data not found.")
 
 		try:
 			self.icon = open(self.gui_params["icon"], "r")
@@ -202,12 +216,49 @@ class PyGAAP_GUI:
 			"Canonicizers": list(self.Tab_RP_Canonicizers_Listbox.get(0, END)),
 			"EventDrivers": list(self.Tab_RP_EventDrivers_Listbox.get(0, END)),
 			"EventCulling": list(self.Tab_RP_EventCulling_Listbox.get(0, END)),
-			"NumberConverters": list(self.Tab_RP_NumberConverters_Listbox.get(0, END)),
+			"Embeddings": list(self.Tab_RP_Embeddings_Listbox.get(0, END)),
 			"AnalysisMethods": [x[0] for x in am_df_names],
 			"DistanceFunctions": [x[1] for x in am_df_names]
 		}
 
 		progress_report_here, progress_report_there = Pipe(duplex=True)
+
+		exp_args = {
+			"args": [],
+			"kwargs": {"verbose": True}
+		}
+
+		if platform != "win32" and not TEST_WIN:
+			# linux, mac
+			self.results_queue = Queue()
+
+			# this is an instance of the Experiment class
+			experiment = run_experiment.Experiment(
+				self.backend_API, progress_report_there, self.results_queue,
+				dpi=self.dpi_setting,
+				default_mp=self.backend_API.default_mp,
+			)
+			self.experiment_process = Process(
+				target=experiment.run_experiment,
+				args=exp_args["args"], kwargs=exp_args["kwargs"]
+			)
+			self.experiment_process.start()
+		else:
+			# windows
+			if platform != "win32": print("Testing using spawn.")
+			if __name__ != "backend.GUI.GUI2":
+				raise RuntimeError("Process must be called from GUI.")
+			self.results_queue = Queue()
+			self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
+			self.experiment_process = API_manager.manager_run_exp(
+				self.backend_API,
+				self.pipe_mainproc,
+				self.pipe_subproc,
+				progress_report_there,
+				module_names,
+				self.results_queue,
+				exp_args=exp_args
+			)
 
 		MultiprocessLoading.process_window(
 			self.dpi_setting["dpi_process_window_geometry"],
@@ -216,40 +267,10 @@ class PyGAAP_GUI:
 			starting_text="...",
 			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
 			end_run=self.display_results,
-			after_user=self.topwindow
+			after_user=self.topwindow,
+			exp_process=self.experiment_process
 		)
 
-		exp_args = {
-			"args": [],
-			"kwargs": {"verbose": True}
-		}
-
-		if platform != "win32" and not TEST_WIN:
-			self.results_queue = Queue()
-			experiment = run_experiment.Experiment(
-				self.backend_API, progress_report_there, self.results_queue,
-				dpi=self.dpi_setting,
-				default_mp = self.backend_API.default_mp,
-			)
-			self.experiment_process = Process(
-				target=experiment.run_experiment,
-				args=exp_args["args"], kwargs=exp_args["kwargs"]
-			)
-			self.experiment_process.start()
-		else:
-			if platform != "win32": print("Testing using spawn.")
-			if __name__ == "backend.GUI.GUI2":
-				self.results_queue = Queue()
-				self.pipe_mainproc, self.pipe_subproc = Pipe(duplex=1)
-				API_manager.manager_run_exp(
-					self.backend_API,
-					self.pipe_mainproc,
-					self.pipe_subproc,
-					progress_report_there,
-					module_names,
-					self.results_queue,
-					exp_args=exp_args
-				)
 		return
 
 
@@ -285,28 +306,68 @@ class PyGAAP_GUI:
 		
 		#self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
 
-		
+		text_frame = Frame(self.results_window)
+		self.results_window.columnconfigure(0, weight=1)
+		self.results_window.rowconfigure(0, weight=1)
+		self.results_window.rowconfigure(1, weight=0)
+		text_frame.grid(row=0, column=0, sticky="swen")
+
 		# create space to display results, release focus of process window.
-		results_display = Text(self.results_window)
-		results_display.pack(fill = BOTH, expand = True, side = LEFT)
+		results_display = Text(text_frame)
+		results_display.pack(fill=BOTH, expand = True, side = LEFT)
 		results_display.insert(END, results_text)
 		#results_display.config(state = DISABLED)
 
-		results_scrollbar = Scrollbar(self.results_window,
+		results_scrollbar = Scrollbar(text_frame,
 									width = self.dpi_setting["dpi_scrollbar_width"],
 									command = results_display.yview)
 		results_display.config(yscrollcommand = results_scrollbar.set)
-		results_scrollbar.pack(side = LEFT, fill = BOTH)
+		results_scrollbar.pack(side = LEFT, fill = BOTH, anchor="nw")
+
+		export_buttons_frame = Frame(self.results_window)
+		export_buttons_frame.grid(row=1, column=0, sticky="swen")
+
+		results_export_json = Button(
+			export_buttons_frame, text="Save as json",
+			command=lambda file_types=(("JSON", "*.json"), ("Text File", "*.txt"), ("All Files", "*.*")),
+			title="Save experiment results as json", results=exp_return["full_exp_dump"]:
+			self.export_exp_results(results, file_types, title, "json")
+		)
+		results_export_json.pack(side=RIGHT)
+
+
+		results_export_pickle = Button(
+			export_buttons_frame, text="Save as serialized Python object",
+			command=lambda file_types=(("Pickle", "*.pkl"), ("All Files", "*.*")),
+			title="Save experiment results as serialized Python object", results=exp_return["full_exp_dump"]:
+			self.export_exp_results(results, file_types, title, "pkl")
+		)
+		results_export_pickle.pack(side=RIGHT)
+
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
 		if exp_return["message"].strip() == "":
-			self.results_window.title("Results "+str(datetime.now()))
+			self.results_window.title("Results "+exp_return["exp_time"])
 		else:
-			self.results_window.title("Results "+str(datetime.now()) + " [Partial. See warning window]")
+			self.results_window.title("Results "+exp_return["exp_time"] + " [Partial. See warning window]")
 
 		self.change_style(self.results_window)
-
 		return
 
+	def export_exp_results(self, results, file_types, title, file_type):
+		save_to = asksaveasfilename(
+			filetypes = file_types,
+			title = title
+		)
+		if len(save_to) <= 0: return
+		if file_type == "json":
+			save_to_file = open(save_to, "w+")
+			json_dump(results, save_to_file, indent=4)
+		elif file_type == "pkl":
+			save_to_file = open(save_to, "wb")
+			pickle_dump(results, save_to_file)
+		else:
+			raise ValueError("Unknown file type")
+		save_to_file.close()
 
 	def process_check(
 			self,
@@ -413,6 +474,8 @@ class PyGAAP_GUI:
 		for entry in tv.get_children():
 			if opened_items.get(tv.item(entry)["text"], False):
 				tv.item(entry, open=True)
+		self.Tab_Documents_KnownAuthors_doc_stats["text"] = "Authors: "\
+			+ str(len(self.backend_API.known_authors)) + " Docs: " + str(sum([len(x[1]) for x in self.backend_API.known_authors]))
 		return
 
 	def author_save(self, author, documents_list, mode, window=None):
@@ -518,8 +581,9 @@ class PyGAAP_GUI:
 				return
 			return
 		elif mode == "clear":
-			self.Tab_Documents_KnownAuthors_treeview.delete(*self.Tab_Documents_KnownAuthors_treeview.get_children())
+			# self.Tab_Documents_KnownAuthors_treeview.delete(*self.Tab_Documents_KnownAuthors_treeview.get_children())
 			self.backend_API.known_authors = []
+			self.authors_list_updater()
 			return
 		else:
 			assert mode == "add" or mode == "remove" or mode == "edit", \
@@ -684,8 +748,8 @@ class PyGAAP_GUI:
 			row = 0, column = 2, sticky = "wens", padx = 10, pady = 10
 		)
 		
-		Tab_ReviewProcess_NumberConverters = Frame(self.tabs_frames["Tab_ReviewProcess"])
-		Tab_ReviewProcess_NumberConverters.grid(
+		Tab_ReviewProcess_Embeddings = Frame(self.tabs_frames["Tab_ReviewProcess"])
+		Tab_ReviewProcess_Embeddings.grid(
 			row = 1, column = 0, sticky = "wens", padx = 10, pady = 10
 		)
 
@@ -743,19 +807,19 @@ class PyGAAP_GUI:
 		self.Tab_RP_EventCulling_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
 		self.Tab_RP_EventCulling_Listbox.config(yscrollcommand = self.Tab_RP_EventCulling_Listbox_scrollbar.set)
 
-		Tab_RP_NumberConverters_Button = Button(
-			Tab_ReviewProcess_NumberConverters, text = "Number Converters",font = ("helvetica", 16), relief = FLAT,
+		Tab_RP_Embeddings_Button = Button(
+			Tab_ReviewProcess_Embeddings, text = "Embedders",font = ("helvetica", 16), relief = FLAT,
 			command = lambda:self.switch_tabs(tabs, "choose", 4))
-		Tab_RP_NumberConverters_Button.pack(anchor = "n")
-		Tab_RP_NumberConverters_Button.excludestyle = True
+		Tab_RP_Embeddings_Button.pack(anchor = "n")
+		Tab_RP_Embeddings_Button.excludestyle = True
 
-		self.Tab_RP_NumberConverters_Listbox = Listbox(Tab_ReviewProcess_NumberConverters)
-		self.Tab_RP_NumberConverters_Listbox.pack(side = LEFT, expand = True, fill = BOTH)
-		self.Tab_RP_NumberConverters_Listbox_scrollbar = Scrollbar(
-			Tab_ReviewProcess_NumberConverters, width = self.dpi_setting["dpi_scrollbar_width"],
-			command = self.Tab_RP_NumberConverters_Listbox.yview)
-		self.Tab_RP_NumberConverters_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
-		self.Tab_RP_NumberConverters_Listbox.config(yscrollcommand = self.Tab_RP_NumberConverters_Listbox_scrollbar.set)
+		self.Tab_RP_Embeddings_Listbox = Listbox(Tab_ReviewProcess_Embeddings)
+		self.Tab_RP_Embeddings_Listbox.pack(side = LEFT, expand = True, fill = BOTH)
+		self.Tab_RP_Embeddings_Listbox_scrollbar = Scrollbar(
+			Tab_ReviewProcess_Embeddings, width = self.dpi_setting["dpi_scrollbar_width"],
+			command = self.Tab_RP_Embeddings_Listbox.yview)
+		self.Tab_RP_Embeddings_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
+		self.Tab_RP_Embeddings_Listbox.config(yscrollcommand = self.Tab_RP_Embeddings_Listbox_scrollbar.set)
 
 		Tab_RP_AnalysisMethods_Button = Button(
 			Tab_ReviewProcess_AnalysisMethods, text = "Analysis Methods",font = ("helvetica", 16), relief = FLAT,
@@ -782,8 +846,8 @@ class PyGAAP_GUI:
 		self.Tab_RP_Process_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 5, padx = 20)
 
 		self.Tab_RP_Process_Button.bind("<Map>",
-			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_NumberConverters_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
-			labels = [Tab_RP_EventDrivers_Button, Tab_RP_NumberConverters_Button, Tab_RP_AnalysisMethods_Button]:
+			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_Embeddings_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
+			labels = [Tab_RP_EventDrivers_Button, Tab_RP_Embeddings_Button, Tab_RP_AnalysisMethods_Button]:
 			self.process_check(lb, labels)
 		)
 		
@@ -829,7 +893,7 @@ class PyGAAP_GUI:
 
 		#documents-unknown authors
 		Tab_Documents_UnknownAuthors_label =\
-			Label(self.tabs_frames["Tab_Documents"], text = "Unknown Authors", font = ("helvetica", 15), anchor = 'nw')
+			Label(self.tabs_frames["Tab_Documents"], text = "Documents of unknown authors", font = ("helvetica", 15), anchor = 'nw')
 		Tab_Documents_UnknownAuthors_label.grid(row = 4, column = 0, sticky = "W", pady = (10, 5))
 
 
@@ -872,9 +936,14 @@ class PyGAAP_GUI:
 			command=lambda: self._edit_unknown_docs("clear")
 		)
 
+		self.Tab_Documents_UnknownAuthors_doc_stats = Label(
+			Tab_Documents_doc_buttons, text="Documents: 0", anchor="e", justify="right"
+		)
+
 		Tab_Documents_UnknownAuthors_AddDoc_Button.grid(row = 1, column = 1, sticky = "W")
 		Tab_Documents_UnknownAuthors_RmvDoc_Button.grid(row = 1, column = 2, sticky = "W")
 		Tab_Documents_UnknownAuthors_clear_Button.grid(row = 1, column = 3, sticky = "W")
+		self.Tab_Documents_UnknownAuthors_doc_stats.grid(row = 1, column=4, sticky = "E", padx=(20, 0))
 
 		#documents-known authors
 		Tab_Documents_KnownAuthors_label = Label(
@@ -915,11 +984,15 @@ class PyGAAP_GUI:
 		Tab_Documents_KnownAuthors_ClrAuth_Button = Button(
 			Tab_Documents_knownauth_buttons, text = "CLEAR ALL", width = "15",
 			command = lambda:self.edit_known_authors("clear"))
+		self.Tab_Documents_KnownAuthors_doc_stats = Label(
+			Tab_Documents_knownauth_buttons, text="Authors: 0 Docs: 0", anchor="e", justify="right"
+		)
 
 		Tab_Documents_KnownAuthors_AddAuth_Button.grid(row=1, column=1, sticky="W")
 		Tab_Documents_KnownAuthors_EditAuth_Button.grid(row=1, column=2, sticky="W")
 		Tab_Documents_KnownAuthors_RmvAuth_Button.grid(row=1, column=3, sticky="W")
 		Tab_Documents_KnownAuthors_ClrAuth_Button.grid(row=1, column=4, sticky="W")
+		self.Tab_Documents_KnownAuthors_doc_stats.grid(row=1, column=5, sticky="E", padx=(20, 0))
 
 	def _unified_tabs(self):
 		"""
@@ -943,6 +1016,8 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["Canonicizers"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("Canonicizers", "Canonicize/normalize texts"))
 
 		self.Tab_EventDrivers_parameters_displayed = []
 		self.generated_widgets['EventDrivers'] = GUI_unified_tabs.create_module_tab(
@@ -955,11 +1030,13 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["EventDrivers"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("EventDrivers", "Extract characteristic features/events"))
 
 		self.Tab_EventCulling_parameters_displayed = []
 		self.generated_widgets['EventCulling'] = GUI_unified_tabs.create_module_tab(
 			self.tabs_frames["Tab_EventCulling"],
-			["Event Culling"],
+			["Feature & Event filtering"],
 			"EventCulling",
 			displayed_parameters = self.Tab_EventCulling_parameters_displayed,
 			RP_listbox = self.Tab_RP_EventCulling_Listbox,
@@ -967,18 +1044,22 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["EventCulling"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("EventCulling", "Filter/discard irrelevant features/events"))
 
-		self.Tab_NumberConverters_parameters_displayed = []
-		self.generated_widgets['NumberConverters'] = GUI_unified_tabs.create_module_tab(
-			self.tabs_frames["Tab_NumberConverters"],
-			["Number Converters"],
-			"NumberConverters",
-			displayed_parameters = self.Tab_NumberConverters_parameters_displayed,
-			RP_listbox = self.Tab_RP_NumberConverters_Listbox,
+		self.Tab_Embeddings_parameters_displayed = []
+		self.generated_widgets['Embeddings'] = GUI_unified_tabs.create_module_tab(
+			self.tabs_frames["Tab_Embeddings"],
+			["Embedding"],
+			"Embeddings",
+			displayed_parameters = self.Tab_Embeddings_parameters_displayed,
+			RP_listbox = self.Tab_RP_Embeddings_Listbox,
 			list_of_functions=self.list_of_functions,
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["Embeddings"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("Embeddings", "Convert text features to numbers for analysis"))
 
 		self.Tab_AnalysisMethods_parameters_displayed = []
 		self.generated_widgets['AnalysisMethods'] = GUI_unified_tabs.create_module_tab(
@@ -992,8 +1073,13 @@ class PyGAAP_GUI:
 			backend_API=self.backend_API,
 			topwindow=self.topwindow,
 			dpi_setting=self.dpi_setting)
+		Hovertip(self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][1],
+			self.tooltips.get("mod_type", dict()).get("AnalysisMethods", "Use statistics/machine learning to classify documents"))
+		Hovertip(self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][1],
+			self.tooltips.get("mod_type", dict()).get("DistanceFunctions", "Specify a distance metric, if applicable"))
 
-		for mtype in ['Canonicizers', "EventDrivers", "EventCulling", "NumberConverters", "AnalysisMethods"]:
+
+		for mtype in ['Canonicizers', "EventDrivers", "EventCulling", "Embeddings", "AnalysisMethods"]:
 			self.search_entry_query[mtype] = StringVar()
 			self.generated_widgets[mtype]['search_entry']\
 				.configure(textvariable=self.search_entry_query[mtype])
@@ -1183,19 +1269,20 @@ class PyGAAP_GUI:
 				self.backend_API.unknown_docs.append(item)
 			for item in self._docs_to_string_list()["unknown"]:
 				self.Tab_Documents_UnknownAuthors_listbox.insert(END, item)
+		self.Tab_Documents_UnknownAuthors_doc_stats["text"] = "Documents: " + str(len(self.backend_API.unknown_docs))
 
 
 	def _load_modules_to_GUI(self, startup=False):
 
 		# first clear everthing in listboxes.
 		# the "DistanceFunctions" Treeview is in the "AnalysisMethods" tkinter frame.
-		for module_type in ["Canonicizers", "EventDrivers", "EventCulling", "NumberConverters"]:
+		for module_type in ["Canonicizers", "EventDrivers", "EventCulling", "Embeddings"]:
 			self.generated_widgets[module_type]["available_listboxes"][0][2].delete(0, END)
 			self.generated_widgets[module_type]["selected_listboxes"][0][2].delete(0, END)
 		for listbox in [self.Tab_RP_Canonicizers_Listbox,
 						self.Tab_RP_EventDrivers_Listbox,
 						self.Tab_RP_EventCulling_Listbox,
-						self.Tab_RP_NumberConverters_Listbox]:
+						self.Tab_RP_Embeddings_Listbox]:
 			listbox.delete(0, END)
 
 		self.Tab_RP_AnalysisMethods_Listbox.delete(*self.Tab_RP_AnalysisMethods_Listbox.get_children())
@@ -1218,8 +1305,8 @@ class PyGAAP_GUI:
 				self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2].insert(END, distancefunc)
 			for culling in sorted(list(self.backend_API.eventCulling.keys())):
 				self.generated_widgets["EventCulling"]["available_listboxes"][0][2].insert(END, culling)
-			for converter in sorted(list(self.backend_API.numberConverters.keys())):
-				self.generated_widgets["NumberConverters"]["available_listboxes"][0][2].insert(END, converter)
+			for converter in sorted(list(self.backend_API.embeddings.keys())):
+				self.generated_widgets["Embeddings"]["available_listboxes"][0][2].insert(END, converter)
 			for method in sorted(list(self.backend_API.analysisMethods.keys())):
 				self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][2].insert(END, method)
 			if startup == False: self.status_update("Modules reloaded")
@@ -1233,7 +1320,7 @@ class PyGAAP_GUI:
 			
 			error_text = "An error occurred while loading the modules:\n\n"
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
-			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload all modules"'
+			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload modules"'
 			error_text_field.insert(END, error_text)
 			topwindow.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
@@ -1381,10 +1468,10 @@ class PyGAAP_GUI:
 				self.status_update("Nothing selected or missing selection.")
 				if GUI_debug > 0: print("add to list: nothing selected")
 				return
-			except TypeError:
+			except Exception as e:
 				self.show_error_window(
 					"Something went wrong while adding the module.\n\n"
-					+ "\n\n".join([str(x) for x in exc_info()[:2]])
+					+ format_exc()
 				)
 				return
 
@@ -1410,7 +1497,7 @@ class PyGAAP_GUI:
 		if GUI_debug >= 3: print("check_DF_listbox()")
 		try:
 			if self.backend_API.analysisMethods[lbAv.get(lbAv.curselection())]\
-					.__dict__.get("_NoDistanceFunction_") == True:
+					.__dict__.get("_NoDistanceFunction_", False):
 				lbOp.config(state = DISABLED)
 			else:
 				lbOp.config(state = NORMAL)
@@ -1461,7 +1548,6 @@ class PyGAAP_GUI:
 			return
 		
 		
-		# currently only support OptionMenu variables
 		param_options = []
 		# list of StringVars.
 		if type(listbox) == Listbox:
@@ -1545,7 +1631,7 @@ class PyGAAP_GUI:
 					module = this_module, var = parameter_i:\
 						self.set_parameters(stringvar, module, var,
 						param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type))
-			elif menu_type == "Slider":
+			elif menu_type in ["Slider", "Scale"]:
 				scale_begin = this_module._variable_options[parameter_i]["options"][0]
 				scale_end = this_module._variable_options[parameter_i]["options"][-1]
 				displayed_params.append(
@@ -1560,6 +1646,17 @@ class PyGAAP_GUI:
 					)
 				)
 				displayed_params[-1].set(this_module.__dict__.get(parameter_i))
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+			elif menu_type in ["Tick", "Check"]:
+				displayed_params.append(
+					Checkbutton(
+						param_frame, variable=param_options[-1],
+						command=lambda value=param_options[-1], module=this_module, var=parameter_i:
+							self.set_parameters(value, module, var,
+								param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type	
+							)
+					)
+				)
 				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
 			else:
 				raise ValueError("Unknown input widget type", menu_type)
@@ -1771,7 +1868,7 @@ class PyGAAP_GUI:
 
 		menu_dev = Menu(menubar, tearoff=0)
 		#menu_dev.add_command(label="Instant experiment", command=self.instant_experiment)
-		menu_dev.add_command(label="Reload all modules", command=self.reload_modules)
+		menu_dev.add_command(label="Reload modules", command=self.reload_modules)
 		menu_dev.add_command(label="Show process content", command=self.show_API_process_content)
 		menu_dev.add_command(label="Toggle built-in multiprocessing", command=self.toggle_mp)
 		menubar.add_cascade(label="Developer", menu=menu_dev)
@@ -1796,11 +1893,11 @@ class PyGAAP_GUI:
 			self.tabs_frames[t].pack(fill = 'both', expand = True, anchor = NW)
 
 
-		self.tabs.add(self.tabs_frames["Tab_Documents"], text = "Documents")
-		self.tabs.add(self.tabs_frames["Tab_Canonicizers"], text = "Canonicizers")
-		self.tabs.add(self.tabs_frames["Tab_EventDrivers"], text = "Event Drivers")
-		self.tabs.add(self.tabs_frames["Tab_EventCulling"], text = "Event Culling")
-		self.tabs.add(self.tabs_frames["Tab_NumberConverters"], text = "Number Converters")
+		self.tabs.add(self.tabs_frames["Tab_Documents"], text = "Data")
+		self.tabs.add(self.tabs_frames["Tab_Canonicizers"], text = "Normalization")
+		self.tabs.add(self.tabs_frames["Tab_EventDrivers"], text = "Feature Extraction")
+		self.tabs.add(self.tabs_frames["Tab_EventCulling"], text = "Feature Filtering")
+		self.tabs.add(self.tabs_frames["Tab_Embeddings"], text = "Embedding")
 		self.tabs.add(self.tabs_frames["Tab_AnalysisMethods"], text = "Analysis Methods")
 		self.tabs.add(self.tabs_frames["Tab_ReviewProcess"], text = "Review & Process")
 
@@ -1863,7 +1960,7 @@ class PyGAAP_GUI:
 		sys_modules_pop = [m for m in sys_modules if (
 				"generics.modules" in m or "GUI_unified_tabs" in m or "run_experiment" in m or
 				"AnalysisMethod" in m or "Canonicizer" in m or "DistanceFunction" in m or
-				"EventCulling" in m or "EventDriver" in m or "NumberConverter" in m or
+				"EventCulling" in m or "EventDriver" in m or "Embedding" in m or
 				"MultiprocessLoading" in m or ("API" in m and "manager" not in m)
 			)
 		]

@@ -1,6 +1,9 @@
 # Ignore all __pycache__ directories
 **/__pycache__
 **/.vscode
+**/dist
+**/build
+# generics/cmodules
 
 # Ignore the tmp directory (experiment outputs are stored in it)
 /tmp
@@ -13,3 +16,4 @@ backend/GUI/GUI2_mono.py
 generics/modules/am_pytorch.py
 manage.py
 backend/GUI/GUI.py
+buildc.sh

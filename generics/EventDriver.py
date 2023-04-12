@@ -8,7 +8,9 @@ from importlib import import_module
 from multiprocessing import Pool, cpu_count
 # import spacy
 
-language_codes = json_load(f:=open(Path("./resources/languages.json"), "r"))
+language_codes = dict()
+with open(Path("./resources/languages.json"), "r") as f:
+	language_codes = json_load(f)
 f.close()
 del f
 
@@ -25,8 +27,9 @@ class EventDriver(ABC):
 		except AttributeError:
 			self._variable_options = dict()
 		self._global_parameters = self._global_parameters
-		try: self.after_init(**options)
-		except (AttributeError, NameError): pass
+		try: self.after_init
+		except (AttributeError, NameError): return
+		self.after_init(**options)
 
 	def after_init(self, **options):
 		pass

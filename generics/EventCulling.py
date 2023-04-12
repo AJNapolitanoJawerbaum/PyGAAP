@@ -14,9 +14,10 @@ class EventCulling(ABC):
 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
 		except AttributeError:
 			self._variable_options = dict()
-
-		try: self.after_init(**options)
-		except (AttributeError, NameError): pass
+		self._global_parameters = self._global_parameters
+		try: self.after_init
+		except (AttributeError, NameError): return
+		self.after_init(**options)
 
 	def after_init(self, **options):
 		pass

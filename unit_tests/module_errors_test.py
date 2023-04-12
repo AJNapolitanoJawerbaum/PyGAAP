@@ -7,7 +7,7 @@
 from generics.Canonicizer import Canonicizer
 from generics.EventDriver import EventDriver
 from generics.EventCulling import EventCulling
-from generics.NumberConverter import NumberConverter
+from generics.Embedding import Embedding
 from generics.AnalysisMethod import AnalysisMethod
 from generics.DistanceFunction import DistanceFunction
 
@@ -38,11 +38,11 @@ class Ec_error(EventCulling):
 	def displayDescription():
 		return "Raises an error as an event culler."
 
-class Nc_error(NumberConverter):
+class Nc_error(Embedding):
 	def convert(self, docs, pipe=None):
-		raise ValueError("Number Converter exception message.")
+		raise ValueError("Embedding exception message.")
 	def displayName():
-		return "Number Converter Error Test."
+		return "Embedding Error Test."
 	def displayDescription():
 		return "Raises an error as an embedder."
 

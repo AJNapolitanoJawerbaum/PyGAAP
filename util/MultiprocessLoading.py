@@ -7,7 +7,7 @@
 # @ author: Michael Fang
 
 
-from tkinter import Tk, Label, Toplevel, Text, Scrollbar
+from tkinter import Tk, Label, Toplevel, Text, Scrollbar, Button
 from tkinter.ttk import Progressbar
 from datetime import datetime
 
@@ -72,6 +72,14 @@ def receive_info(
 				if info: progressbar.start()
 			return
 
+def gui_abort_experiment(pipe, window, process):
+	#pipe.close()
+	process.kill()
+	window.destroy()
+	print("Experiment aborted")
+	return
+ 
+
 def process_window(geometry: str, mode: str, pto, **options):
 	"""
 	A process window, best used when started in a separate thread/process.
@@ -85,8 +93,7 @@ def process_window(geometry: str, mode: str, pto, **options):
 	progressbar_length = options.get("progressbar_length", 100)
 	starting_text = options.get("starting_text", "")
 	window_title = options.get("window_title", "Processing")
-	assert mode == "indetermintate" or mode == "determinate",\
-		'Unknown mode in process_window(). Use "determinate" or "indeterminate".'
+	if mode != "indetermintate" and mode != "determinate": mode = "indeterminate"
 
 	end_run = options.get("end_run")
 	end_run_args = options.get("end_run_args", [])
@@ -100,6 +107,12 @@ def process_window(geometry: str, mode: str, pto, **options):
 	text_label.pack()
 	progress = Progressbar(window, mode=mode, length=progressbar_length)
 	progress.pack(padx=100, pady=(5,30))
+
+	exp_process = options.get("exp_process")
+	if exp_process is not None:
+		abort_button = Button(window, text="Abort",
+			command=lambda c=pto, w=window, p=exp_process:gui_abort_experiment(c, w, p))
+		abort_button.pack(pady=10)
 
 	receive_info(pto, window, text_label=text_label, progressbar=progress,
 		end_run=end_run, end_run_args=end_run_args, end_run_kwargs=end_run_kwargs)

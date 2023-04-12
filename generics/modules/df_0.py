@@ -19,7 +19,7 @@ class CosineDistance(DistanceFunction):
 class HistogramDistance(DistanceFunction):
 	def distance(self, unknown, known:np.ndarray):
 		"""Compute distance using numpy"""
-		doc_by_author = np.sqrt(np.sum(np.square(unknown[:,np.newaxis] - known), axis=2, keepdims=0))
+		doc_by_author = np.sum(np.square(unknown[:,np.newaxis] - known), axis=2, keepdims=0)
 		return doc_by_author
 
 	def displayDescription():

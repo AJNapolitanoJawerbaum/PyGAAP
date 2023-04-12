@@ -7,7 +7,7 @@ The Python graphical authorship attribution program is a text classification too
 1. Launch PyGAAP,
 2. Click on ```Files``` $\rightarrow$ ```AAAC Problems``` $\rightarrow$ ```Problem A```
 3. Switch to the ```Event drivers``` tab, click on ```Character NGrams```, then ```Add```
-4. Switch to the ```Number Converters``` tab and click on ```Frequency```, then ```Add```
+4. Switch to the ```Embeddings``` tab and click on ```Frequency```, then ```Add```
 5. Switch to the ```Analysis Methods``` tab and click on ```Linear SVM (sklearn)```, then ```Add```.
 6. Finally, switch to ```Review & Process``` tab, press ```Process```, and wait for the results!
 
@@ -22,7 +22,7 @@ The module types in PyGAAP have alternative names one may have seen in academic 
 - ```Canonicizers```: Pre-processing; Text normalization.
 - ```Event Drivers```: Feature (set) extraction, Characteristics extraction, "Write-print" (a particular feature extraction method).
 - ```Event Culling```: Feature (set) culling/filtering.
-- ```Number Converters```: Text embedding, feature embedding
+- ```Embeddings```: Feature embedding
 - ```Analysis Methods```: Classifiers, Algorithms.
 - ```Distance Functions```: Distances, Metrics.
 ### Add/remove modules
@@ -35,6 +35,6 @@ The module types in PyGAAP have alternative names one may have seen in academic 
 ### Creating an experiment csv
 parameters
 ### Loading a JGAAP experiment csv
-PyGAAP is cross-compatible with JGAAP experiment csv format. Simply run the CLI as if you'd run a PyGAAP csv. Caution that since JGAAP's exp. csv format doesn't specify a number converter, the default will always be ```Frequency```.
+PyGAAP is cross-compatible with JGAAP experiment csv format. Simply run the CLI as if you'd run a PyGAAP csv. Caution that since JGAAP's exp. csv format doesn't specify an embedding, the default will always be ```Frequency```.
 ### Convert a JGAAP expriment csv to the PyGAAP format
 ## Running the experiment
