@@ -208,7 +208,7 @@ class StripAlphanumeric(Canonicizer):
 			'Full-width punctuations include:\n"，。？！“”‘’；：——（）、《》【】『』"'
 	
 	def displayName():
-		return "Strip Alpha-numeric"
+		return "Strip AlphaNumeric"
 
 class StripNullCharacters(Canonicizer):
 	def process_single(self, procText):

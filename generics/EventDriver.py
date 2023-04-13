@@ -91,7 +91,11 @@ class EventDriver(ABC):
 class CharacterNGramEventDriver(EventDriver):
 	'''Event Driver for Character N-Grams'''
 	n = 2
-	_variable_options={"n": {"options": range(1, 21), "default": 1, "type": "Slider"}}
+	sort = 0
+	_variable_options={
+		"n": {"options": range(1, 21), "default": 1, "type": "Slider"},
+		"sort": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Sort Alphabetically"}
+	}
 	# for PyGAAP GUI to know which options to list/are valid
 		
 	def process_single(self, procText):
@@ -101,7 +105,7 @@ class CharacterNGramEventDriver(EventDriver):
 		formattedOutput = [''.join(val) for val in nltkRawOutput]
 		if len(formattedOutput) == 0:
 			raise ValueError("NLTK n-gram returned empty list. Check output of previous modules.")
-		return formattedOutput
+		return sorted(formattedOutput) if self.sort else formattedOutput
 	
 	def displayName():
 		return "Character NGrams"
@@ -269,11 +273,13 @@ class WordNGram(EventDriver):
 	n = 2
 	tokenizer = "NLTK"
 	#lemmatize = "No"
+	sort = 0
 
 	_variable_options = {
 		"n": {"options": range(1, 11), "type": "Slider", "default": 1, "validator": (lambda x: x >= 1 and x <= 20)},
 		"tokenizer": {"options": ["Space delimiter", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 1},
-		#"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"}
+		#"lemmatize": {"options": ["No", "SpaCy", "NLTK"], "type": "OptionMenu", "default": 0, "displayed_name": "(N/A) lemmatize"},
+		"sort": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Sort Alphabetically"}
 	}
 
 	def setParams(self, params):
@@ -302,11 +308,12 @@ class WordNGram(EventDriver):
 				with Pool(cpu_count()-1) as p:
 					events = p.map(self.spacy_single, docs)
 				for i in range(len(docs)):
-					docs[i].setEventSet(events[i])
+					docs[i].setEventSet(sorted(events[i]) if self.sort else events[i])
 			else:
 				for i, d in enumerate(docs):
 					if pipe is not None: pipe.send(100*i/l)
-					d.setEventSet([str(token) for token in self._lang_module.tokenizer(d.text)])
+					events = [str(token) for token in self._lang_module.tokenizer(d.text)]
+					d.setEventSet(sorted(events) if self.sort else events)
 
 		elif self.tokenizer == "NLTK":
 			lang = self._global_parameters["language_code"].get(self._global_parameters["language"], "eng")
@@ -315,15 +322,16 @@ class WordNGram(EventDriver):
 				with Pool(cpu_count()-1) as p:
 					events = p.map(word_tokenize, [d.text for d in docs])
 				for i in range(len(docs)):
-					docs[i].setEventSet(events[i])
+					docs[i].setEventSet(sorted(events[i]) if self.sort else events[i])
 			else:
 				for i, d in enumerate(docs):
 					if pipe is not None: pipe.send(100*i/l)
-					d.setEventSet(word_tokenize(d.text, language=self._nltk_lang))
+					events = word_tokenize(d.text, language=self._nltk_lang)
+					d.setEventSet(sorted(events) if self.sort else events)
 
 		elif self.tokenizer == "Space delimiter":
 			for i, d in enumerate(docs):
-				d.setEventSet(d.text.split())
+				d.setEventSet(sorted(d.text.split()) if self.sort else d.text.split())
 		else:
 			raise ValueError("Unknown tokenizer type %s" % self.tokenizer)
 

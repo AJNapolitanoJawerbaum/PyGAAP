@@ -760,7 +760,7 @@ class PyGAAP_GUI:
 	def load_aaac(self, problem: str):
 		"""Loads AAAC problems"""
 		# problem: "problem" + capital character.
-		corpus_file_path = self.gui_params["aaac_problems_path"]+'%s/load%s.csv' % (problem, problem[-1])
+		corpus_file_path = self.gui_params["aaac_problems_path"]+'problem%s/load%s.csv' % (problem, problem[-1])
 		# corpus_list = CSVIO.readCorpusCSV(corpus_file_path)
 		if GUI_debug >= 3: print("problem %s" % problem)
 		self.load_save_csv("autoloadclear", corpus_file_path)
@@ -898,10 +898,16 @@ class PyGAAP_GUI:
 
 	def _documents_tab(self):
 
+		Tab_Documents_topframe = Frame(self.tabs_frames["Tab_Documents"])
+		Tab_Documents_topframe.grid(row = 0, column = 0, sticky = 'EW', pady = (10, 5))
+
 		Tab_Documents_Language_label = Label(
-			self.tabs_frames["Tab_Documents"],text = "Document Language", font = ("helvetica", 15), anchor = 'nw'
+			Tab_Documents_topframe ,text = "Document Language", font = ("helvetica", 15), anchor = 'nw'
 		)
-		Tab_Documents_Language_label.grid(row = 1, column = 0, sticky = 'NW', pady = (10, 5))
+		Tab_Documents_Language_label.grid(row = 0, column = 0, sticky = 'NW', pady = 0)
+
+		# Tab_Documents_search_all = ttk.Combobox(Tab_Documents_topframe, width=30)
+		# Tab_Documents_search_all.grid(row = 1, column = 1, sticky = "E", pady = 0)
 
 		for n in range(10):
 			if n == 5 or n == 8:
@@ -920,11 +926,11 @@ class PyGAAP_GUI:
 		#may need a lookup function for the options below
 		analysisLanguageOptions = self.backend_API.languages_available
 		Tab_Documents_language_dropdown = OptionMenu(
-			self.tabs_frames["Tab_Documents"], analysisLanguage, *analysisLanguageOptions
+			Tab_Documents_topframe, analysisLanguage, *analysisLanguageOptions
 		)
 		Tab_Documents_language_dropdown.config(width = self.dpi_setting["dpi_language_dropdown_width"])
 		Tab_Documents_language_dropdown['anchor'] = 'nw'
-		Tab_Documents_language_dropdown.grid(row = 2, column = 0, sticky = 'NW')
+		Tab_Documents_language_dropdown.grid(row = 1, column = 0, sticky = 'NW')
 
 
 		analysisLanguage.trace_add("write",
@@ -1666,7 +1672,7 @@ class PyGAAP_GUI:
 					)
 				)
 				displayed_params[-1].config(width = self.dpi_setting["dpi_option_menu_width"])
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
 				param_options[-1].trace_add(("write"),
 					lambda v1, v2, v3, stringvar = param_options[-1],
 					module = this_module, var = parameter_i:\
@@ -1687,7 +1693,7 @@ class PyGAAP_GUI:
 					)
 				)
 				displayed_params[-1].set(this_module.__dict__.get(parameter_i))
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
 			elif menu_type in ["Tick", "Check"]:
 				displayed_params.append(
 					Checkbutton(
@@ -1839,16 +1845,6 @@ class PyGAAP_GUI:
 			background = [('selected', self.gui_params["styles"][self.style_choice]["accent_color_mid"])],
 			foreground = [('selected', "#000000")]
 		)
-		multiprocessing_limit_docs = float("inf")
-		# See TODO 1.
-		# the number of docs before
-		# multi-processing is used.
-
-		multiprocessing_limit_analysis = float("inf")
-		# See TODO 1.
-		# the sum score of the
-		# "time-consumingness" of analysis methods
-		# before multi-processing is used.
 
 		menubar = Menu(topwindow)
 		menu_file = Menu(menubar, tearoff = 0)
@@ -1880,9 +1876,8 @@ class PyGAAP_GUI:
 
 		menu_AAAC_problems = Menu(menu_file, tearoff = 0)
 		
-		for problem in ls(self.gui_params["aaac_problems_path"]):
-			if "problem" in problem and problem[7] in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-				menu_AAAC_problems.add_command(label="Problem "+problem[-1], command=lambda p=problem:self.load_aaac(p))
+		for l in "ABCDEFGHIJKLM":
+			menu_AAAC_problems.add_command(label="Problem "+l, command=lambda p=l:self.load_aaac(l))
 
 		menu_file.add_cascade(
 			label = "AAAC Problems", menu = menu_AAAC_problems,

@@ -214,10 +214,10 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		objects['parameters_label'] = Label(
 			objects["parameters_frame"], text = "Parameters", font = ("helvetica", 15), anchor = NW
 		)
-		objects['parameters_label'].pack(pady = (10, 5),anchor = W)
+		objects['parameters_label'].pack(pady = 5, anchor = W)
 
 		objects['displayed_parameters_frame'] = Frame(objects["parameters_frame"])
-		objects['displayed_parameters_frame'].pack(padx = 20, pady = 20)
+		objects['displayed_parameters_frame'].pack(padx = 20, pady = 5, fill="both", expand=1)
 
 
 		objects["selected_listboxes"][-1][2].bind("<<ListboxSelect>>",

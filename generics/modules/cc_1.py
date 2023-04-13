@@ -1,6 +1,7 @@
 from generics.Canonicizer import Canonicizer
 import re
 import numpy as np
+from unicodedata import normalize as unicode_normalize
 
 class CangjieConvert(Canonicizer):
 	# The initializing of the lookup table depends on a hard-coded number of lines in the lookup table text file.
@@ -88,7 +89,40 @@ class StripTabs(Canonicizer):
 	def displayName():
 		return "Strip Tabs"
 
+class SmashI(Canonicizer):
+	_pattern = re.compile("(^|\\W+)I(\\W+|$)")
+	def process_single(self, text):
+		return re.subn(self._pattern, "i", text)[0]
+
+	def displayName():
+		return "Smash I"
 	
+	def displayDescription():
+		return "Replace capital I as a word to lowercase i."
+
+class NormalizeUnicode(Canonicizer):
+	latin = "Compose (NFC)"
+	_variable_options = {
+		"latin":
+		{
+			"options": ["Compose (NFC)", "Decompose (NFD)"],
+			"type": "OptionMenu",
+			"default": 0,
+			"displayed_name": "Latin characters"
+		},
+	}
+	def process_single(self, text):
+		if self.type_ == "Compose (NFC)":
+			return unicode_normalize("NFC", text)
+		if self.type_ == "Decompose (NFD)":
+			return unicode_normalize("NFD", text)
+
+	def displayName():
+		return "Normalize Unicode"
+	
+	def displayDescription():
+		return "Convert to pre-composed or decomposed characters"
+
 	# class SpacyLemmatize(Canonicizer):
 	# 	# class var.
 	# 	_SpacyLemmatize_module_dict = {
