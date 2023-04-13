@@ -72,10 +72,11 @@ def receive_info(
 				if info: progressbar.start()
 			return
 
-def gui_abort_experiment(pipe, window, process):
+def gui_abort_experiment(pipe, window, process, end_run):
 	#pipe.close()
 	process.kill()
 	window.destroy()
+	end_run(abort=1)
 	print("Experiment aborted")
 	return
  
@@ -111,7 +112,7 @@ def process_window(geometry: str, mode: str, pto, **options):
 	exp_process = options.get("exp_process")
 	if exp_process is not None:
 		abort_button = Button(window, text="Abort",
-			command=lambda c=pto, w=window, p=exp_process:gui_abort_experiment(c, w, p))
+			command=lambda c=pto, w=window, p=exp_process, e=end_run:gui_abort_experiment(c, w, p, e))
 		abort_button.pack(pady=10)
 
 	receive_info(pto, window, text_label=text_label, progressbar=progress,

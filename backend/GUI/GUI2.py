@@ -135,7 +135,7 @@ class PyGAAP_GUI:
 	progress_window: Toplevel = None
 	error_window: Toplevel = None
 
-
+	list_of_results = [] # [[name-string, results-object], [..., ...], ...]
 
 	def __init__(self):
 		# no internal error handling because fatal error.
@@ -221,6 +221,7 @@ class PyGAAP_GUI:
 			"DistanceFunctions": [x[1] for x in am_df_names]
 		}
 
+		self.Tab_RP_Process_Button.config(state=DISABLED)
 		progress_report_here, progress_report_there = Pipe(duplex=True)
 
 		exp_args = {
@@ -274,19 +275,22 @@ class PyGAAP_GUI:
 		return
 
 
-	def display_results(self):
+	def display_results(self, **options):
 		"""Displays results in new window"""
 		# show process results
-
+		self.Tab_RP_Process_Button.config(state=NORMAL)
+		if options.get("abort", 0): return
 		exp_return = self.results_queue.get()
 		results_text = exp_return["results_text"]
+
+		if not exp_return["status"]: self.list_of_results.append(exp_return)
 
 		if exp_return["status"] != 0 or exp_return["message"].strip() != "":
 			error_window = Toplevel()
 			error_window.geometry(self.dpi_setting["dpi_process_window_error"])
 
 			error_text = ""
-			if exp_return["status"] == 1:
+			if exp_return["status"]:
 				error_window.title("Experiment failed")
 				error_text += "Experiment failed.\n"
 			else:
@@ -301,73 +305,105 @@ class PyGAAP_GUI:
 				return
 
 		self.status_update("")
+		self.show_results_window(focus_last=1)
+		return
+
+	def show_results_window(self, **options):
+		try: self.results_window.destroy()
+		except AttributeError: pass
 		self.results_window = Toplevel()
+		self.results_window.title("Experiment results")
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry"])
 		
 		#self.results_window.bind("<Destroy>", lambda event, b = "":self.status_update(b))
 
-		text_frame = Frame(self.results_window)
+		results_tabs = ttk.Notebook(self.results_window)
+		results_tabs.grid(row=0, column=0, sticky="swen")
+
 		self.results_window.columnconfigure(0, weight=1)
 		self.results_window.rowconfigure(0, weight=1)
 		self.results_window.rowconfigure(1, weight=0)
-		text_frame.grid(row=0, column=0, sticky="swen")
 
-		# create space to display results, release focus of process window.
-		results_display = Text(text_frame)
-		results_display.pack(fill=BOTH, expand = True, side = LEFT)
-		results_display.insert(END, results_text)
-		#results_display.config(state = DISABLED)
 
-		results_scrollbar = Scrollbar(text_frame,
-									width = self.dpi_setting["dpi_scrollbar_width"],
-									command = results_display.yview)
-		results_display.config(yscrollcommand = results_scrollbar.set)
-		results_scrollbar.pack(side = LEFT, fill = BOTH, anchor="nw")
+		for output in self.list_of_results:
+
+			if output["message"].strip() == "":
+				tab_text = output["exp_time"]
+			else:
+				tab_text = output["exp_time"] + " [Partial]"
+
+			text_frame = Frame(results_tabs, height=50, width=40)
+			results_tabs.add(text_frame, text=tab_text)
+			# no pack/grid for frames of notebooks
+
+			results_display = Text(text_frame)
+			results_display.pack(fill=BOTH, expand=True, side=LEFT)
+			results_display.insert(END, output["results_text"])
+			results_display.config(state = DISABLED)
+
+			results_scrollbar = Scrollbar(text_frame,
+										width = self.dpi_setting["dpi_scrollbar_width"],
+										command = results_display.yview)
+			results_display.config(yscrollcommand = results_scrollbar.set)
+			results_scrollbar.pack(side = LEFT, fill = BOTH, anchor="nw")
 
 		export_buttons_frame = Frame(self.results_window)
 		export_buttons_frame.grid(row=1, column=0, sticky="swen")
 
-		results_export_json = Button(
-			export_buttons_frame, text="Save as json",
-			command=lambda file_types=(("JSON", "*.json"), ("Text File", "*.txt"), ("All Files", "*.*")),
-			title="Save experiment results as json", results=exp_return["full_exp_dump"]:
-			self.export_exp_results(results, file_types, title, "json")
-		)
-		results_export_json.pack(side=RIGHT)
-
-
-		results_export_pickle = Button(
-			export_buttons_frame, text="Save as serialized Python object",
-			command=lambda file_types=(("Pickle", "*.pkl"), ("All Files", "*.*")),
-			title="Save experiment results as serialized Python object", results=exp_return["full_exp_dump"]:
-			self.export_exp_results(results, file_types, title, "pkl")
-		)
-		results_export_pickle.pack(side=RIGHT)
+		if len(self.list_of_results):
+			results_export = Button(
+				export_buttons_frame, text="Save this experiment",
+				command=lambda tab_obj=results_tabs:
+				self.export_exp_results(tab_obj=tab_obj)
+			)
+			results_export.pack(side=RIGHT)
+			clear_results = Button(
+				export_buttons_frame, text="Clear history and close",
+				command=self.clear_exp_history
+			)
+			clear_results.pack(side=LEFT)
+		else:
+			Label(self.results_window, text="No experiments to show.").grid(row=0, column=0)
 
 		self.results_window.geometry(self.dpi_setting["dpi_process_window_geometry_finished"])
-		if exp_return["message"].strip() == "":
-			self.results_window.title("Results "+exp_return["exp_time"])
-		else:
-			self.results_window.title("Results "+exp_return["exp_time"] + " [Partial. See warning window]")
 
 		self.change_style(self.results_window)
+		if options.get("focus_last", False):
+			results_tabs.select(results_tabs.index("end")-1)
 		return
 
-	def export_exp_results(self, results, file_types, title, file_type):
+	def clear_exp_history(self):
+		for i in self.list_of_results: del i
+		self.list_of_results = []
+		self.results_window.destroy()
+		return
+
+	def export_exp_results(self, **options):
+		if options.get("tab_obj", False):
+			tab_obj = options["tab_obj"]
+			results = self.list_of_results[tab_obj.index(tab_obj.select())]
+		else: return
 		save_to = asksaveasfilename(
-			filetypes = file_types,
-			title = title
+			filetypes = (("JavaScript Object Notation", "*.json"), ("Serialized Python Object", "*.pkl"),
+				("Text File", "*.txt"), ("Show All Files", "*.*")),
+			title = "Save experiment results",
+			parent = self.results_window
 		)
 		if len(save_to) <= 0: return
-		if file_type == "json":
-			save_to_file = open(save_to, "w+")
-			json_dump(results, save_to_file, indent=4)
-		elif file_type == "pkl":
-			save_to_file = open(save_to, "wb")
-			pickle_dump(results, save_to_file)
+		elif type(save_to) != str: save_to = save_to[0]
+		if save_to.endswith(".json"):
+			with open(save_to, "w+") as save_to_file:
+				json_dump(results["full_exp_dump"], save_to_file, indent=4)
+		elif save_to.endswith(".pkl"):
+			with open(save_to, "wb") as save_to_file:
+				pickle_dump(results["full_exp_dump"], save_to_file)
+		elif save_to.endswith(".txt") or len(save_to.split(".")) == 1:
+			# if no extension specified, save as text.
+			with open(save_to, "w+") as save_to_file:
+				save_to_file.write(results["results_text"])
 		else:
 			raise ValueError("Unknown file type")
-		save_to_file.close()
+		self.status_update("Saved as %s" % save_to)
 
 	def process_check(
 			self,
@@ -839,11 +875,16 @@ class PyGAAP_GUI:
 			command = self.Tab_RP_AnalysisMethods_Listbox.yview)
 		self.Tab_RP_AnalysisMethods_Listbox_scrollbar.pack(side = RIGHT, fill = BOTH)
 		self.Tab_RP_AnalysisMethods_Listbox.config(yscrollcommand = self.Tab_RP_AnalysisMethods_Listbox_scrollbar.set)
+
+		self.Tab_RP_ShowResults_Button = Button(
+			self.tabs_frames["Tab_ReviewProcess"], text = "Show Results", width = 25,
+			command=self.show_results_window
+		)
+		self.Tab_RP_ShowResults_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 0, padx = 20)
+
 		self.Tab_RP_Process_Button = Button(self.tabs_frames["Tab_ReviewProcess"], text = "Process", width = 25)
-
 		# button command see after documents tab.
-
-		self.Tab_RP_Process_Button.grid(row = 2, column = 0, columnspan = 3, sticky = "se", pady = 5, padx = 20)
+		self.Tab_RP_Process_Button.grid(row = 3, column = 0, columnspan = 3, sticky = "se", pady = (3, 5), padx = 20)
 
 		self.Tab_RP_Process_Button.bind("<Map>",
 			lambda event, a = [], lb = [self.Tab_RP_EventDrivers_Listbox, self.Tab_RP_Embeddings_Listbox, self.Tab_RP_AnalysisMethods_Listbox],
@@ -1885,6 +1926,7 @@ class PyGAAP_GUI:
 		workspace.rowconfigure(0, weight = 2)
 
 		self.tabs = ttk.Notebook(workspace)
+		self.tabs.enable_traversal()
 		self.tabs.pack(pady = 1, padx = 5, expand = True, fill = "both")
 
 		# add tabs

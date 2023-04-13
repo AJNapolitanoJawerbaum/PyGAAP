@@ -215,6 +215,7 @@ class Experiment:
 		# api documents: known texts first followed by unknown texts.
 
 		if verbose: print("checking params")
+		# Checking params to make the API more independent from the front end
 		# validate modules, documents:
 		# check test set
 		if len(unknown_docs) == 0:
@@ -406,7 +407,7 @@ class Experiment:
 		print("Experiment done.")
 		if self.return_results:
 			return exp_return
-		return
+		return 0
 		
 
 	def return_exp_results(self, **kwa):
