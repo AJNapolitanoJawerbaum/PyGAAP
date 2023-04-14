@@ -222,19 +222,13 @@ class StripNullCharacters(Canonicizer):
 
 class ReplaceNewLines(Canonicizer):
 
-	# _pattern = re.compile("(?<!\r)\n")
-	_pattern = re.compile("(\r)?\n")
-	character = "\\r\\n"
-	_variable_options = {
-		"character": {"options": ["\\r\\n", "\\n\\r", "<whitespace>"], "default": 2, "displayed_name": "Character"}
-	}
+	_pattern = re.compile("(\r\n)|\r|\n")
 
 	def process_single(self, text):
-		return re.subn(self._pattern, (self.character if self.character != "<whitespace>" else " "), text)[0]
+		return re.subn(self._pattern, "\n", text)[0]
 
 	def displayName():
 		return "Replace New Lines"
 
 	def displayDescription():
-		return "replace new line characters with a sequence of choice.\n" +\
-			"\\r.\n\\r\\n is typically seen in Windows text files."
+		return "replace different new line sequences (\\n, \\r, \\r\\n) with \\n"

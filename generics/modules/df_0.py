@@ -28,6 +28,21 @@ class HistogramDistance(DistanceFunction):
 	def displayName():
 		return "Histogram Distance"
 
+# class LebesgueDistance(DistanceFunction):
+# 	test = 0
+# 	_variable_options = {
+# 		"test": {"options": [0, 2, 5], "default": 0, "displayed_name": "TEST LMAO"}
+# 	}
+
+# 	def distance(self, unknown, known: np.ndarray):
+# 		pass
+
+# 	def displayName():
+# 		return "Lebesgue Distance"
+
+# 	def displayDescription():
+# 		return "Computes Euclidean/Histogram distance"
+
 # class BhattacharyyaDistance(DistanceFunction):
 # 	def distance(self, unknown:np.array, known:np.array):
 # 		"""Convert and assign to Documents.numbers"""

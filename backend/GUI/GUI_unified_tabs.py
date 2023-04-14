@@ -217,7 +217,7 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		objects['parameters_label'].pack(pady = 5, anchor = W)
 
 		objects['displayed_parameters_frame'] = Frame(objects["parameters_frame"])
-		objects['displayed_parameters_frame'].pack(padx = 20, pady = 5, fill="both", expand=1)
+		objects['displayed_parameters_frame'].pack(padx = 20, pady = 5, fill = "both", expand = 1)
 
 
 		objects["selected_listboxes"][-1][2].bind("<<ListboxSelect>>",
@@ -241,7 +241,7 @@ def create_module_tab(tab_frame: Frame, available_content: list, parameters_cont
 		objects['parameters_label'].pack(pady = (10, 5),anchor = W)
 
 		objects['displayed_parameters_frame'] = Frame(objects["parameters_frame"])
-		objects['displayed_parameters_frame'].pack(padx = 20, pady = 20)
+		objects['displayed_parameters_frame'].pack(padx = 20, pady = 20, fill = "both", expand = 1)
 		# bind treeview widget so the description updates when an item is selected.
 		objects["selected_listboxes"][0][2].bind("<<TreeviewSelect>>",
 			lambda event, d = objects["description_box"],

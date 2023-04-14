@@ -1600,20 +1600,21 @@ class PyGAAP_GUI:
 		if type(listbox) == Listbox:
 			n_params = sum([1 for k in this_module._variable_options
 				if this_module._variable_options[k].get("show", True)])
-		else:
+			number_of_am = 1 # keeps the var declared
+		elif type(listbox) == ttk.Treeview:
 			try:
 				df_variables = this_df_module._variable_options
 			except AttributeError:
 				df_variables = []
-			n_params = sum([1 for k in this_module._variable_options
-				if this_module._variable_options[k].get("show", True)]) \
-							+ len(df_variables)
 			number_of_am = sum([1 for k in this_module._variable_options
 				if this_module._variable_options[k].get("show", True)])
+			n_params = number_of_am + len(df_variables)
+			
+		else: raise TypeError("Unknown widget type in tab")
 		if n_params == 0:
 			# if this module does not have parameters to be set, say so.
 			displayed_params.append(Label(param_frame,
-									text = "No parameters for this module."))
+									text = "No parameters"))
 			displayed_params[-1].pack()
 			return
 		# if this module has parameters, find and display parameters.
@@ -1625,33 +1626,40 @@ class PyGAAP_GUI:
 									text = str(this_module_name) + ":",
 									font = ("Helvetica", 14)))
 		displayed_params[-1].grid(row = 0, column = 0, columnspan = 2, sticky = W)
-		for i in range(len(this_module._variable_options)):
+
+		for i in range(n_params):
+			# set abstract variables for use in display later.
+			# parameter_i: name of parameter (not displayed name)
+			param_is_shown = True
 			if type(listbox) == Listbox:
 				parameter_i = list(this_module._variable_options.keys())[i]
 				# skip hidden parameters. good for dynamic param changes
-				if not this_module._variable_options.get(parameter_i, {}).get("show", True): continue
+				param_is_shown = this_module._variable_options.get(parameter_i, {}).get("show", True)
 				param_options.append(StringVar(
 					value = str(this_module.__dict__.get(parameter_i)))
 				)
 			elif type(listbox) == ttk.Treeview:
 				if i < number_of_am:
 					parameter_i = list(this_module._variable_options.keys())[i]
-					if not this_module._variable_options.get(parameter_i, {}).get("show", True): continue
+					param_is_shown = this_module._variable_options.get(parameter_i, {}).get("show", True)
 					param_options.append(StringVar(
 					value = str(this_module.__dict__.get(parameter_i)))
 				)
 				else:
-					rowshift = 1
-					if this_df_module == "NA": break
-					parameter_i = list(this_df_module._variable_options.keys())[i - number_of_am]
-					if not this_df_module._variable_options.get(parameter_i, {}).get("show", True): continue
+					this_module = this_df_module
+					this_module_name = this_df_module_name
+					rowshift = 2
+					if this_module == "NA": break
+					parameter_i = list(this_module._variable_options.keys())[i - number_of_am]
+					param_is_shown = this_module._variable_options.get(parameter_i, {}).get("show", True)
 					param_options.append(StringVar(
-					value = str(this_df_module._variable_options[parameter_i]["options"]\
-						[this_df_module._variable_options[parameter_i]["default"]]))
+					value = str(this_module.__dict__.get(parameter_i)))
 				)
+			else: raise TypeError("Unknown widget type in tab")
 			displayed_param_name = this_module._variable_options[parameter_i].get("displayed_name", parameter_i)
 			displayed_params.append(Label(param_frame, text = displayed_param_name))
-			displayed_params[-1].grid(row = i + 1 + rowshift, column = 0)
+			if param_is_shown:
+				displayed_params[-1].grid(row = i + 1 + rowshift, column = 0)
 
 			menu_type = this_module._variable_options[parameter_i].get("type", "OptionMenu")
 			if menu_type == 'Entry':
@@ -1662,7 +1670,8 @@ class PyGAAP_GUI:
 				displayed_params[-1].insert(
 					0, str(parameter_i['options'][parameter_i])
 				)
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+				if param_is_shown:
+					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
 			elif menu_type == "OptionMenu":
 				displayed_params.append(
 					OptionMenu(
@@ -1672,7 +1681,8 @@ class PyGAAP_GUI:
 					)
 				)
 				displayed_params[-1].config(width = self.dpi_setting["dpi_option_menu_width"])
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
+				if param_is_shown:
+					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
 				param_options[-1].trace_add(("write"),
 					lambda v1, v2, v3, stringvar = param_options[-1],
 					module = this_module, var = parameter_i:\
@@ -1688,35 +1698,47 @@ class PyGAAP_GUI:
 						resolution=this_module._variable_options[parameter_i].get("resolution", 1),
 						command=lambda value, module=this_module, var=parameter_i: self.set_parameters(
 							value, module, var,
-							param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type,
+							param_frame=param_frame, listbox=listbox,
+							dp=displayed_params, module_type=module_type,
 						)
 					)
 				)
 				displayed_params[-1].set(this_module.__dict__.get(parameter_i))
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
+				if param_is_shown:
+					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "EW")
 			elif menu_type in ["Tick", "Check"]:
 				displayed_params.append(
 					Checkbutton(
 						param_frame, variable=param_options[-1],
-						command=lambda value=param_options[-1], module=this_module, var=parameter_i:
-							self.set_parameters(value, module, var,
-								param_frame=param_frame, listbox=listbox, dp=displayed_params, module_type=module_type	
-							)
+						command=lambda value=param_options[-1],
+						module=this_module, var=parameter_i:
+						self.set_parameters(value, module, var,
+							param_frame=param_frame, listbox=listbox,
+							dp=displayed_params, module_type=module_type	
+						)
 					)
 				)
-				displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = W)
+				if param_is_shown:
+					displayed_params[-1].grid(row = i + 1 + rowshift, column = 1, sticky = "W") # check buttons justify left
 			else:
 				raise ValueError("Unknown input widget type", menu_type)
-		if rowshift == 1:
-			# if the rows are shifted, there is an extra label for the DF parameters.
+		if not number_of_am:
+			displayed_params.append(Label(param_frame,
+				text = "No parameters"))
+			displayed_params[-1].grid(row = 1, column = 0, columnspan = 2)
+		if type(listbox) == ttk.Treeview:
 			displayed_params.append(Label(param_frame,
 				text = str(this_df_module_name) + ":",
 				font = ("Helvetica", 14)))
 			displayed_params[-1].grid(
-				row = number_of_am + 1,
+				row = number_of_am + 2,
 				column = 0,
 				columnspan = 2,
 				sticky = W)
+			if not len(df_variables):
+				displayed_params.append(Label(param_frame,
+					text = "No parameters"))
+				displayed_params[-1].grid(row = number_of_am + 3, column = 0, columnspan = 2)
 
 
 		param_frame.columnconfigure(0, weight = 1)
