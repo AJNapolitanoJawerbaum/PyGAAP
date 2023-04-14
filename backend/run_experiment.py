@@ -17,10 +17,15 @@ from traceback import format_exc
 from datetime import datetime
 from random import randint
 from json import load as json_load
-
+from os import mkdir, path as os_path
 
 from backend.CSVIO import readDocument
 from backend.Document import Document
+
+from pickle import dump as pickle_dump
+
+EXP_DEBUG = 0
+DEBUG_DIR = "./tmp"
 
 
 class Experiment:
@@ -77,12 +82,17 @@ class Experiment:
 				self.results_message += this_error
 				if verbose: print(this_error)
 
+		if EXP_DEBUG == 2:
+			with open("./tmp/1_api_canonicized", "wb") as api_dump:
+				pickle_dump(self.backend_API.documents, api_dump)
+
 		# if Document.canonicized is empty, default to original text
 		no_canon = 0
 		for doc in self.backend_API.documents:
 			if doc.canonicized == "" or doc.canonicized is None:
 				no_canon += 1
 				doc.canonicized = doc.text
+				doc.text = ""
 		if no_canon > 0 and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
 			print("! %s/%s docs had no canonicized texts, defaulting to original texts."
 				% (str(no_canon), str(len(self.backend_API.documents))))
@@ -115,6 +125,10 @@ class Experiment:
 			)
 			return exp_return if self.return_results else 1
 
+		if EXP_DEBUG == 2:
+			with open("./tmp/2_api_events_raw", "wb") as api_dump:
+				pickle_dump(self.backend_API.documents, api_dump)
+
 		# abort if any doc ends up having no events.
 		empty_event_sets = [doc.title for doc in self.backend_API.documents if len(doc.eventSet)==0]
 		if len(empty_event_sets) > 0:
@@ -143,6 +157,10 @@ class Experiment:
 				self.results_message += this_error
 				if verbose: print(this_error)
 
+		if EXP_DEBUG == 2:
+			with open("./tmp/3_api_event_filtered", "wb") as api_dump:
+				pickle_dump(self.backend_API.documents, api_dump)
+
 		# allow the exp to continue if any or all cullers failed, but raise warning.
 		empty_event_sets = [doc for doc in self.backend_API.documents if len(doc.eventSet)==0]
 		if len(empty_event_sets) > 0:
@@ -167,6 +185,11 @@ class Experiment:
 
 		self.results_message = ""
 		status = 0
+
+		if EXP_DEBUG == 2 and not os_path.isdir(DEBUG_DIR):
+			try: mkdir(DEBUG_DIR)
+			except FileExistsError: raise FileExistsError("Expected debug directory at %s but it's not a directory."
+				"Disable debug (EXP_DEBUG=0) or change DEBUG_DIR at ./backend/run_experiment.py.")
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
@@ -302,6 +325,10 @@ class Experiment:
 			unknown_docs_numbers_aggregate = all_data[len(known_docs):]
 			del all_data
 
+			if EXP_DEBUG == 2:
+				with open("./tmp/4_api_embedded_%s" % nc.__class__.displayName().replace(" ", "_"), "wb") as api_dump:
+					pickle_dump(self.backend_API.documents, api_dump)
+
 			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
 			if self.pipe_here is not None: self.pipe_here.send("Running analysis")
 
@@ -339,6 +366,14 @@ class Experiment:
 					self.results_message += this_error
 					if verbose: print(this_error)
 					continue
+
+				if EXP_DEBUG == 2:
+					with open(
+								"./tmp/5_api_analyzed_%s_%s" %
+								(am_df_pair[0].__class__.displayName().replace(" ", "_"),
+								am_df_pair[1].__class__.displayName().replace(" ", "_")), "wb"
+							) as api_dump:
+						pickle_dump(self.backend_API.documents, api_dump)
 
 				# by this line, both nc and am_df modules have successfully completed
 				# "embeddings", "analysis methods", and "distance functions" are lists here for consistency
