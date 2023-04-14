@@ -333,7 +333,7 @@ class Experiment:
 					# then for each unknown document, analyze and output results
 					doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
 				except Exception as e:
-					this_error = "\n" + "Analysis or distance function failed:\n" %\
+					this_error = "\n" + "Analysis or distance function failed:\n%s, %s\n\n%s\n\n%s" %\
 						(am_df_pair[0].__class__.displayName(),
 						am_df_pair[1].__class__.displayName(), str(e), format_exc())
 					self.results_message += this_error

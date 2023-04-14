@@ -1777,7 +1777,7 @@ class PyGAAP_GUI:
 				am_d, df_d = "No description", "No description"
 				try: am_d = self.backend_API.analysisMethods[am_name].displayDescription()
 				except (TypeError, KeyError): pass
-				try: df_d = self.backend_API.analysisMethods[df_name].displayDescription()
+				try: df_d = self.backend_API.distanceFunctions[df_name].displayDescription()
 				except (TypeError, KeyError): pass
 				if df_name == "NA": df_d = "Not applicable"
 				description_string = am_name + ":\n" + am_d + "\n\n" + df_name + ":\n" + df_d
@@ -1796,14 +1796,16 @@ class PyGAAP_GUI:
 			print("set_parameters(module = %s, variable_name = %s)"
 			%(module, variable_name))
 		value_to = stringvar.get() if type(stringvar) == StringVar else stringvar
+		default_value = module._variable_options[variable_name]["options"][module._variable_options[variable_name]["default"]]
 		if type(value_to) != bool:
-			try: # to identify numbers
-				value_to = float(value_to)
-				# if value is a number, try converting to a number.
-				if abs(int(value_to) - value_to) < 1e-63:
-					value_to = int(value_to)
-			except ValueError:
-				pass
+			if type(default_value) in [int, float]:
+				try: # to identify numbers
+					value_to = float(value_to)
+					# if value is a number, try converting to a number.
+					if abs(int(value_to) - value_to) < 1e-63:
+						value_to = int(value_to)
+				except ValueError:
+					pass
 		#setattr(module, variable_name, value_to)
 		set_param_return = module.set_attr(variable_name, value_to)
 		if set_param_return:

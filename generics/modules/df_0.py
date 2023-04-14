@@ -17,9 +17,14 @@ class CosineDistance(DistanceFunction):
 
 
 class HistogramDistance(DistanceFunction):
+	square_root = 0
+	_variable_options = {
+		"square_root": {"options": [0, 1], "default": 0, "type": "Tick", "displayed_name": "Compute square root"}
+	}
 	def distance(self, unknown, known:np.ndarray):
 		"""Compute distance using numpy"""
 		doc_by_author = np.sum(np.square(unknown[:,np.newaxis] - known), axis=2, keepdims=0)
+		if self.square_root: doc_by_author = np.sqrt(doc_by_author)
 		return doc_by_author
 
 	def displayDescription():
@@ -27,6 +32,26 @@ class HistogramDistance(DistanceFunction):
 
 	def displayName():
 		return "Histogram Distance"
+
+class LNorms(DistanceFunction):
+	p = "1"
+	compute_root = 0
+	_variable_options = {
+		"p": {"options": ["1/"+str(x) for x in list(range(10, 1, -1))] + [str(x) for x in list(range(1, 11))], "default": 9},
+		"compute_root": {"options": [0, 1], "default": 0, "type": "Tick", "displayed_name": "Compute root"}
+	}
+
+	def distance(self, unknown, known: np.ndarray):
+		power = 1/int(self.p.split("/")[-1]) if "/" in self.p else int(self.p)
+		doc_by_author = np.sum(np.power(unknown[:,np.newaxis] - known, power), axis=2, keepdims=0)
+		if self.compute_root: doc_by_author = np.power(doc_by_author, 1/power)
+		return doc_by_author
+
+	def displayDescription():
+		return "Computes L-Norms. 2-norm is equivalent to histogram/Euclidean distance"
+
+	def displayName():
+		return "L-Norms"
 
 # class LebesgueDistance(DistanceFunction):
 # 	test = 0
