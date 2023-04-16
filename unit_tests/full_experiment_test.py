@@ -8,6 +8,8 @@ from backend import API
 from backend.Document import Document
 from backend import run_experiment
 
+from json import dump as json_dump
+
 print("load API...", end="")
 api = API.API("")
 corpus = CSVIO.readCorpusCSV("./resources/aaac/problemA/loadA.csv")
@@ -45,3 +47,5 @@ results = exp.run_experiment(return_results=1, verbose=1)
 
 print(results["results_text"])
 print(results["message"])
+with open("./tmp/exp_test_dump.json", "w+") as test_dump:
+    json_dump(results["full_exp_dump"], test_dump, indent=4)

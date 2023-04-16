@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import re
 from multiprocessing import Pool, cpu_count
-import c_cc_0
+# import c_cc_0
 
 # An abstract Canonicizer class.
 class Canonicizer(ABC):
@@ -75,9 +75,9 @@ class Canonicizer(ABC):
 		'''Returns the display description for the canonicizer.'''
 		
 class NormalizeWhitespace(Canonicizer):
-	imp = "py"
-	_variable_options = {"imp": {"options": ["py", "C++"], "default": 0, "displayed_name": "Implementation"}}
-	_ps = {}
+	# imp = "py"
+	# _variable_options = {"imp": {"options": ["py", "C++"], "default": 0, "displayed_name": "Implementation"}}
+	# _ps = {}
 
 	def process_single(self, procText):
 		'''Convert procText in to a string where all whitespace characters are the same.'''
@@ -93,7 +93,8 @@ class NormalizeWhitespace(Canonicizer):
 		if self._default_multiprocessing:
 			if pipe is not None: pipe.send(True)
 			with Pool(cpu_count()-1) as p:
-				canon = p.map(self._ps[self.imp], [d.text for d in docs])
+				# canon = p.map(self._ps[self.imp], [d.text for d in docs])
+				canon = p.map(self.process_single, [d.text for d in docs])
 			for d in range(len(canon)):
 				docs[d].canonicized = canon[d]
 		else:

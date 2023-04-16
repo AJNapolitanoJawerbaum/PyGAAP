@@ -183,6 +183,8 @@ class Experiment:
 		self.return_results = options.get("return_results", False)
 		verbose = options.get("verbose", False)
 
+		self.hide_filepath = options.get("filepath", False)
+
 		self.results_message = ""
 		status = 0
 
@@ -190,6 +192,8 @@ class Experiment:
 			try: mkdir(DEBUG_DIR)
 			except FileExistsError: raise FileExistsError("Expected debug directory at %s but it's not a directory."
 				"Disable debug (EXP_DEBUG=0) or change DEBUG_DIR at ./backend/run_experiment.py.")
+
+		exp_time = str(datetime.now())
 
 		# LOADING DOCUMENTS
 		if self.pipe_here != None: self.pipe_here.send("Getting documents")
@@ -280,12 +284,10 @@ class Experiment:
 				status=1)
 				return exp_return if self.return_results else 1
 
-		preproc_results = self.run_pre_processing(verbose=verbose)
-		if preproc_results != 0:
-			return preproc_results if self.return_results else 1
+		# experiment docs, mods, and parameters validated at this point.
+		# log parameters to full_exp_dump
 
-		if self.pipe_here != None: self.pipe_here.send(0)
-
+		full_exp_dump = [] # list of dict-formatted results. Each element in the list is an experiment.
 		exp_params = dict()
 		for mod_type in ["Canonicizers", "EventDrivers", "EventCulling"]:
 			exp_params[mod_type] = []
@@ -295,9 +297,49 @@ class Experiment:
 					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}}
 				)
 
+		for nc in self.backend_API.modulesInUse["Embeddings"]:
+			for i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
+				df = self.backend_API.modulesInUse["DistanceFunctions"][i]
+				exp_params_out = deepcopy(exp_params)
+				exp_params_out["Embeddings"] = [{
+					"name": nc.__class__.displayName(),
+					"params": {p:nc.__dict__[p] for p in nc.__dict__.keys() if not p.startswith("_")}
+				}]
+				exp_params_out["AnalysisMethods"] = [{
+					"name": am.__class__.displayName(),
+					"params": {p:am.__dict__[p] for p in am.__dict__.keys() if not p.startswith("_")}
+				}]
+				exp_params_out["DistanceFunctions"] = [{
+					"name": df.__class__.displayName() if df != "NA" else "NA",
+					"params": {p:df.__dict__[p] for p in df.__dict__.keys() if not p.startswith("_")}
+						if df != "NA" else "NA"
+				}]
+
+				full_exp_dump.append({
+					"modules": exp_params_out,
+					"exp_time": exp_time,
+					"success": 0,
+					"documents": [
+						{"author": doc.author, "title": doc.title,
+						"filepath": "[hidden]" if self.hide_filepath else doc.filepath}
+						for doc in self.backend_API.documents
+					],
+					"global_preferences": {},
+					"doc_results": None
+				})
+
+		# begin experiment with pre-processing to feature extraction
+
+		preproc_results = self.run_pre_processing(verbose=verbose)
+		if preproc_results != 0:
+			return preproc_results if self.return_results else 1
+
+		if self.pipe_here != None: self.pipe_here.send(0)
+
+		exp_dump_index = 0	
+
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
 		results = [] # list of text-formatted results
-		full_exp_dump = []# list of dict-formatted results
 		nc_success_count = 0
 		for nc in self.backend_API.modulesInUse["Embeddings"]:
 			"""
@@ -378,26 +420,17 @@ class Experiment:
 				# by this line, both nc and am_df modules have successfully completed
 				# "embeddings", "analysis methods", and "distance functions" are lists here for consistency
 				# there should only be one of each of them.
-				exp_params_out = deepcopy(exp_params)
-				exp_params_out["Embeddings"] = [{
-					"name": nc.__class__.displayName(),
-					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
-				}]
-				exp_params_out["AnalysisMethods"] = [{
-					"name": am_df_pair[0].__class__.displayName(),
-					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
-				}]
-				exp_params_out["DistanceFunctions"] = [{
-					"name": am_df_pair[1].__class__.displayName() if am_df_pair[1] != "NA" else "NA",
-					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}
-						if am_df_pair[1] != "NA" else "NA"
-				}]
 
-				full_exp_dump.append({
-					"modules": exp_params_out, "doc_results": {
-						unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
-					}
-				})
+				# full_exp_dump.append({
+				# 	"modules": exp_params_out, "doc_results": {
+				# 		unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
+				# 	}
+				# })
+				full_exp_dump[i]["doc_results"] = {
+					unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
+				}
+				full_exp_dump[i]["success"] = 1
+				exp_dump_index += 1
 
 				for d_index in range(len(unknown_docs)):
 					formatted_results = \
@@ -437,7 +470,7 @@ class Experiment:
 			message=self.results_message,
 			status=status,
 			full_exp_dump=full_exp_dump,
-			exp_time=str(datetime.now())
+			exp_time=exp_time
 		)
 		print("Experiment done.")
 		if self.return_results:
