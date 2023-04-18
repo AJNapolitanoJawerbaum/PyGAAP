@@ -19,20 +19,19 @@ GUI_debug = 0
 # system modules
 from copy import deepcopy
 from multiprocessing import Process, Queue, Pipe, set_start_method
+from multiprocessing.queues import Empty as queue_empty
 from datetime import datetime
 from tkinter import *
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename, asksaveasfilename
-from sys import modules as sys_modules
-from sys import exc_info
-from sys import platform
+from sys import exc_info, platform, modules as sys_modules
 from json import load as json_load
 from json import dump as json_dump
 from pickle import dump as pickle_dump
 from os import listdir as ls
 from time import sleep
 from pathlib import Path
-from os import getcwd
+from os import getcwd, getpid, mkdir
 from gc import collect as collect_garbage
 from traceback import format_exc
 from idlelib.tooltip import Hovertip
@@ -137,6 +136,8 @@ class PyGAAP_GUI:
 
 	list_of_results = [] # [[name-string, results-object], [..., ...], ...]
 
+	intermediate_results_dump = Queue(1)
+
 	def __init__(self):
 		# no internal error handling because fatal error.
 		with open(Path("./resources/gui_params.json"), "r") as f:
@@ -208,6 +209,10 @@ class PyGAAP_GUI:
 	def run_experiment(self):
 		if GUI_debug >= 3: print("run_experiment()")
 
+		try:
+			self.intermediate_results_dump.get(block=False)
+		except queue_empty:
+			pass
 
 		am_df_names = [self.Tab_RP_AnalysisMethods_Listbox.item(j)["values"]
 						for j in list(self.Tab_RP_AnalysisMethods_Listbox.get_children())]
@@ -238,6 +243,7 @@ class PyGAAP_GUI:
 				self.backend_API, progress_report_there, self.results_queue,
 				dpi=self.dpi_setting,
 				default_mp=self.backend_API.default_mp,
+				intermediate=self.intermediate_results_dump,
 			)
 			self.experiment_process = Process(
 				target=experiment.run_experiment,
@@ -269,7 +275,8 @@ class PyGAAP_GUI:
 			progressbar_length=self.dpi_setting["dpi_progress_bar_length"],
 			end_run=self.display_results,
 			after_user=self.topwindow,
-			exp_process=self.experiment_process
+			exp_process=self.experiment_process,
+			intermediate=self.intermediate_results_dump,
 		)
 
 		return
@@ -279,7 +286,22 @@ class PyGAAP_GUI:
 		"""Displays results in new window"""
 		# show process results
 		self.Tab_RP_Process_Button.config(state=NORMAL)
-		if options.get("abort", 0): return
+
+		if options.get("abort", 0):
+			# if aborting experiment, save intermediate results.
+			intermediate = options.get("intermediate")
+			if intermediate is None:
+				self.status_update("Experiment aborted. No intermediate results available.")
+			try:
+				filename = "./tmp/%s_intermediate.pkl" % \
+					intermediate["full_exp_dump"][0]["exp_time"]
+				with open(filename, "wb") as intermediate_dump:
+					pickle_dump(intermediate, intermediate_dump)
+				self.status_update("Experiment aborted, intermediate results dumped to %s." % filename)
+			except FileExistsError:
+				self.status_update("Experiment aborted. Failed to dump intermediate results.")
+			return
+
 		exp_return = self.results_queue.get()
 		results_text = exp_return["results_text"]
 

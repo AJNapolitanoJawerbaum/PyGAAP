@@ -31,10 +31,15 @@ print("done. starting exp.")
 
 # add modules here
 api.modulesInUse["EventDrivers"].append(api.eventDrivers["Character NGrams"]())
+api.modulesInUse["EventDrivers"].append(api.eventDrivers["Character NGrams"]())
 #api.modulesInUse["EventCulling"].append(api.eventCulling["Coefficient of Variation"]())
 api.modulesInUse["Embeddings"].append(api.embeddings["Frequency"]())
 api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["Centroid Driver"]())
 api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
+
+api.modulesInUse["AnalysisMethods"].append(api.analysisMethods["K-Nearest Neighbors"]())
+api.modulesInUse["DistanceFunctions"].append(api.distanceFunctions["Histogram Distance"]())
+
 
 # set module parameters here
 api.modulesInUse["EventDrivers"][0].n = 1

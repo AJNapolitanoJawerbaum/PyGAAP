@@ -7,7 +7,8 @@
 # @ author: Michael Fang
 
 
-from multiprocessing import Process, Queue, Pipe, Pool	
+from multiprocessing import Process, Queue, Pipe, Pool
+from multiprocessing.queues import Empty as queue_empty
 from copy import deepcopy
 from copy import copy as shallowcopy
 import re
@@ -27,6 +28,7 @@ from pickle import dump as pickle_dump
 EXP_DEBUG = 0
 DEBUG_DIR = "./tmp"
 
+MOD_ORDER = ["cc", "ed", "ec", "nc", "am"]
 
 class Experiment:
 
@@ -50,9 +52,21 @@ class Experiment:
 			for mod in self.backend_API.modulesInUse[mod_type]]
 			for mod_type in self.backend_API.modulesInUse}
 		#self.dpi_setting = options.get("dpi")
-		self.q = q
+		self.q: Queue = q
 		self.default_mp = api.default_mp
 		self.results_message = ""
+		self.intermediate: Queue = options.get("intermediate", None) # capacity 1
+
+		self.full_exp_dump: list = [] # the complete exp parameters
+		return
+
+	def dump_intermediate(self):
+		if self.intermediate is None: return 0
+		try:
+			self.intermediate.get(block=False, timeout=0.01) # first clear the 1-element queue.
+		except queue_empty: pass
+		self.intermediate.put({"documents": self.backend_API.documents, "full_exp_dump": self.full_exp_dump})
+		return 0
 
 	def run_pre_processing(self, **options):
 		"""
@@ -67,7 +81,7 @@ class Experiment:
 			print("Canonicizers processing ...")
 		# for d in self.backend_API.documents:
 		# 	d.text = re.subn(re.compile("(?<!\r)\n"), "\r\n", d.text)[0]
-		for c in self.backend_API.modulesInUse["Canonicizers"]:
+		for i, c in enumerate(self.backend_API.modulesInUse["Canonicizers"]):
 			if verbose: print("Running", c.__class__.displayName())
 			if self.pipe_here is not None:
 				self.pipe_here.send("Running canonicizers\n"+str(c.__class__.displayName()))
@@ -81,6 +95,10 @@ class Experiment:
 					(c.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
+
+			for exp in self.full_exp_dump:
+				exp["modules"]["Canonicizers"][i]["completed"] = 1
+			self.dump_intermediate()
 
 		if EXP_DEBUG == 2:
 			with open("./tmp/1_api_canonicized", "wb") as api_dump:
@@ -100,7 +118,7 @@ class Experiment:
 
 		if verbose: print("Event drivers processing ...")
 		succeeded_event_drivers = 0
-		for e in self.backend_API.modulesInUse["EventDrivers"]:
+		for i, e in enumerate(self.backend_API.modulesInUse["EventDrivers"]):
 			if verbose: print("Running", e.__class__.displayName())
 			if self.pipe_here is not None:
 				self.pipe_here.send("Running event drivers\n"+str(e.__class__.displayName()))
@@ -114,6 +132,10 @@ class Experiment:
 					(e.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
+
+			for exp in self.full_exp_dump:
+				exp["modules"]["EventDrivers"][i]["completed"] = 1
+			self.dump_intermediate()
 
 		# check if any event drivers ran successfully. If all failed, stop.
 		if succeeded_event_drivers == 0:
@@ -143,7 +165,7 @@ class Experiment:
 
 		if verbose and len(self.backend_API.modulesInUse["EventCulling"]) > 0:
 			print("Event Cullers processing ...")
-		for ec in self.backend_API.modulesInUse["EventCulling"]:
+		for i, ec in enumerate(self.backend_API.modulesInUse["EventCulling"]):
 			ec._default_multiprocessing = self.default_mp
 			if verbose: print("Running", ec.__class__.displayName())
 			if self.pipe_here is not None:
@@ -156,6 +178,10 @@ class Experiment:
 					(ec.__class__.displayName(), str(error), format_exc())
 				self.results_message += this_error
 				if verbose: print(this_error)
+
+			for exp in self.full_exp_dump:
+				exp["modules"]["EventCulling"][i]["completed"] = 1
+			self.dump_intermediate()
 
 		if EXP_DEBUG == 2:
 			with open("./tmp/3_api_event_filtered", "wb") as api_dump:
@@ -258,14 +284,11 @@ class Experiment:
 			return exp_return if self.return_results else 1
 		else:
 			# train set: check if a class has no train files
-			empty_authors = {d.author for d in known_docs if d.text.strip()==""}
-			if len(empty_authors) > 0:
-				self.results_message += "\nEmpty train set for these authors:\n" +\
-					"\n".join(str(x) for x in empty_authors) + "\n"
+			empty_files = [d.filepath for d in known_docs if d.text.strip()==""]
+			if len(empty_files):
+				self.results_message += "\nEmpty files in the training set:\n" +\
+					"\n".join(str(x) for x in empty_files) + "\n"
 				exp_return = self.return_exp_results(results_text="", message=self.results_message, status=1)
-				return exp_return if self.return_results else 1
-			elif sum([1 for x in known_docs if x.text.strip()==""]):
-				exp_return = self.return_exp_results(results_text="", message="No documents in the train set", status=1)
 				return exp_return if self.return_results else 1
 		# check if any required mods are abscent
 		if self.backend_API.modulesInUse["EventDrivers"] == [] or\
@@ -287,35 +310,40 @@ class Experiment:
 		# experiment docs, mods, and parameters validated at this point.
 		# log parameters to full_exp_dump
 
-		full_exp_dump = [] # list of dict-formatted results. Each element in the list is an experiment.
+		self.full_exp_dump = [] # list of dict-formatted results. Each element in the list is an experiment.
 		exp_params = dict()
 		for mod_type in ["Canonicizers", "EventDrivers", "EventCulling"]:
 			exp_params[mod_type] = []
 			# each mod type list is a list because some are applied in order.
 			for mod in self.backend_API.modulesInUse[mod_type]:
-				exp_params[mod_type].append({"name": mod.__class__.displayName(),
-					"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")}}
+				exp_params[mod_type].append({
+						"name": mod.__class__.displayName(),
+						"params": {p:mod.__dict__[p] for p in mod.__dict__.keys() if not p.startswith("_")},
+						"completed": 0
+					}
 				)
 
 		for nc in self.backend_API.modulesInUse["Embeddings"]:
-			for i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
-				df = self.backend_API.modulesInUse["DistanceFunctions"][i]
+			for am_i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
+				df = self.backend_API.modulesInUse["DistanceFunctions"][am_i]
 				exp_params_out = deepcopy(exp_params)
 				exp_params_out["Embeddings"] = [{
 					"name": nc.__class__.displayName(),
-					"params": {p:nc.__dict__[p] for p in nc.__dict__.keys() if not p.startswith("_")}
+					"params": {p:nc.__dict__[p] for p in nc.__dict__.keys() if not p.startswith("_")},
+					"completed": 0
 				}]
 				exp_params_out["AnalysisMethods"] = [{
 					"name": am.__class__.displayName(),
-					"params": {p:am.__dict__[p] for p in am.__dict__.keys() if not p.startswith("_")}
+					"params": {p:am.__dict__[p] for p in am.__dict__.keys() if not p.startswith("_")},
+					"completed": 0
 				}]
 				exp_params_out["DistanceFunctions"] = [{
 					"name": df.__class__.displayName() if df != "NA" else "NA",
 					"params": {p:df.__dict__[p] for p in df.__dict__.keys() if not p.startswith("_")}
-						if df != "NA" else "NA"
+						if df != "NA" else "NA",
 				}]
 
-				full_exp_dump.append({
+				self.full_exp_dump.append({
 					"modules": exp_params_out,
 					"exp_time": exp_time,
 					"success": 0,
@@ -324,7 +352,7 @@ class Experiment:
 						"filepath": "[hidden]" if self.hide_filepath else doc.filepath}
 						for doc in self.backend_API.documents
 					],
-					"global_preferences": {},
+					"global_parameters": self.backend_API.global_parameters,
 					"doc_results": None
 				})
 
@@ -341,7 +369,7 @@ class Experiment:
 		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
 		results = [] # list of text-formatted results
 		nc_success_count = 0
-		for nc in self.backend_API.modulesInUse["Embeddings"]:
+		for nc_i, nc in enumerate(self.backend_API.modulesInUse["Embeddings"]):
 			"""
 			Only one embedder used for one analysis method
 			This means for N embedders and M methods, there will be (N x M) analyses.
@@ -371,22 +399,23 @@ class Experiment:
 				with open("./tmp/4_api_embedded_%s" % nc.__class__.displayName().replace(" ", "_"), "wb") as api_dump:
 					pickle_dump(self.backend_API.documents, api_dump)
 
-			number_of_classifiers = len(self.backend_API.modulesInUse["AnalysisMethods"])
+			self.full_exp_dump[exp_dump_index]["modules"]["Embeddings"][0]["completed"] = 1
+			self.dump_intermediate()
+
 			if self.pipe_here is not None: self.pipe_here.send("Running analysis")
 
 			am_success_count = 0
-			for am_df_index in range(number_of_classifiers):
+			for am_df_i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
+				df = self.backend_API.modulesInUse["DistanceFunctions"][am_df_i]
 				if verbose:
-					print("Classifying ... running",
-						self.backend_API.modulesInUse["AnalysisMethods"][am_df_index].__class__.displayName())
-				am_df_pair = (self.backend_API.modulesInUse["AnalysisMethods"][am_df_index],
-							self.backend_API.modulesInUse["DistanceFunctions"][am_df_index])
+					print("Classifying ... running", am.__class__.displayName())
+				am_df_pair = (am, df)
 				am_df_pair[0]._global_parameters = self.backend_API.global_parameters
 				if am_df_pair[1] != "NA":
 					am_df_pair[1]._global_parameters = self.backend_API.global_parameters
 
-				am_df_names_display = [self.module_names["AnalysisMethods"][am_df_index],
-											self.module_names["DistanceFunctions"][am_df_index]]
+				am_df_names_display = [self.module_names["AnalysisMethods"][am_df_i],
+											self.module_names["DistanceFunctions"][am_df_i]]
 				if am_df_names_display[1] == "NA": am_df_names_display = am_df_names_display[0]
 				else: am_df_names_display = am_df_names_display[0] + ', ' + am_df_names_display[1]
 
@@ -417,27 +446,25 @@ class Experiment:
 							) as api_dump:
 						pickle_dump(self.backend_API.documents, api_dump)
 
+				self.full_exp_dump[exp_dump_index]["modules"]["AnalysisMethods"][0]["completed"] = 1
+				self.dump_intermediate()
+
 				# by this line, both nc and am_df modules have successfully completed
 				# "embeddings", "analysis methods", and "distance functions" are lists here for consistency
 				# there should only be one of each of them.
 
-				# full_exp_dump.append({
-				# 	"modules": exp_params_out, "doc_results": {
-				# 		unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
-				# 	}
-				# })
-				full_exp_dump[i]["doc_results"] = {
-					unknown_docs[i].filepath:doc_results[i] for i in range(len(unknown_docs))
+				self.full_exp_dump[exp_dump_index]["doc_results"] = {
+					unknown_docs[x].filepath:doc_results[x] for x in range(len(unknown_docs))
 				}
-				full_exp_dump[i]["success"] = 1
+				self.full_exp_dump[exp_dump_index]["success"] = 1
 				exp_dump_index += 1
 
 				for d_index in range(len(unknown_docs)):
 					formatted_results = \
 						self.backend_API.prettyFormatResults(
 							nc.__class__.displayName(),
-							self.module_names["AnalysisMethods"][am_df_index],
-							self.module_names["DistanceFunctions"][am_df_index],
+							self.module_names["AnalysisMethods"][am_df_i],
+							self.module_names["DistanceFunctions"][am_df_i],
 							unknown_docs[d_index],
 							doc_results[d_index]
 						)
@@ -469,7 +496,7 @@ class Experiment:
 			results_text=results_text,
 			message=self.results_message,
 			status=status,
-			full_exp_dump=full_exp_dump,
+			full_exp_dump=self.full_exp_dump,
 			exp_time=exp_time
 		)
 		print("Experiment done.")

@@ -24,8 +24,9 @@ def receive_info(
 		tkinter_user,
 		**options,
 		):
+	# this runs in the same process as the GUI
 	if not tkinter_user.winfo_exists():
-		return
+		return 0
 
 	text_label = options.get("text_label")
 	progressbar = options.get("progressbar")
@@ -52,7 +53,7 @@ def receive_info(
 			tkinter_user.destroy()
 			if end_run != None:
 				end_run(*end_run_args, **end_run_kwargs)
-			return
+			return 0
 		else:
 			options.get("after_user", tkinter_user).after(poll_frequency, lambda
 				p=pipe_connection,
@@ -70,27 +71,31 @@ def receive_info(
 				progressbar["mode"] = "indeterminate"
 				progressbar.stop()
 				if info: progressbar.start()
-			return
+			return 0
 
-def gui_abort_experiment(pipe, window, process, end_run):
+def gui_abort_experiment(pipe, window, process, end_run, intermediate_queue):
 	#pipe.close()
+	# when the user presses the "abort" button.
+	# Pull results from queue before killing process
+	# (otherwise the queue may become unstable)
+	intermediate_results = intermediate_queue.get(block=False, timeout=0.1)
 	process.kill()
 	window.destroy()
-	end_run(abort=1)
+	end_run(abort=1, intermediate=intermediate_results)
 	print("Experiment aborted")
 	return
  
 
 def process_window(geometry: str, mode: str, pto, **options):
 	"""
-	A process window, best used when started in a separate thread/process.
+	A process window,
 	Can receive information through a pipe and adds a label to the window,
 	or changes the label if one already exists.
 	
 	geometry	window size in tkinter format: e.g. "300x130" (as a string)
 	pto			pipe connection, sending or receiving end.
 	"""
-
+	# this runs in the same process as the GUI
 	progressbar_length = options.get("progressbar_length", 100)
 	starting_text = options.get("starting_text", "")
 	window_title = options.get("window_title", "Processing")
@@ -112,7 +117,9 @@ def process_window(geometry: str, mode: str, pto, **options):
 	exp_process = options.get("exp_process")
 	if exp_process is not None:
 		abort_button = Button(window, text="Abort",
-			command=lambda c=pto, w=window, p=exp_process, e=end_run:gui_abort_experiment(c, w, p, e))
+			command=lambda c=pto, w=window, p=exp_process, e=end_run,
+			pq=options.get("intermediate"):
+			gui_abort_experiment(c, w, p, e, pq))
 		abort_button.pack(pady=10)
 
 	receive_info(pto, window, text_label=text_label, progressbar=progress,
@@ -124,6 +131,7 @@ def process_window(geometry: str, mode: str, pto, **options):
 
 def splash(pto):
 	"""Same as process_window(), only without the geometry."""
+	# runs in a different process from GUI.
 	loading_window = Tk()
 	loading_window.geometry("400x200")
 	loading_window.title("Loading")

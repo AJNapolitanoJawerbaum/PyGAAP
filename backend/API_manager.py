@@ -91,7 +91,8 @@ def API_process(pipe_subproc: Connection,
 			heard = pipe_subproc.recv()
 	exp_args = options.get("exp_args", {"args": [], "kwargs": {}})
 	exp = run_experiment.Experiment(
-		api, prog_report_pipe, results_queue)
+		api, prog_report_pipe, results_queue,
+		intermediate=options.get("intermediate"))
 	exp.run_experiment(*exp_args["args"], **exp_args["kwargs"])
 
 	return
