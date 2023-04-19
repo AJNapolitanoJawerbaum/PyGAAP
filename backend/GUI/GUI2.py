@@ -1362,22 +1362,22 @@ class PyGAAP_GUI:
 
 		try:
 			# adding items to listboxes from the backend_API.
-			for canonicizer in sorted(list(self.backend_API.canonicizers.keys())):
-				self.generated_widgets["Canonicizers"]["available_listboxes"][0][2].insert(END, canonicizer)
-			for driver in sorted(list(self.backend_API.eventDrivers.keys())):
-				self.generated_widgets["EventDrivers"]["available_listboxes"][0][2].insert(END, driver)
-			for distancefunc in sorted(list(self.backend_API.distanceFunctions.keys())):
+			for canonicizer in sorted(self.backend_API.canonicizers.values(), key=lambda x: x.__dict__.get("_sort_key") or x.displayName()):
+				self.generated_widgets["Canonicizers"]["available_listboxes"][0][2].insert(END, canonicizer.displayName())
+			for driver in sorted(self.backend_API.eventDrivers.values(), key=lambda x: x.__dict__.get("_sort_key") or x.displayName()):
+				self.generated_widgets["EventDrivers"]["available_listboxes"][0][2].insert(END, driver.displayName())
+			for distancefunc in sorted(self.backend_API.distanceFunctions.values(), key=lambda x: x.__dict__.get("_sort_key") or x.displayName()):
 				assert distancefunc != "NA", 'Distance Function cannot have the name "NA" ' \
 				+ '(Reserved for Analysis methods that do not use a distance function).\n' \
 				+ 'Please check the file containing the definition of the distance function class, ' \
 				+ 'most likely in or imported to DistanceFunction.py,\nand change the return of displayName().'
-				self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2].insert(END, distancefunc)
-			for culling in sorted(list(self.backend_API.eventCulling.keys())):
-				self.generated_widgets["EventCulling"]["available_listboxes"][0][2].insert(END, culling)
-			for converter in sorted(list(self.backend_API.embeddings.keys())):
-				self.generated_widgets["Embeddings"]["available_listboxes"][0][2].insert(END, converter)
-			for method in sorted(list(self.backend_API.analysisMethods.keys())):
-				self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][2].insert(END, method)
+				self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2].insert(END, distancefunc.displayName())
+			for culling in sorted(self.backend_API.eventCulling.values(), key=lambda x: x.__dict__.get("_sort_key") or x.displayName()):
+				self.generated_widgets["EventCulling"]["available_listboxes"][0][2].insert(END, culling.displayName())
+			for converter in sorted(self.backend_API.embeddings.values(), key=lambda x: x.__dict__.get("_sort_key") or x.displayName()):
+				self.generated_widgets["Embeddings"]["available_listboxes"][0][2].insert(END, converter.displayName())
+			for method in sorted(self.backend_API.analysisMethods.values(), key=lambda x: x.__dict__.get("_sort_key") or x.displayName()):
+				self.generated_widgets["AnalysisMethods"]["available_listboxes"][0][2].insert(END, method.displayName())
 			if startup == False: self.status_update("Modules reloaded")
 			return
 		except Exception as e:
@@ -1391,7 +1391,7 @@ class PyGAAP_GUI:
 			error_text += str(exc_info()[0]) + "\n" + str(exc_info()[1]) + "\n" + str(exc_info()[2].tb_frame.f_code)
 			error_text += '\n\nDevelopers: Reload modules by going to "developers" -> "Reload modules"'
 			error_text_field.insert(END, error_text)
-			topwindow.after(1200, error_window.lift)
+			self.topwindow.after(1200, error_window.lift)
 			if startup == False: self.status_update("Error while loading modules, see pop-up window.")
 			#exc_type, exc_obj, exc_tb = exc_info()
 			return

@@ -288,7 +288,7 @@ class WordNGram(EventDriver):
 	def spacy_single(self, doc):
 		'''spacy tokenize single doc'''
 		# doc is the Document object.
-		events = [str(token) for token in self._lang_module.tokenizer(doc.text)]
+		events = [str(token) for token in self._lang_module.tokenizer(doc.canonicized)]
 		return events
 
 	def nltk_single(self, text):
@@ -312,7 +312,7 @@ class WordNGram(EventDriver):
 			else:
 				for i, d in enumerate(docs):
 					if pipe is not None: pipe.send(100*i/l)
-					events = [str(token) for token in self._lang_module.tokenizer(d.text)]
+					events = [str(token) for token in self._lang_module.tokenizer(d.canonicized)]
 					d.setEventSet(sorted(events) if self.sort else events)
 
 		elif self.tokenizer == "NLTK":
@@ -320,18 +320,18 @@ class WordNGram(EventDriver):
 			self._nltk_lang = language_codes.get(lang, "unk").get("nltk", "english")
 			if self._default_multiprocessing:
 				with Pool(cpu_count()-1) as p:
-					events = p.map(word_tokenize, [d.text for d in docs])
+					events = p.map(word_tokenize, [d.canonicized for d in docs])
 				for i in range(len(docs)):
 					docs[i].setEventSet(sorted(events[i]) if self.sort else events[i])
 			else:
 				for i, d in enumerate(docs):
 					if pipe is not None: pipe.send(100*i/l)
-					events = word_tokenize(d.text, language=self._nltk_lang)
+					events = word_tokenize(d.canonicized, language=self._nltk_lang)
 					d.setEventSet(sorted(events) if self.sort else events)
 
 		elif self.tokenizer == "Space delimiter":
 			for i, d in enumerate(docs):
-				d.setEventSet(sorted(d.text.split()) if self.sort else d.text.split())
+				d.setEventSet(sorted(d.canonicized.split()) if self.sort else d.canonicized.split())
 		else:
 			raise ValueError("Unknown tokenizer type %s" % self.tokenizer)
 
