@@ -1158,8 +1158,11 @@ class PyGAAP_GUI:
 				"write", callback=lambda v1, v2, v3,
 				entry=self.generated_widgets[mtype]['search_entry'],
 				lb=self.generated_widgets[mtype]["available_listboxes"][0][2],
-				search_from=list(self.backend_API.moduleTypeDict[mtype].keys()):\
-				self.search_modules(entry, lb, search_from)
+				search_from=sorted(list(
+					self.backend_API.moduleTypeDict[mtype].keys()
+					), key=lambda x: self.backend_API.moduleTypeDict[mtype][x]
+						.__dict__.get("_sort_key") or self.backend_API.moduleTypeDict[mtype][x].displayName()
+				):self.search_modules(entry, lb, search_from)
 			)
 
 		self.search_entry_query["DistanceFunctions"] = StringVar()
@@ -1171,8 +1174,11 @@ class PyGAAP_GUI:
 			"write", callback=lambda v1, v2, v3,
 			entry=self.generated_widgets["AnalysisMethods"]['search_entry'],
 			lb=self.generated_widgets["AnalysisMethods"]["available_listboxes"][1][2],
-			search_from=list(self.backend_API.moduleTypeDict["DistanceFunctions"].keys()):\
-			self.search_modules(entry, lb, search_from)
+			search_from=sorted(list(
+				self.backend_API.moduleTypeDict["DistanceFunctions"].keys()
+				), key=lambda x: self.backend_API.moduleTypeDict["DistanceFunctions"][x]
+					.__dict__.get("_sort_key") or self.backend_API.moduleTypeDict["DistanceFunctions"][x].displayName()
+			):self.search_modules(entry, lb, search_from)
 		)
 
 	#ABOVE ARE THE CONFIGS FOR EACH TAB
@@ -1440,7 +1446,7 @@ class PyGAAP_GUI:
 		retrieve = {x.strip().lower():x for x in search_from}
 		candidates = [retrieve[item] for item in list(retrieve.keys()) if
 			self.expanded_search(query, item)]
-		candidates.sort()
+		# candidates.sort()
 		listbox.delete(0, END)
 		for c in candidates:
 			listbox.insert(END, c)

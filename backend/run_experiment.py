@@ -28,8 +28,6 @@ from pickle import dump as pickle_dump
 EXP_DEBUG = 0
 DEBUG_DIR = "./tmp"
 
-MOD_ORDER = ["cc", "ed", "ec", "nc", "am"]
-
 class Experiment:
 
 	"""An experiment class to be invoked by either the GUI or the CLI."""
@@ -61,6 +59,7 @@ class Experiment:
 		return
 
 	def dump_intermediate(self):
+		"""Dump pickle file if experiment is aborted"""
 		if self.intermediate is None: return 0
 		try:
 			self.intermediate.get(block=False, timeout=0.01) # first clear the 1-element queue.
@@ -74,13 +73,13 @@ class Experiment:
 		Canonicizers, event drivers, event cullers.
 		"""
 		# doc: the document passed in.
-		# dump_queue: when multi-processing,
-		# the shared queue to temporarily store the documents.
 		verbose = options.get("verbose", False)
 		if verbose and len(self.backend_API.modulesInUse["Canonicizers"]) > 0:
 			print("Canonicizers processing ...")
 		# for d in self.backend_API.documents:
 		# 	d.text = re.subn(re.compile("(?<!\r)\n"), "\r\n", d.text)[0]
+
+		# RUN CANONICIZERS
 		for i, c in enumerate(self.backend_API.modulesInUse["Canonicizers"]):
 			if verbose: print("Running", c.__class__.displayName())
 			if self.pipe_here is not None:
@@ -104,7 +103,7 @@ class Experiment:
 			with open("./tmp/1_api_canonicized", "wb") as api_dump:
 				pickle_dump(self.backend_API.documents, api_dump)
 
-		# if Document.canonicized is empty, default to original text
+		# if Document.canonicized is empty (no canonicizers), move original text to doc.canonicized
 		no_canon = 0
 		for doc in self.backend_API.documents:
 			if doc.canonicized == "" or doc.canonicized is None:
@@ -115,7 +114,7 @@ class Experiment:
 			print("! %s/%s docs had no canonicized texts, defaulting to original texts."
 				% (str(no_canon), str(len(self.backend_API.documents))))
 
-
+		# RUN EVENT DRIVERS
 		if verbose: print("Event drivers processing ...")
 		succeeded_event_drivers = 0
 		for i, e in enumerate(self.backend_API.modulesInUse["EventDrivers"]):
@@ -162,7 +161,7 @@ class Experiment:
 			)
 			return exp_return if self.return_results else 1
 
-
+		# RUN EVENT FILTERING
 		if verbose and len(self.backend_API.modulesInUse["EventCulling"]) > 0:
 			print("Event Cullers processing ...")
 		for i, ec in enumerate(self.backend_API.modulesInUse["EventCulling"]):
@@ -366,13 +365,13 @@ class Experiment:
 
 		exp_dump_index = 0	
 
-		# NUMBER CONVERSION: must take in all files in case there are author-based algorithms.
-		results = [] # list of text-formatted results
+		# EMBEDDING: must take in all files in case there are author-based algorithms.
+		results = [] # list of results represented as strings
 		nc_success_count = 0
 		for nc_i, nc in enumerate(self.backend_API.modulesInUse["Embeddings"]):
 			"""
 			Only one embedder used for one analysis method
-			This means for N embedders and M methods, there will be (N x M) analyses.
+			This means for N embedders and M classifiers, there will be (N x M) analyses.
 			"""
 			nc._global_parameters = self.backend_API.global_parameters
 			nc._default_multiprocessing = self.default_mp
@@ -404,6 +403,7 @@ class Experiment:
 
 			if self.pipe_here is not None: self.pipe_here.send("Running analysis")
 
+			# RUN CLASSIFIERS
 			am_success_count = 0
 			for am_df_i, am in enumerate(self.backend_API.modulesInUse["AnalysisMethods"]):
 				df = self.backend_API.modulesInUse["DistanceFunctions"][am_df_i]
