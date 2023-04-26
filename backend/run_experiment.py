@@ -382,7 +382,7 @@ class Experiment:
 			if verbose: print("Embedding ... running", nc.__class__.displayName())
 
 			try:
-				all_data = nc.convert(known_docs + unknown_docs, self.pipe_here)
+				all_data = nc.process(known_docs + unknown_docs, self.pipe_here)
 			except Exception as error:
 				this_error = "\nembedder failed: %s\n%s\n%s\n" %\
 					(nc.__class__.displayName(), str(error), format_exc())
@@ -426,10 +426,10 @@ class Experiment:
 					self.pipe_here.send(True)
 
 				try:
-        			# for each method: first train models on known docs
-					am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
-					# then for each unknown document, analyze and output results
-					doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
+					# am_df_pair[0].train(known_docs, known_docs_numbers_aggregate)
+					# doc_results = am_df_pair[0].analyze(unknown_docs, unknown_docs_numbers_aggregate)
+					doc_results = am_df_pair[0].process(docs, self.pipe_here,
+						known_numbers=known_docs_numbers_aggregate, unknown_numbers=unknown_docs_numbers_aggregate)
 				except Exception as e:
 					this_error = "\n" + "Analysis or distance function failed:\n%s, %s\n\n%s\n\n%s" %\
 						(am_df_pair[0].__class__.displayName(),

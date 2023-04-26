@@ -150,7 +150,7 @@ these can all be overwritten, but the input/output types must match the original
 
    Event cullers are expected to call `Document.setEventSet(eventSet, append=False)` to overwrite document event sets in `process_single()` or `process()`.
 - Embedders:
-   - ```convert(docs: list[backend.Document]) -> np.ndarray of shape (len(docs), *, ...)```
+   - ```process(docs: list[backend.Document]) -> np.ndarray of shape (len(docs), *, ...)```
    
       Text embedders are expected to **both** write to `Document.numbers` for each document **and** return an `np.ndarray` (or compatible type) where the first dimension is the number of all documents, known or unknown. For example, in the `roberta` module, each document is embedded in a 768-long vector. If `roberta` receives 23 documents in total, it returns an `ndarray` of `shape (23, 768)`.
 - Analysis methods:

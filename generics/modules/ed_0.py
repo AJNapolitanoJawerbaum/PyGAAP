@@ -1,4 +1,5 @@
-from abc import ABC, abstractmethod
+# from abc import ABC, abstractmethod
+from generics.module import EventDriver
 from nltk import ngrams
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk import WordNetLemmatizer
@@ -14,77 +15,77 @@ with open(Path("./resources/languages.json"), "r") as f:
 f.close()
 del f
 
-# An abstract EventDriver class.
-class EventDriver(ABC):
+# # An abstract EventDriver class.
+# class EventDriver(ABC):
 
-	_global_parameters = dict()
-	_default_multiprocessing = True
+# 	_global_parameters = dict()
+# 	_default_multiprocessing = True
 
-	def __init__(self, **options):
-		try:
-			for variable in self._variable_options:
-				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
-		except AttributeError:
-			self._variable_options = dict()
-		self._global_parameters = self._global_parameters
-		try: self.after_init
-		except (AttributeError, NameError): return
-		self.after_init(**options)
+# 	def __init__(self, **options):
+# 		try:
+# 			for variable in self._variable_options:
+# 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
+# 		except AttributeError:
+# 			self._variable_options = dict()
+# 		self._global_parameters = self._global_parameters
+# 		try: self.after_init
+# 		except (AttributeError, NameError): return
+# 		self.after_init(**options)
 
-	def after_init(self, **options):
-		pass
+# 	def after_init(self, **options):
+# 		pass
 
-	def set_attr(self, var, value):
-		"""Custom way to set attributes"""
-		self.__dict__[var] = value
+# 	def set_attr(self, var, value):
+# 		"""Custom way to set attributes"""
+# 		self.__dict__[var] = value
 
-	def validate_parameter(self, param_name: str, param_value):
-		"""validating parameter expects param_value to already been correctly typed"""
-		if param_name not in self._variable_options:
-			raise NameError("Unknown parameter in module")
-		validator = self._variable_options[param_name].get("validator")
-		if validator != None:
-			val_result = validator(param_value)
-			if not val_result: raise ValueError("Module parameter out of range")
-		elif param_value not in self._variable_options[param_name]["options"]:
-			raise ValueError("Module parameter out of range")
-		return
+# 	def validate_parameter(self, param_name: str, param_value):
+# 		"""validating parameter expects param_value to already been correctly typed"""
+# 		if param_name not in self._variable_options:
+# 			raise NameError("Unknown parameter in module")
+# 		validator = self._variable_options[param_name].get("validator")
+# 		if validator != None:
+# 			val_result = validator(param_value)
+# 			if not val_result: raise ValueError("Module parameter out of range")
+# 		elif param_value not in self._variable_options[param_name]["options"]:
+# 			raise ValueError("Module parameter out of range")
+# 		return
 
-	@abstractmethod
-	def displayName():
-		'''Returns the display name for the given event driver.'''
-		pass
+# 	@abstractmethod
+# 	def displayName():
+# 		'''Returns the display name for the given event driver.'''
+# 		pass
 		
-	@abstractmethod
-	def setParams(self, params):
-		'''Accepts a list of parameters and assigns them to the appropriate variables.'''
+# 	@abstractmethod
+# 	def setParams(self, params):
+# 		'''Accepts a list of parameters and assigns them to the appropriate variables.'''
 
-	@abstractmethod
-	def displayDescription():
-		pass
+# 	@abstractmethod
+# 	def displayDescription():
+# 		pass
 	
-	def process(self, docs, pipe=None):
-		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
-		if self._default_multiprocessing:
-			if pipe is not None: pipe.send(True)
-			with Pool(cpu_count()-1) as p:
-				events = p.map(self.process_single, [d.canonicized for d in docs])
-			for i in range(len(events)):
-				docs[i].setEventSet(events[i])
-		else:
-			for i, d in enumerate(docs):
-				if pipe is not None: pipe.send(100*i/len(docs))
-				event_set = self.process_single(d.canonicized)
-				d.setEventSet(event_set)
-		return
+# 	def process(self, docs, pipe=None):
+# 		"""Sets the events for the documents for all docs. Calls createEventSet for each doc."""
+# 		if self._default_multiprocessing:
+# 			if pipe is not None: pipe.send(True)
+# 			with Pool(cpu_count()-1) as p:
+# 				events = p.map(self.process_single, [d.canonicized for d in docs])
+# 			for i in range(len(events)):
+# 				docs[i].setEventSet(events[i])
+# 		else:
+# 			for i, d in enumerate(docs):
+# 				if pipe is not None: pipe.send(100*i/len(docs))
+# 				event_set = self.process_single(d.canonicized)
+# 				d.setEventSet(event_set)
+# 		return
 	
-	def process_single(self, procText):
-		'''
-		Processes a single document.
-		This is no longer an abstract method because
-		some modules may choose to ignore this function and deal with all documents instead in "process".
-		'''
-		raise NotImplementedError
+# 	def process_single(self, procText):
+# 		'''
+# 		Processes a single document.
+# 		This is no longer an abstract method because
+# 		some modules may choose to ignore this function and deal with all documents instead in "process".
+# 		'''
+# 		raise NotImplementedError
 
 	
 # REFERENCE CLASS FOR PyGAAP GUI.

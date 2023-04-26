@@ -1,4 +1,4 @@
-from generics.Embedding import Embedding
+from generics.module import Embedding
 from backend.Histograms import generateAbsoluteHistogram as gh
 from backend import PrepareNumbers as pn
 import numpy as np

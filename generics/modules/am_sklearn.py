@@ -1,4 +1,4 @@
-from generics.AnalysisMethod import AnalysisMethod
+from generics.module import AnalysisMethod
 # pn is backend.PrepareNumbers, already imported from generics.AnalysisMethod
 from sklearn.svm import LinearSVC, SVC
 from sklearn.neural_network import MLPClassifier
@@ -45,9 +45,9 @@ class Linear_SVM_sklearn(AnalysisMethod):
 		self._model.fit(train_data, train_labels)
 		return
 
-	def analyze(self, test, test_data, **options):
-		if test_data is None:
-			test_data = self.get_test_data(test)
+	def process(self, docs, pipe=None, **options):
+		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
+		test_data = self.get_test_data(docs, options)
 		scores = -self._model.decision_function(test_data)
 		if len(scores.shape) == 1:
 			# in case of binary classification, sklearn returns
@@ -71,72 +71,6 @@ class Linear_SVM_sklearn(AnalysisMethod):
 		number of samples > number of features.\n
 		To see more details, go to https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html.
 		"""
-
-# class SVM_sklearn(AnalysisMethod):
-# 	kernel = "Radial basis"
-# 	poly_deg = 3
-# 	tol = 0.0001
-# 	reg_strength = 1
-# 	iterations = 1000
-# 	_NoDistanceFunction_ = True
-
-# 	_model = None
-
-# 	_variable_options = {
-# 		"iterations": {"options": [10, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], "type": "OptionMenu", "default": 4, "displayed_name": "Iterations"},
-# 		"kernel": {"options": ["Radial basis", "Linear", "Polynomial", "Sigmoid"], "type": "OptionMenu", "default": 0, "displayed_name": "Kernel"},
-# 		"poly_deg": {"options": list(range(1, 6)), "type": "OptionMenu", "default": 2, "displayed_name": "Polynomial degree"},
-# 		"tol": {"options": [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
-# 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance"},
-# 		"reg_strength": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Regularization Strength"}
-# 	}
-# 	_display_to_input = {"penalty": {"L1": "l1", "L2": "l2"}, "dual": {"dual": True, "primal": False},
-# 		"kernel": {"Radial basis": "rbf", "Linear": "linear", "Polynomial": "poly", "Sigmoid": "sigmoid"}
-# 	}
-	
-# 	def after_init(self, **options):
-# 		...
-
-# 	def train(self, train, train_data, **options):
-#		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
-
-# 		train_labels = train_labels.flatten() # sklearn's svm takes flattened labels array.
-
-# 		self._model = SVC(
-# 			degree=self.poly_deg,
-# 			kernel=self._display_to_input["kernel"][self.kernel],
-# 			max_iter=self.iterations, tol=self.tol,
-# 			C=1/self.reg_strength
-# 		)
-# 		self._model.fit(train_data, train_labels)
-# 		return
-
-# 	def analyze(self, test, test_data, **options):
-# 		if test_data is None:
-# 			test_data = self.get_test_data(test)
-# 		scores = self._model.decision_function(test_data)
-# 		if len(scores.shape) == 1:
-# 			# in case of binary classification, sklearn returns
-# 			# a 1D array for scores. need to re-format to 2D.
-# 			scores = np.array((scores, 1-scores)).transpose()
-# 		results = self.get_results_dict_from_matrix(scores)
-# 		return results
-
-# 	def displayName():
-# 		return "SVM (sklearn)"
-
-# 	def displayDescription():
-# 		return """Support vector machine implemented in Scikit-learn. (sklearn.svm.LinearSVC).
-# 		Parameters are set to the default from sklearn.
-# 		Parameters:
-# 		\tIterations: number of iterations to run.
-# 		\tKernel: how to transform data points: may help with non-linear classification.
-# 		\tPolynomial degree (polynomial kernels only): the highest power to which a polynomial kernel may be raised.
-# 		\tStopping tolerance: Tolerance for the stopping criteria.
-# 		\tRegularization Strength: Strength of constraints on size of parameters.
-# 		number of samples > number of features.\n
-# 		To see more details, go to https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html.
-# 		"""
 
 class MLP_sklearn(AnalysisMethod):
 
@@ -189,9 +123,9 @@ class MLP_sklearn(AnalysisMethod):
 		return
 
 	
-	def analyze(self, test, test_data=None, **options):
-		if test_data is None:
-			test_data = self.get_test_data(test)
+	def process(self, docs, Pipe=None, **options):
+		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
+		test_data = self.get_test_data(docs, options)
 		results = self._model.predict_proba(test_data)
 		if len(results.shape) == 1:
 			results = np.array((results, 1-results)).transpose()
@@ -224,33 +158,15 @@ class Naive_bayes_sklearn(AnalysisMethod):
 		self._model.fit(train_data, train_labels)
 		return
 
-
-	def analyze(self, test, test_data=None, **options):
-		if test_data is None: test_data = self.get_train_data(test)
+	def process(self, docs, Pipe=None, **options):
+		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
+		test_data = self.get_test_data(docs, options)
 		results = self._model.predict_proba(test_data)
 		results = self.get_results_dict_from_matrix(1-results)
 		return results
-
 
 	def displayName():
 		return "Naive Bayes (sklearn)"
 
 	def displayDescription():
 		return "Multinomial naive bayes implemented in scikit-learn."
-
-# class LDA_sklearn(AnalysisMethod):
-
-# 	def train(self, train, train_data=None, **options):
-# 		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
-# 		return
-
-# 	def analyze(self, test, test_data=None, **options):
-# 		if test_data is None:
-# 			test_data = self.get_test_data(test)
-# 		return
-	
-# 	def displayName():
-# 		return "[n.i.] Linear Discriminant Analysis (sklearn)"
-	
-# 	def displayDescription():
-# 		return "Linear discriminant analysis implemented in scikit-learn"

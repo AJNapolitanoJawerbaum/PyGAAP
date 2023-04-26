@@ -1,4 +1,4 @@
-from generics.DistanceFunction import DistanceFunction
+from generics.module import DistanceFunction
 import numpy as np
 
 

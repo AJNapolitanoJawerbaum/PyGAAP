@@ -2047,7 +2047,7 @@ class PyGAAP_GUI:
 		unknown = self.backend_API.unknown_docs
 
 		sys_modules_pop = [m for m in sys_modules if (
-				"generics.modules" in m or "GUI_unified_tabs" in m or "run_experiment" in m or
+				"generics.module" in m or "GUI_unified_tabs" in m or "run_experiment" in m or
 				"AnalysisMethod" in m or "Canonicizer" in m or "DistanceFunction" in m or
 				"EventCulling" in m or "EventDriver" in m or "Embedding" in m or
 				"MultiprocessLoading" in m or ("API" in m and "manager" not in m)

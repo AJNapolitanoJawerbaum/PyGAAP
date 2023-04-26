@@ -1,4 +1,4 @@
-from generics.Canonicizer import Canonicizer
+from generics.module import Canonicizer
 import re
 import numpy as np
 from unicodedata import normalize as unicode_normalize

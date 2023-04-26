@@ -1,78 +1,79 @@
-from abc import ABC, abstractmethod
+# from abc import ABC, abstractmethod
+from generics.module import Canonicizer
 import re
 from multiprocessing import Pool, cpu_count
 # import c_cc_0
 
-# An abstract Canonicizer class.
-class Canonicizer(ABC):
-	_index = 0
-	_global_parameters = dict()
-	_default_multiprocessing = True
+# # An abstract Canonicizer class.
+# class Canonicizer(ABC):
+# 	_index = 0
+# 	_global_parameters = dict()
+# 	_default_multiprocessing = True
 
-	def __init__(self, **options):
-		try:
-			for variable in self._variable_options:
-				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
-		except AttributeError:
-			self._variable_options = dict()
-		self._global_parameters = self._global_parameters
-		try: self.after_init
-		except (AttributeError, NameError): return
-		self.after_init(**options)
+# 	def __init__(self, **options):
+# 		try:
+# 			for variable in self._variable_options:
+# 				setattr(self, variable, self._variable_options[variable]["options"][self._variable_options[variable]["default"]])
+# 		except AttributeError:
+# 			self._variable_options = dict()
+# 		self._global_parameters = self._global_parameters
+# 		try: self.after_init
+# 		except (AttributeError, NameError): return
+# 		self.after_init(**options)
 
-	def after_init(self, **options):
-		pass
+# 	def after_init(self, **options):
+# 		pass
 
-	def set_attr(self, var, value):
-		"""Custom way to set attributes"""
-		self.__dict__[var] = value
+# 	def set_attr(self, var, value):
+# 		"""Custom way to set attributes"""
+# 		self.__dict__[var] = value
 
-	def validate_parameter(self, param_name: str, param_value):
-		"""validating parameter expects param_value to already been correctly typed"""
-		if param_name not in self._variable_options:
-			raise NameError("Unknown parameter in module")
-		validator = self._variable_options[param_name].get("validator")
-		if validator != None:
-			val_result = validator(param_value)
-			if not val_result: raise ValueError("Module parameter out of range")
-		elif param_value not in self._variable_options[param_name]["options"]:
-			raise ValueError("Module parameter out of range")
-		return
+# 	def validate_parameter(self, param_name: str, param_value):
+# 		"""validating parameter expects param_value to already been correctly typed"""
+# 		if param_name not in self._variable_options:
+# 			raise NameError("Unknown parameter in module")
+# 		validator = self._variable_options[param_name].get("validator")
+# 		if validator != None:
+# 			val_result = validator(param_value)
+# 			if not val_result: raise ValueError("Module parameter out of range")
+# 		elif param_value not in self._variable_options[param_name]["options"]:
+# 			raise ValueError("Module parameter out of range")
+# 		return
 
-	def process(self, docs, pipe=None):
-		"""
-		process all docs at once, auto-call process_single.
-		"""
-		if self._default_multiprocessing:
-			if pipe is not None: pipe.send(True)
-			with Pool(cpu_count()-1) as p:
-				canon = p.map(self.process_single, [d.text for d in docs])
-			for d in range(len(canon)):
-				docs[d].canonicized = canon[d]
-		else:
-			for i, d in enumerate(docs):
-				if pipe is not None: pipe.send(100*i/len(docs))
-				d.canonicized = self.process_single(d.text)
-		return
+# 	def process(self, docs, pipe=None):
+# 		"""
+# 		process all docs at once, auto-call process_single.
+# 		"""
+# 		if self._default_multiprocessing:
+# 			if pipe is not None: pipe.send(True)
+# 			with Pool(cpu_count()-1) as p:
+# 				canon = p.map(self.process_single, [d.text for d in docs])
+# 			for d in range(len(canon)):
+# 				docs[d].canonicized = canon[d]
+# 		else:
+# 			for i, d in enumerate(docs):
+# 				if pipe is not None: pipe.send(100*i/len(docs))
+# 				d.canonicized = self.process_single(d.text)
+# 		return
 
 
-	def process_single(self, text):
-		"""
-		This is not an abstract method in the base class because
-		it may not be present in some modules.
-		Input/output of this may change. If changing input,
-		also need to change the self.process() function.
-		"""
-		raise NotImplementedError
+# 	def process_single(self, text):
+# 		"""
+# 		This is not an abstract method in the base class because
+# 		it may not be present in some modules.
+# 		Input/output of this may change. If changing input,
+# 		also need to change the self.process() function.
+# 		"""
+# 		raise NotImplementedError
 		
-	@abstractmethod
-	def displayName():
-		'''Returns the display name for the given canonicizer.'''
-		pass
+# 	@abstractmethod
+# 	def displayName():
+# 		'''Returns the display name for the given canonicizer.'''
+# 		pass
 
-	@abstractmethod
-	def displayDescription():
-		'''Returns the display description for the canonicizer.'''
+# 	@abstractmethod
+# 	def displayDescription():
+# 		'''Returns the display description for the canonicizer.'''
 		
 class NormalizeWhitespace(Canonicizer):
 	# imp = "py"
@@ -146,10 +147,10 @@ class StripPunctuation(Canonicizer):
 		return "Strip Punctuation"
 
 class StripNumbers(Canonicizer):
-	chn_jpa = 0
-	_variable_options = {
-		"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Chinese/Japanese"}
-	}
+	# chn_jpa = 0
+	# _variable_options = {
+	# 	"chn_jpa": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Chinese/Japanese"}
+	# }
 
 	_regex_match = re.compile("0+")
 	# this over-covers cases, but the over-covered cases are malformed numerals.
@@ -161,8 +162,8 @@ class StripNumbers(Canonicizer):
 		"""Converts each digit string to a single zero."""
 		text = ''.join(["0" if char in "0123456789" else char for char in text])
 		text = re.subn(self._regex_match, "0", text)[0]
-		if self.chn_jpa:
-			text = re.subn(self._chn_regex, "零", text)[0]
+		# if self.chn_jpa:
+		# 	text = re.subn(self._chn_regex, "零", text)[0]
 		return text
 
 	def displayDescription():

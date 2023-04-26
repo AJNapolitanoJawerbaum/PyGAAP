@@ -1,4 +1,4 @@
-from generics.Embedding import Embedding
+from generics.module import Embedding
 # from backend.Histograms import generateAbsoluteHistogram as gh
 # from backend import PrepareNumbers as pn
 from multiprocessing import Pool, cpu_count
@@ -15,7 +15,7 @@ from copy import deepcopy
 # 		"displayed_name": "Normalization"}
 # 	}
 
-# 	def convert(self, docs, pipe=None):
+# 	def process(self, docs, pipe=None):
 # 		"""Convert and assign to Documents.numbers"""
 # 		if self._default_multiprocessing:
 # 			with Pool(cpu_count()-1) as p:
@@ -51,7 +51,7 @@ class Frequency(Embedding):
 		"binary": {"options": [0, 1], "type": "Tick", "default": 0, "displayed_name": "Binary"}
 	}
 
-	def convert(self, docs, pipe=None):
+	def process(self, docs, pipe=None):
 		"""Convert and assign to Documents.numbers"""
 
 		mf = self.max_features if self.max_features > 0 else None

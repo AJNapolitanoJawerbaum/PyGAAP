@@ -1,4 +1,4 @@
-from generics.AnalysisMethod import AnalysisMethod
+from generics.module import AnalysisMethod
 from sklearn import ensemble
 
 class sklearn_gradient_boosting(AnalysisMethod):
@@ -44,9 +44,9 @@ class sklearn_gradient_boosting(AnalysisMethod):
 		self._model.fit(train_data, train_labels)
 		return
 
-	def analyze(self, test, test_data=None, **options):
-		if test_data is None:
-			test_data = self.get_test_data(test)
+	def process(self, docs, pipe=None, **options):
+		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
+		test_data = self.get_test_data(docs, options)
 		results = self._model.predict_log_proba(test_data) \
 			if self.log_prob else _model.predict_proba(test_data)
 		if len(results.shape) == 1:
@@ -88,9 +88,9 @@ class sklearn_adaboost(AnalysisMethod):
 		self._model.fit(train_data, train_labels)
 		return
 
-	def analyze(self, test, test_data=None, **options):
-		if test_data is None:
-			test_data = self.get_test_data(test)
+	def process(self, docs, pipe=None, **options):
+		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
+		test_data = self.get_test_data(docs, options)
 		results = self._model.predict_log_proba(test_data) \
 			if self.log_prob else _model.predict_proba(test_data)
 		if len(results.shape) == 1:

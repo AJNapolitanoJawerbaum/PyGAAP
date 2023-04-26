@@ -58,12 +58,7 @@ class API:
 	def __init__(self, documents):
 
 		# delay importing modules to creation of API instance
-		from generics.Canonicizer import Canonicizer
-		from generics.EventCulling import EventCulling
-		from generics.EventDriver import EventDriver
-		from generics.Embedding import Embedding
-		from generics.AnalysisMethod import AnalysisMethod
-		from generics.DistanceFunction import DistanceFunction
+		from generics.module import Module, Canonicizer, EventCulling, EventDriver, Embedding, AnalysisMethod, DistanceFunction
 
 
 		self.modules = []

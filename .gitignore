@@ -17,3 +17,4 @@ generics/modules/am_pytorch.py
 manage.py
 backend/GUI/GUI.py
 buildc.sh
+generics/nc_1.py
