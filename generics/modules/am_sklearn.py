@@ -3,7 +3,10 @@ from generics.AnalysisMethod import AnalysisMethod
 from sklearn.svm import LinearSVC, SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.neighbors import NeighborhoodComponentsAnalysis
+from sklearn.linear_model import SGDClassifier, LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 
 class Linear_SVM_sklearn(AnalysisMethod):
@@ -24,7 +27,7 @@ class Linear_SVM_sklearn(AnalysisMethod):
 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance",
 			"validator": (lambda x: (x > 0.000001 and x < 0.1))},
 		"penalty": {"options": ["L1", "L2"], "type": "OptionMenu", "default": 1, "displayed_name": "Penalty type"},
-		"reg_strength": {"options": range(1, 11), "type": "Slider", "default": 0, "displayed_name": "Regularization Strength"},
+		"reg_strength": {"options": list(range(1, 11)), "type": "OptionMenu", "default": 0, "displayed_name": "Regularization Strength"},
 		"opt": {"options": ["primal", "dual"], "type": "OptionMenu", "default": 1, "displayed_name": "Optimization Problem"},
 	}
 	_display_to_input = {"penalty": {"L1": "l1", "L2": "l2"}, "dual": {"dual": True, "primal": False}}
@@ -162,7 +165,7 @@ class MLP_sklearn(AnalysisMethod):
 			"displayed_name": "Maximum iterations", "validator": (lambda x: (x > 1 and x < 100001))},
 		"tol": {"options": [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance", "validator": (lambda x: (x >= 0.000001 and x <=0.1))},
-		"validation_fraction": {"options": [0.05, 0.45], "type": "Slider", "resolution": 0.05, "default": 1, "displayed_name": "Fraction used for validation",
+		"validation_fraction": {"options": [0.05, 0.1, 0.2, 0.3, 0.4], "default": 1, "displayed_name": "Fraction used for validation",
 			"validator": (lambda x: (x > 0.01 and x < 0.5))}
 	}
 
@@ -238,19 +241,85 @@ class Naive_bayes_sklearn(AnalysisMethod):
 	def displayDescription():
 		return "Multinomial naive bayes implemented in scikit-learn."
 
-# class LDA_sklearn(AnalysisMethod):
+class LDA_sklearn(AnalysisMethod):
 
-# 	def train(self, train, train_data=None, **options):
-# 		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
-# 		return
 
-# 	def analyze(self, test, test_data=None, **options):
-# 		if test_data is None:
-# 			test_data = self.get_test_data(test)
-# 		return
+	_NoDistanceFunction_ = True
+
+	def train(self, train, train_data=None, **options):
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
+		self._model = QuadraticDiscriminantAnalysis()
+		train_labels = train_labels.flatten()
+		self._model.fit(train_data, train_labels)
+		return
+
+
+	def analyze(self, test, test_data=None, **options):
+		if test_data is None: test_data = self.get_train_data(test)
+		results = self._model.predict_proba(test_data)
+		results = self.get_results_dict_from_matrix(1-results)
+		return results
+
+	def displayName():
+		return "Linear Discriminant Analysis (sklearn)"
 	
-# 	def displayName():
-# 		return "[n.i.] Linear Discriminant Analysis (sklearn)"
-	
-# 	def displayDescription():
-# 		return "Linear discriminant analysis implemented in scikit-learn"
+	def displayDescription():
+		return "Linear discriminant analysis implemented in scikit-learn"
+
+class Quadratic_discriminant_analysis(AnalysisMethod):
+
+	_NoDistanceFunction_ = True
+
+	def train(self, train, train_data=None, **options):
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
+		self._model = QuadraticDiscriminantAnalysis()
+		train_labels = train_labels.flatten()
+		self._model.fit(train_data, train_labels)
+		return
+
+
+	def analyze(self, test, test_data=None, **options):
+		if test_data is None: test_data = self.get_train_data(test)
+		results = self._model.predict_proba(test_data)
+		results = self.get_results_dict_from_matrix(1-results)
+		return results
+
+
+	def displayName():
+		return "Quadratic Discriminant Analysis (sklearn)"
+
+	def displayDescription():
+		return "Classifier with quadratic decision boundary. Fits a Gaussian density to each class."
+    
+    
+class Decision_tree_sklearn(AnalysisMethod):
+
+	_NoDistanceFunction_ = True
+
+	criterion = "gini"
+	splitter = "best"
+	_variable_options = {"criterion":
+		{"options": ["gini", "entropy", "log_loss"], "default": 0},
+        "splitter": {"options": ["best", "random"], "default": 0} #The other options seem like too much for the average user
+	}
+
+	def train(self, train, train_data=None, **options):
+		train_data, train_labels = self.get_train_data_and_labels(train, train_data)
+		self._model = DecisionTreeClassifier(criterion = self.criterion, splitter= self.splitter)
+		train_labels = train_labels.flatten()
+		self._model.fit(train_data, train_labels)
+		return
+
+
+	def analyze(self, test, test_data=None, **options):
+		if test_data is None: test_data = self.get_train_data(test)
+		results = self._model.predict_proba(test_data)
+		results = self.get_results_dict_from_matrix(1-results)
+		return results
+
+
+	def displayName():
+		return "Decision tree classifier (sklearn)"
+
+	def displayDescription():
+		return "Decision tree classifier implemented in scikit-learn."
