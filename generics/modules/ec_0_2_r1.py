@@ -9,7 +9,7 @@ import numpy, scipy, data, stats
 
 class MostCommonEvents(EventCulling):
 	_variable_options = {
-		"numEvents": {"options": range(1, 201), "default": 50, "type": "OptionMenu", "default": 50}
+		"numEvents": {"options": range(1, 201), "default": 50, "type": "Slider", "default": 50}
     }
 	numEvents = _variable_options["numEvents"]["options"][_variable_options["numEvents"]["default"]]
 	
@@ -48,7 +48,7 @@ class LeastCommonEvents(EventCulling):
 	"""Least Common Events creates Most Common Events (above) and calls its functions"""
 
 	_variable_options = {
-		"numEvents": {"options": range(1, 201), "default": 50, "type": "OptionMenu", "default": 50}
+		"numEvents": {"options": range(1, 201), "default": 50, "type": "Slider", "default": 50}
     }
 	numEvents = _variable_options["numEvents"]["options"][_variable_options["numEvents"]["default"]]
 
@@ -117,7 +117,7 @@ class MeanAbsoluteDeviation(EventCulling):
 	_default_multiprocessing = True
 	_variable_options = {
 		"numEvents": {"options": range(1, 201), "default": 49, "type": "Slider"},
-        "Informative": {"options": ["most", "least"], "default": 0, "type": "OptionMenu"}
+        "Informative": {"options": ["most", "least"], "default": 0, "type": "Slider"}
         }
 	numEvents = _variable_options["numEvents"]["options"][_variable_options["numEvents"]["default"]]
 	Informative = _variable_options["Informative"]["options"][_variable_options["Informative"]["default"]]
