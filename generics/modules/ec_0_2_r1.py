@@ -2,7 +2,7 @@
 Implementation of several Event Cullers.
 Most Common Events, Least Common Events, Coefficient of Variation, implemented by @Alejandro Napolitano Jawerbaum
 """
-from generics.EventCulling import EventCulling 
+from generics.module import EventCulling
 from multiprocessing import Pool, cpu_count
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy, scipy, data, stats
