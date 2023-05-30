@@ -1,4 +1,4 @@
-from generics.AnalysisMethod import AnalysisMethod
+from generics.module import AnalysisMethod
 # pn is backend.PrepareNumbers, already imported from generics.AnalysisMethod
 from sklearn.svm import LinearSVC, SVC
 from sklearn.neural_network import MLPClassifier
