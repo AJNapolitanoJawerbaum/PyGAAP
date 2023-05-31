@@ -1,15 +1,15 @@
 """
-Implementation of several Event Cullers.
-Most Common Events, Least Common Events, Coefficient of Variation, implemented by @Alejandro Napolitano Jawerbaum
+Implementation of several Event Cullers found in JGAAP
+@Alejandro Napolitano Jawerbaum
 """
-from generics.EventCulling import EventCulling 
+from generics.module import EventCulling
 from multiprocessing import Pool, cpu_count
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy, scipy, data, stats
 
 class MostCommonEvents(EventCulling):
 	_variable_options = {
-		"numEvents": {"options": range(1, 201), "default": 50, "type": "OptionMenu", "default": 50}
+		"numEvents": {"options": range(1, 201), "default": 50, "type": "Slider", "default": 50}
     }
 	numEvents = _variable_options["numEvents"]["options"][_variable_options["numEvents"]["default"]]
 	
@@ -48,7 +48,7 @@ class LeastCommonEvents(EventCulling):
 	"""Least Common Events creates Most Common Events (above) and calls its functions"""
 
 	_variable_options = {
-		"numEvents": {"options": range(1, 201), "default": 50, "type": "OptionMenu", "default": 50}
+		"numEvents": {"options": range(1, 201), "default": 50, "type": "Slider", "default": 50}
     }
 	numEvents = _variable_options["numEvents"]["options"][_variable_options["numEvents"]["default"]]
 
@@ -117,7 +117,7 @@ class MeanAbsoluteDeviation(EventCulling):
 	_default_multiprocessing = True
 	_variable_options = {
 		"numEvents": {"options": range(1, 201), "default": 49, "type": "Slider"},
-        "Informative": {"options": ["most", "least"], "default": 0, "type": "OptionMenu"}
+        "Informative": {"options": ["most", "least"], "default": 0, "type": "Slider"}
         }
 	numEvents = _variable_options["numEvents"]["options"][_variable_options["numEvents"]["default"]]
 	Informative = _variable_options["Informative"]["options"][_variable_options["Informative"]["default"]]
@@ -129,12 +129,18 @@ class MeanAbsoluteDeviation(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-		mads = numpy.mean(abs(
-			event_frequencies-numpy.mean(event_frequencies, axis=0, keepdims=1),
-			axis=0, keepdims=1),
-		axis=0, keepdims=1)		#mads = numpy.mean(event_frequencies-numpy.mean(event_frequencies, axis=0), axis=0)
+		means = []
+		mad = []
+		for i in numpy.transpose(event_frequencies): #Iterate through the columns (so have to transpose) to find the mean of each event
+			mean = numpy.mean(i)
+			deviations = []
+			for j in i: #Find the deviation by taking |event.freq - mean|
+				deviations.append(abs(j-mean))
+			mad.append(numpy.mean(deviations))
+		#mads = numpy.mean(event_frequencies-numpy.mean(event_frequencies, axis=0), axis=0)
 		# mads: dict of event: MAD
-		mads = {e:mads[i] for i, e in enumerate(event_names)}
+		
+		mads = {e:mad[i] for i, e in enumerate(event_names)}
 		# sort the dictionary
 		mads = {e:mads[e] for e in sorted(mads.keys(), key=lambda item:mads[item])}
 		# sort by MAD value.
@@ -180,7 +186,7 @@ class CoefficientOfVariation(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-		covs = numpy.std(event_frequencies, axis=0, keepdims=1) / numpy.mean(event_frequencies, axis=0, keepdims=1)
+		covs = [numpy.std(i) / numpy.mean(i) for i in numpy.transpose(event_frequencies)]
 
 		# covs: dict of event: CoV
 		covs = {e:covs[i] for i, e in enumerate(event_names)}
@@ -231,11 +237,10 @@ class IndexOfDispersion(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-		iods = numpy.var(event_frequencies, axis=0, keepdims=1)\
-			/ numpy.mean(event_frequencies, axis=0, keepdims=1)
+		iod = [numpy.var(i)/numpy.mean(i) for i in numpy.transpose(event_frequencies)]
 
 		# iods: dict of event: IoD
-		iods = {e:iods[i] for i, e in enumerate(event_names)}
+		iods = {e:iod[i] for i, e in enumerate(event_names)}
 		# sort the dictionary
 		iods = {e:iods[e] for e in sorted(iods.keys(), key=lambda item:iods[item])}
 		# sort by IoD value.
@@ -281,8 +286,7 @@ class StandardDeviation(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-		stds = numpy.std(event_frequencies, axis=0)
-
+		std = [numpy.std(i) for i in numpy.transpose(event_frequencies)]
 		# iods: dict of event: IoD
 		stds = {e:stds[i] for i, e in enumerate(event_names)}
 		# sort the dictionary
@@ -329,10 +333,10 @@ class RangeCuller(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-		rang = numpy.max(event_frequencies, axis=0) - numpy.min(event_frequencies, axis=0)
+		ran = [numpy.max(i) - numpy.min(i) for i in numpy.transpose(event_frequencies)]
 
 		# iods: dict of event: IoD
-		rang = {e:rang[i] for i, e in enumerate(event_names)}
+		rang = {e:ran[i] for i, e in enumerate(event_names)}
 		# sort the dictionary
 		rang = {e:rang[e] for e in sorted(rang.keys(), key=lambda item:rang[item])}
 		# sort by IoD value.
@@ -377,11 +381,10 @@ class Variance(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-        
-		var = numpy.var(event_frequencies, axis=0)
+		v = [numpy.var(i) for i in numpy.transpose(event_frequencies)]
 
 		# iods: dict of event: IoD
-		var = {e:var[i] for i, e in enumerate(event_names)}
+		var = {e:v[i] for i, e in enumerate(event_names)}
 		# sort the dictionary
 		var = {e:var[e] for e in sorted(var.keys(), key=lambda item:var[item])}
 		# sort by IoD value.
@@ -426,16 +429,19 @@ class WeightedVariance(EventCulling):
 		cv = CountVectorizer(analyzer=lambda t:t)
 		event_frequencies = cv.fit_transform([d.eventSet for d in docs]).toarray()
 		event_names = cv.get_feature_names_out()
-		relative_freq = event_frequencies / len(event_frequencies)
-		wvar = numpy.sum(relative_freq*(event_frequencies - numpy.mean(relative_freq*event_frequencies,
-			axis=0, keepdims=1)),
-		axis=0, keepdims=1)
+		wv = []
+		relative_freq = []
+		for freq in numpy.transpose(event_frequencies):
+			relative_freq = [freq[i]/sum(event_frequencies[i]) for i in range(0,len(freq))] #Dividing each entry in a column by the sum of the row it corresponds to to get relative frequencies within distributions
+			mean = numpy.dot(relative_freq,freq) #In this context mean = sum for i = 1 to n wi*xi where wi is the weight, which in this case is the relative frequency.
+			weighted_var = sum([relative_freq[i]/pow((freq[i]-mean),2) for i in range(0,len(freq))])
+			wv.append(mean*weighted_var)
 
-		# iods: dict of event: IoD
-		wvar = {e:wvar[i] for i, e in enumerate(event_names)}
+		# iods: dict of event: Wvar
+		wvar = {e:wv[i] for i, e in enumerate(event_names)}
 		# sort the dictionary
 		wvar = {e:wvar[e] for e in sorted(wvar.keys(), key=lambda item:wvar[item])}
-		# sort by IoD value.
+		# sort by Wvar value.
 		if self.Informative == "most":
 			self._wvar = list(wvar.keys())[-self.numEvents:]
 		elif self.Informative == "least":
@@ -461,9 +467,6 @@ class WeightedVariance(EventCulling):
 
 	def displayDescription():
 		return "Analyzes N events with the lowest or highest Variance weighted by relative frequency."
-
-
-
 
 """
 class InformationGain(EventCulling):
