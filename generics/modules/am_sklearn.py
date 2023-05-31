@@ -27,7 +27,7 @@ class Linear_SVM_sklearn(AnalysisMethod):
 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance",
 			"validator": (lambda x: (x > 0.000001 and x < 0.1))},
 		"penalty": {"options": ["L1", "L2"], "type": "OptionMenu", "default": 1, "displayed_name": "Penalty type"},
-		"reg_strength": {"options": list(range(1, 11)), "type": "Slider", "default": 0, "displayed_name": "Regularization Strength"},
+		"reg_strength": {"options": range(1, 11), "type": "Slider", "default": 0, "displayed_name": "Regularization Strength"},
 		"opt": {"options": ["primal", "dual"], "type": "OptionMenu", "default": 1, "displayed_name": "Optimization Problem"},
 	}
 	_display_to_input = {"penalty": {"L1": "l1", "L2": "l2"}, "dual": {"dual": True, "primal": False}}
@@ -47,6 +47,7 @@ class Linear_SVM_sklearn(AnalysisMethod):
 		)
 		self._model.fit(train_data, train_labels)
 		return
+
 	def process(self, docs, pipe=None, **options):
 		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
 		test_data = self.get_test_data(docs, options)
@@ -99,7 +100,7 @@ class MLP_sklearn(AnalysisMethod):
 		"tol": {"options": [0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
 			"type": "OptionMenu", "default": 3, "displayed_name": "Stopping Tolerance", "validator": (lambda x: (x >= 0.000001 and x <=0.1))},
 		"validation_fraction": {"options": [0.05, 0.45], "type": "Slider", "resolution": 0.05, "default": 1, "displayed_name": "Fraction used for validation",
-					"validator": (lambda x: (x > 0.01 and x < 0.5))}
+			"validator": (lambda x: (x > 0.01 and x < 0.5))}
 	}
 
 	_display_to_input = {
@@ -124,6 +125,7 @@ class MLP_sklearn(AnalysisMethod):
 		self._model.fit(train_data, train_labels)
 		return
 
+	
 	def process(self, docs, Pipe=None, **options):
 		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
 		test_data = self.get_test_data(docs, options)
@@ -159,14 +161,12 @@ class Naive_bayes_sklearn(AnalysisMethod):
 		self._model.fit(train_data, train_labels)
 		return
 
-
 	def process(self, docs, Pipe=None, **options):
 		self.train([d for d in docs if d.author != ""], options.get("known_numbers"))
 		test_data = self.get_test_data(docs, options)
 		results = self._model.predict_proba(test_data)
 		results = self.get_results_dict_from_matrix(1-results)
 		return results
-
 
 	def displayName():
 		return "Naive Bayes (sklearn)"
