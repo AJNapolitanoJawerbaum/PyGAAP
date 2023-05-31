@@ -412,7 +412,7 @@ class Variance(EventCulling):
 
 	def displayDescription():
 		return "Analyzes N events with the lowest or highest Variance."
-
+"""
 class WeightedVariance(EventCulling):
 	_default_multiprocessing = True
 	_variable_options = {
@@ -468,7 +468,7 @@ class WeightedVariance(EventCulling):
 	def displayDescription():
 		return "Analyzes N events with the lowest or highest Variance weighted by relative frequency."
 
-"""
+
 class InformationGain(EventCulling):
 	_default_multiprocessing = True
 	_variable_options = {
